@@ -1,0 +1,2 @@
+# initramfs
+[WIP] Tiny initramfs

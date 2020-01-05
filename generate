@@ -1,6 +1,9 @@
-#!/bin/sh -x
+#!/bin/sh
 #
 # tiny initramfs generation tool
+
+# debugging
+set -x
 
 # check root
 if [ "$(id -u)" != 0 ]; then
@@ -29,7 +32,7 @@ done
 # TODO parse fstab | parse crypttab
 #while [ "$use_fstab" -eq 1 ] && read fs dir type opts; do thing; done < /etc/fstab
 
-# TODO rewrite drivers installing | handle $additional_drivers
+# TODO rewrite drivers installing | handle $drivers config var
 # install drivers
 find "$moddir/$kernel/kernel/drivers/virtio" "$moddir/$kernel/kernel/arch" "$moddir/$kernel/kernel/crypto" "$moddir/$kernel/kernel/fs" "$moddir/$kernel/kernel/lib" "$moddir/$kernel/kernel/drivers/block" "$moddir/$kernel/kernel/drivers/ata" "$moddir/$kernel/kernel/drivers/md" "$moddir/$kernel/kernel/drivers/scsi" "$moddir/$kernel/kernel/drivers/usb/storage" "$moddir/$kernel/kernel/drivers/usb/host" -type f -exec cp --parents "{}" "$tmpdir" ";"
 cp "$moddir/$kernel/modules.builtin" "$moddir/$kernel/modules.order" "$tmpdir/$moddir/$kernel"
@@ -37,7 +40,7 @@ cp "$moddir/$kernel/modules.builtin" "$moddir/$kernel/modules.order" "$tmpdir/$m
 # temporary workaround
 ./busybox depmod -b "$tmpdir" "$kernel"
 
-# TODO rewrite binaries installing | handle $additional_binaries
+# TODO rewrite binaries installing | handle $binaries config var
 # install binaries
 #for b in $(echo "$binaries"); do
 #mkdir -p "$tmpdir/usr/bin"

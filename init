@@ -1,0 +1,49 @@
+#!/bin/busybox sh
+
+# debugging
+set -x
+
+# install busybox
+/bin/busybox --install -s /bin
+
+panic() { echo "bruh moment :(" && sh; }
+
+# silence is golden
+#echo 0 > /proc/sys/kernel/printk
+
+# check config
+[ -f /config ] && . /config || panic
+
+# mount pseudofs's
+mount -t proc none /proc
+mount -t sysfs none /sys
+mount -t devtmpfs none /dev
+
+# setup mdev
+#echo "/bin/mdev" >/proc/sys/kernel/hotplug
+#mdev -s
+
+# TODO parse /proc/cmdline
+
+# load drivers
+for d in $(echo "$drivers"); do
+modprobe "$d"
+done
+
+# find rootfs
+# TODO busybox findfs doesn't support PART{UUID,LABEL}.
+root="$(findfs $root)" || panic
+[ -n "$rootflags" ] && mountargs="$rootflags"
+[ -n "$rootfstype" ] && mountargs="$mountargs -t $rootfstype"
+
+# mount rootfs
+mount $mountargs "$root" "/mnt/root" || panic
+
+# clean up
+umount "/dev"
+umount "/sys"
+umount "/proc"
+
+# boot system
+echo SUCCESS
+exec switch_root "/mnt/root" "/sbin/init"

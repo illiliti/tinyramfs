@@ -1,0 +1,75 @@
+#!/bin/sh -x
+#
+# tiny initramfs generation tool
+
+# check root
+if [ "$(id -u)" != 0 ]; then
+    echo "must be run as root!"
+    exit 1
+fi
+
+# check files
+[ -f ./config ] && . ./config || ( echo "config doesn't exists";exit 1 )
+[ -x ./busybox ] && ldd ./busybox | grep -q "not a dynamic executable" || ( echo "busybox doesn't exists or dynamically linked. please download or/and build static busybox";exit 1 )
+[ -f ./init ] || ( echo "init doesn't exists";exit 1 )
+
+# variables
+tmpdir="$(mktemp -d /tmp/initramfs.XXXXXXXX)"
+kernel="$(uname -r)"
+moddir="/lib/modules"
+
+# structure
+for d in bin dev etc lib/modules mnt/root proc root sys; do
+mkdir -p "$tmpdir/$d"
+done
+#ln -rs "$tmpdir/usr/lib" "$tmpdir/lib"
+#ln -rs "$tmpdir/usr/lib" "$tmpdir/lib64"
+#ln -rs "$tmpdir/usr/bin" "$tmpdir/bin"
+
+# TODO parse fstab | parse crypttab
+#while [ "$use_fstab" -eq 1 ] && read fs dir type opts; do thing; done < /etc/fstab
+
+# TODO rewrite drivers installing | handle $additional_drivers
+# install drivers
+find "$moddir/$kernel/kernel/drivers/virtio" "$moddir/$kernel/kernel/arch" "$moddir/$kernel/kernel/crypto" "$moddir/$kernel/kernel/fs" "$moddir/$kernel/kernel/lib" "$moddir/$kernel/kernel/drivers/block" "$moddir/$kernel/kernel/drivers/ata" "$moddir/$kernel/kernel/drivers/md" "$moddir/$kernel/kernel/drivers/scsi" "$moddir/$kernel/kernel/drivers/usb/storage" "$moddir/$kernel/kernel/drivers/usb/host" -type f -exec cp --parents "{}" "$tmpdir" ";"
+cp "$moddir/$kernel/modules.builtin" "$moddir/$kernel/modules.order" "$tmpdir/$moddir/$kernel"
+
+# temporary workaround
+./busybox depmod -b "$tmpdir" "$kernel"
+
+# TODO rewrite binaries installing | handle $additional_binaries
+# install binaries
+#for b in $(echo "$binaries"); do
+#mkdir -p "$tmpdir/usr/bin"
+#mkdir -p "$tmpdir/usr/lib"
+#cp -n "/lib/ld-linux-x86-64.so.2" "$tmpdir/usr/lib" && strip -s "$tmpdir/usr/lib/ld-linux-x86-64.so.2"
+#cp "$(which $b)" "$tmpdir/usr/bin"
+#ldd "$(which $b)" | grep '=> /' | awk '{print $3}' | xargs -I '{}' cp -n '{}' "$tmpdir/usr/lib"
+#done
+
+# install files
+cp ./init "$tmpdir/init" && chmod +x "$tmpdir/init"
+cp ./busybox "$tmpdir/bin/busybox" && chmod +x "$tmpdir/bin/busybox"
+
+cat <<EOF > "$tmpdir/config"
+root="$root"
+rootfstype="$rootfstype"
+rootflags="$rootflags"
+drivers="$drivers"
+#use_lvm="$use_lvm"
+#lvm_discard="$lvm_discard"
+#use_luks="$use_luks"
+#luks_header="$luks_header"
+#luks_keyfile="$luks_keyfile"
+#luks_discard="$luks_discard"
+EOF
+
+# packing
+if ! ( cd "$tmpdir" && find . | cpio --create --verbose --format=newc | gzip --best ) > "./initramfs-$kernel.img.gz"; then
+echo "failed"
+exit 1
+fi
+
+rm -rf "$tmpdir"
+
+echo "done! check out initramfs-$kernel.img.gz"

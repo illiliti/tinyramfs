@@ -1,0 +1,45 @@
+#
+# configuration
+#
+
+# parse fstab
+#use_fstab=0
+
+# root fs
+root="/dev/sda1"
+
+# root fs type
+rootfstype="ext4"
+
+# root fs mount options
+rootflags=""
+
+# drivers
+drivers="crc32c_generic libcrc32c ext4 virtio-scsi virtio-pci sd-mod"
+
+# binaries
+#binaries="sh findfs mount switch_root modprobe umount busybox.static"
+
+# LVM support
+#use_lvm=0
+
+# LVM include config
+#use_lvmconf=0
+
+# LVM issue_discards
+#lvm_discard=0
+
+# LUKS support
+#use_luks=0
+
+# parse crypttab
+#use_crypttab=0
+
+# LUKS header
+#luks_header=/path/to/header
+
+# LUKS keyfile
+#luks_keyfile=/path/to/keyfile
+
+# LUKS allow_discards
+#luks_discard=0

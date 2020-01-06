@@ -26,9 +26,7 @@ mount -t devtmpfs none /dev
 # TODO parse /proc/cmdline
 
 # load drivers
-for d in $(echo "$drivers"); do
-modprobe "$d"
-done
+modprobe -a $drivers
 
 # find rootfs
 # TODO busybox findfs doesn't support PART{UUID,LABEL}.

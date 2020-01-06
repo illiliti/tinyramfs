@@ -15,10 +15,10 @@ rootfstype="ext4"
 rootflags=""
 
 # drivers
-drivers="crc32c_generic libcrc32c ext4 virtio-scsi virtio-pci sd-mod"
+drivers="ext4 virtio-scsi virtio-pci sd-mod"
 
 # binaries
-#binaries="sh findfs mount switch_root modprobe umount busybox.static"
+binaries="findfs mount modprobe umount"
 
 # LVM support
 #use_lvm=0

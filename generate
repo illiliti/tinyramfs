@@ -22,38 +22,56 @@ kernel="$(uname -r)"
 moddir="/lib/modules"
 
 # structure
-for d in bin dev etc lib/modules mnt/root proc root sys; do
-mkdir -p "$tmpdir/$d"
+for d in bin dev etc usr/lib usr/bin mnt/root proc root sys; do
+    mkdir -p "$tmpdir/$d"
 done
-#ln -rs "$tmpdir/usr/lib" "$tmpdir/lib"
-#ln -rs "$tmpdir/usr/lib" "$tmpdir/lib64"
-#ln -rs "$tmpdir/usr/bin" "$tmpdir/bin"
 
-# TODO parse fstab | parse crypttab
+# make libraries and binaries happy
+ln -rs "$tmpdir/usr/lib" "$tmpdir/lib"
+ln -rs "$tmpdir/usr/lib" "$tmpdir/lib64"
+ln -rs "$tmpdir/usr/lib" "$tmpdir/lib32"
+ln -rs "$tmpdir/usr/bin" "$tmpdir/bin"
+ln -rs "$tmpdir/usr/bin" "$tmpdir/sbin"
+
+# TODO parse fstab | crypttab
 #while [ "$use_fstab" -eq 1 ] && read fs dir type opts; do thing; done < /etc/fstab
 
 # TODO rewrite drivers installing | handle $drivers config var
 # install drivers
 find "$moddir/$kernel/kernel/drivers/virtio" "$moddir/$kernel/kernel/arch" "$moddir/$kernel/kernel/crypto" "$moddir/$kernel/kernel/fs" "$moddir/$kernel/kernel/lib" "$moddir/$kernel/kernel/drivers/block" "$moddir/$kernel/kernel/drivers/ata" "$moddir/$kernel/kernel/drivers/md" "$moddir/$kernel/kernel/drivers/scsi" "$moddir/$kernel/kernel/drivers/usb/storage" "$moddir/$kernel/kernel/drivers/usb/host" -type f -exec cp --parents "{}" "$tmpdir" ";"
-cp "$moddir/$kernel/modules.builtin" "$moddir/$kernel/modules.order" "$tmpdir/$moddir/$kernel"
+cp "$moddir/$kernel/modules.softdep" "$moddir/$kernel/modules.builtin" "$moddir/$kernel/modules.order" "$tmpdir/$moddir/$kernel"
 
-# temporary workaround
-./busybox depmod -b "$tmpdir" "$kernel"
+# create modules.* files
+depmod -b "$tmpdir" "$kernel"
 
-# TODO rewrite binaries installing | handle $binaries config var
 # install binaries
-#for b in $(echo "$binaries"); do
-#mkdir -p "$tmpdir/usr/bin"
-#mkdir -p "$tmpdir/usr/lib"
-#cp -n "/lib/ld-linux-x86-64.so.2" "$tmpdir/usr/lib" && strip -s "$tmpdir/usr/lib/ld-linux-x86-64.so.2"
-#cp "$(which $b)" "$tmpdir/usr/bin"
-#ldd "$(which $b)" | grep '=> /' | awk '{print $3}' | xargs -I '{}' cp -n '{}' "$tmpdir/usr/lib"
-#done
+for b in $(echo $binaries); do
+    cp "$(which $b)" "$tmpdir/usr/bin/$b" && chmod +x "$tmpdir/usr/bin/$b"
+    # check statically linking
+    ldd "$(which $b)" >/dev/null || continue
+
+    # handle .so symlinks for dymanically linked binaries
+    for l in $(ldd "$(which $b)" | sed -nre 's,.* (/.*lib.*/.*.so.*) .*,\1,p' -e 's,.*(/lib.*/ld.*.so.*) .*,\1,p'); do
+	if [ -h "$l" ]; then
+	    # regular
+	    cp -n --parents "$(readlink -f $l)" "$tmpdir"
+	    # symlink
+	    cp -n -a --parents "$l" "$tmpdir"
+	else
+	    cp -n --parents "$(readlink -f $l)" "$tmpdir"
+	fi
+    done
+done
 
 # install files
 cp ./init "$tmpdir/init" && chmod +x "$tmpdir/init"
 cp ./busybox "$tmpdir/bin/busybox" && chmod +x "$tmpdir/bin/busybox"
 
+# strip binaries and libraries
+# uncomment this if your initramfs are huge
+#find "$tmpdir" -type f -executable -exec strip -s "{}" ";"
+
+# initialize config
 cat <<EOF > "$tmpdir/config"
 root="$root"
 rootfstype="$rootfstype"
@@ -69,8 +87,8 @@ EOF
 
 # packing
 if ! ( cd "$tmpdir" && find . | cpio --create --verbose --format=newc | gzip --best ) > "./initramfs-$kernel.img.gz"; then
-echo "failed"
-exit 1
+    echo "failed"
+    exit 1
 fi
 
 rm -rf "$tmpdir"

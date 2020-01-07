@@ -1,10 +1,10 @@
-#!/bin/busybox sh
+#!/usr/bin/busybox sh
 
 # debugging
 set -x
 
 # install busybox
-/bin/busybox --install -s /bin
+/usr/bin/busybox --install -s /usr/bin
 
 panic() { echo "bruh moment :(" && sh; }
 

@@ -5,16 +5,23 @@
 # debugging
 set -x
 
-# check root
+# check root and files
 if [ "$(id -u)" != 0 ]; then
-    echo "must be run as root!"
+    echo "must be run as root"
+    exit 1
+elif [ ! -e ./config ]; then
+    echo "config doesn't exists"
+    exit 1
+elif [ ! -e ./init ]; then
+    echo "init doesn't exists"
+    exit 1
+elif [ ! -n "$(ldd ./busybox | grep "not a dynamic executable")" ]; then
+    echo "busybox doesn't exists or dynamically linked. please download or/and build static busybox"
     exit 1
 fi
 
-# check files
-[ -f ./config ] && . ./config || ( echo "config doesn't exists";exit 1 )
-[ -x ./busybox ] && ldd ./busybox | grep -q "not a dynamic executable" || ( echo "busybox doesn't exists or dynamically linked. please download or/and build static busybox";exit 1 )
-[ -f ./init ] || ( echo "init doesn't exists";exit 1 )
+# source config
+. ./config
 
 # variables
 tmpdir="$(mktemp -d /tmp/initramfs.XXXXXXXX)"

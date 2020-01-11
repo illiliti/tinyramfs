@@ -33,12 +33,17 @@ for d in dev etc usr/lib usr/bin mnt/root proc root sys; do
     mkdir -p "$tmpdir/$d"
 done
 
-# make libraries and binaries happy
-ln -rs "$tmpdir/usr/lib" "$tmpdir/lib"
-ln -rs "$tmpdir/usr/lib" "$tmpdir/lib64"
-ln -rs "$tmpdir/usr/lib" "$tmpdir/lib32"
-ln -rs "$tmpdir/usr/bin" "$tmpdir/bin"
-ln -rs "$tmpdir/usr/bin" "$tmpdir/sbin"
+# symlinks
+for s in lib lib64 bin sbin; do
+    case "$s" in
+	lib*)
+	    ( cd "$tmpdir" && ln -s "usr/lib" "$s" )
+	;;
+	*bin)
+	    ( cd "$tmpdir" && ln -s "usr/bin" "$s" )
+	;;
+    esac
+done
 
 # TODO parse fstab | crypttab
 #while [ "$use_fstab" -eq 1 ] && read fs dir type opts; do thing; done < /etc/fstab
@@ -98,6 +103,7 @@ if ! ( cd "$tmpdir" && find . | cpio --create --verbose --format=newc | gzip --b
     exit 1
 fi
 
+# remove tmpdir
 rm -rf "$tmpdir"
 
 echo "done! check out initramfs-$kernel.img.gz"

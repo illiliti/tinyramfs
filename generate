@@ -50,27 +50,52 @@ done
 
 # TODO rewrite drivers installing | handle $drivers config var
 # install drivers
-find "$moddir/$kernel/kernel/drivers/virtio" "$moddir/$kernel/kernel/arch" "$moddir/$kernel/kernel/crypto" "$moddir/$kernel/kernel/fs" "$moddir/$kernel/kernel/lib" "$moddir/$kernel/kernel/drivers/block" "$moddir/$kernel/kernel/drivers/ata" "$moddir/$kernel/kernel/drivers/md" "$moddir/$kernel/kernel/drivers/scsi" "$moddir/$kernel/kernel/drivers/usb/storage" "$moddir/$kernel/kernel/drivers/usb/host" -type f -exec cp --parents "{}" "$tmpdir" ";"
+find \
+    "$moddir/$kernel/kernel/drivers/virtio" \
+    "$moddir/$kernel/kernel/arch" \
+    "$moddir/$kernel/kernel/crypto" \
+    "$moddir/$kernel/kernel/fs" \
+    "$moddir/$kernel/kernel/lib" \
+    "$moddir/$kernel/kernel/drivers/block" \
+    "$moddir/$kernel/kernel/drivers/ata" \
+    "$moddir/$kernel/kernel/drivers/md" \
+    "$moddir/$kernel/kernel/drivers/scsi" \
+    "$moddir/$kernel/kernel/drivers/usb/storage" \
+    "$moddir/$kernel/kernel/drivers/usb/host" \
+    -type f | cpio -pd "$tmpdir" 2>/dev/null
+
+# install list of drivers
 cp "$moddir/$kernel/modules.softdep" "$moddir/$kernel/modules.builtin" "$moddir/$kernel/modules.order" "$tmpdir/$moddir/$kernel"
 
-# create modules.* files
+# generate dependencies list of drivers
 depmod -b "$tmpdir" "$kernel"
 
-# install binaries
+# install and strip binaries and libraries
 for b in $(echo $binaries); do
-    cp "$(which $b)" "$tmpdir/usr/bin/$b" && chmod +x "$tmpdir/usr/bin/$b"
-    # check statically linking
-    ldd "$(which $b)" >/dev/null || continue
+    cp "$(command -v $b)" "$tmpdir/usr/bin"
+    chmod +x "$tmpdir/usr/bin/$b"
+    strip -s "$tmpdir/usr/bin/$b"
 
-    # handle .so symlinks for dymanically linked binaries
-    for l in $(ldd "$(which $b)" | sed -nre 's,.* (/.*lib.*/.*.so.*) .*,\1,p' -e 's,.*(/lib.*/ld.*.so.*) .*,\1,p'); do
+    # check statically linking
+    ldd "$(command -v $b)" >/dev/null || continue
+
+    # handle libraries symlinks for dymanically linked binaries
+    for l in $(ldd "$(command -v $b)" | sed -nre 's,.* (/.*lib.*/.*.so.*) .*,\1,p' -e 's,.*(/lib.*/ld.*.so.*) .*,\1,p'); do
+	# check symlink
 	if [ -h "$l" ]; then
-	    # regular
-	    cp -n --parents "$(readlink -f $l)" "$tmpdir"
-	    # symlink
-	    cp -n -a --parents "$l" "$tmpdir"
+	    # check file exists
+	    if [ ! -e "$tmpdir/usr/lib/${l##*/}" ] && [ ! -e "$tmpdir/usr/lib/$(readlink $l)" ]; then
+		# regular
+		cp "$(readlink -f $l)" "$tmpdir/usr/lib"
+		strip -s "$tmpdir/usr/lib/$(readlink $l)"
+		# symlink
+		cp -a "$l" "$tmpdir/usr/lib"
+	    fi
 	else
-	    cp -n --parents "$(readlink -f $l)" "$tmpdir"
+	    if [ ! -e "$tmpdir/usr/lib/$(readlink $l)" ]; then
+		cp "$(readlink -f $l)" "$tmpdir/usr/lib"
+		strip -s "$tmpdir/usr/lib/$(readlink $l)"
+	    fi
 	fi
     done
 done
@@ -78,10 +103,6 @@ done
 # install files
 cp ./init "$tmpdir/init" && chmod +x "$tmpdir/init"
 cp ./busybox "$tmpdir/usr/bin/busybox" && chmod +x "$tmpdir/usr/bin/busybox"
-
-# strip binaries and libraries
-# uncomment this if your initramfs are huge
-find "$tmpdir" -type f -executable -exec strip -s "{}" ";"
 
 # initialize config
 cat <<EOF > "$tmpdir/config"
@@ -98,7 +119,7 @@ drivers="$drivers"
 EOF
 
 # packing
-if ! ( cd "$tmpdir" && find . | cpio --create --verbose --format=newc | gzip --best ) > "./initramfs-$kernel.img.gz"; then
+if ! ( cd "$tmpdir" && find . | cpio --create --verbose --format=newc | gzip --best ) > "./initramfs-$kernel.img.gz" 2>/dev/null; then
     echo "failed"
     exit 1
 fi

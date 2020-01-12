@@ -100,9 +100,8 @@ for b in $(echo $binaries); do
     done
 done
 
-# install files
+# install init
 cp ./init "$tmpdir/init" && chmod +x "$tmpdir/init"
-cp ./busybox "$tmpdir/usr/bin/busybox" && chmod +x "$tmpdir/usr/bin/busybox"
 
 # initialize config
 cat <<EOF > "$tmpdir/config"

@@ -18,7 +18,7 @@ rootflags=""
 drivers="ext4 virtio-scsi virtio-pci sd-mod"
 
 # binaries
-binaries="findfs mount modprobe umount"
+binaries="./busybox findfs mount modprobe umount"
 
 # LVM support
 #use_lvm=0

@@ -15,6 +15,7 @@ elif [ ! -e ./config ]; then
 elif [ ! -e ./init ]; then
     echo "init doesn't exists"
     exit 1
+# TODO remove static busybox dependency | handle busybox requirements ( busybox --list | grep ash )
 elif [ ! -n "$(ldd ./busybox | grep "not a dynamic executable")" ]; then
     echo "busybox doesn't exists or dynamically linked. please download or/and build static busybox"
     exit 1
@@ -33,6 +34,7 @@ for d in dev etc usr/lib usr/bin mnt/root proc root sys; do
     mkdir -p "$tmpdir/$d"
 done
 
+# TODO usr/lib64 usr/sbin
 # symlinks
 for s in lib lib64 bin sbin; do
     case "$s" in
@@ -70,8 +72,16 @@ cp "$moddir/$kernel/modules.softdep" "$moddir/$kernel/modules.builtin" "$moddir/
 # generate dependencies list of drivers
 depmod -b "$tmpdir" "$kernel"
 
+# TODO make strip optional
 # install and strip binaries and libraries
 for b in $(echo $binaries); do
+    # check binary existence
+    if [ ! "$(command -v $b)" ]; then
+	echo "$b doesn't exists or permission denied"
+	exit 1
+    fi
+
+    # copy and strip binary
     cp "$(command -v $b)" "$tmpdir/usr/bin"
     chmod +x "$tmpdir/usr/bin/$b"
     strip -s "$tmpdir/usr/bin/$b"
@@ -83,7 +93,7 @@ for b in $(echo $binaries); do
     for l in $(ldd "$(command -v $b)" | sed -nre 's,.* (/.*lib.*/.*.so.*) .*,\1,p' -e 's,.*(/lib.*/ld.*.so.*) .*,\1,p'); do
 	# check symlink
 	if [ -h "$l" ]; then
-	    # check file exists
+	    # check lib already existence
 	    if [ ! -e "$tmpdir/usr/lib/${l##*/}" ] && [ ! -e "$tmpdir/usr/lib/$(readlink $l)" ]; then
 		# regular
 		cp "$(readlink -f $l)" "$tmpdir/usr/lib"
@@ -101,7 +111,8 @@ for b in $(echo $binaries); do
 done
 
 # install init
-cp ./init "$tmpdir/init" && chmod +x "$tmpdir/init"
+cp ./init "$tmpdir/init"
+chmod +x "$tmpdir/init"
 
 # initialize config
 cat <<EOF > "$tmpdir/config"

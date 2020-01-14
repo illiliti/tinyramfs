@@ -102,9 +102,9 @@ for b in $(echo $binaries); do
 		cp -a "$l" "$tmpdir/usr/lib"
 	    fi
 	else
-	    if [ ! -e "$tmpdir/usr/lib/$(readlink $l)" ]; then
-		cp "$(readlink -f $l)" "$tmpdir/usr/lib"
-		strip -s "$tmpdir/usr/lib/$(readlink $l)"
+	    if [ ! -e "$tmpdir/usr/lib/${l##*/}" ]; then
+		cp "$l" "$tmpdir/usr/lib"
+		strip -s "$tmpdir/usr/lib/${l##*/}"
 	    fi
 	fi
     done

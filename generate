@@ -28,27 +28,72 @@ fi
 tmpdir="$(mktemp -d /tmp/initramfs.XXXXXXXX)"
 kernel="$(uname -r)"
 moddir="/lib/modules"
+binaries="./busybox udevd udevadm mount modprobe umount $binaries"
 
 # structure
-for d in dev etc usr/lib usr/bin mnt/root proc root sys; do
+for d in dev var run etc usr/lib usr/bin mnt/root proc root sys; do
     mkdir -p "$tmpdir/$d"
 done
 
-# TODO usr/lib64 usr/sbin
 # symlinks
-for s in lib lib64 bin sbin; do
-    case "$s" in
-	lib*)
-	    ( cd "$tmpdir" && ln -s "usr/lib" "$s" )
-	;;
-	*bin)
-	    ( cd "$tmpdir" && ln -s "usr/bin" "$s" )
-	;;
-    esac
-done
+( cd "$tmpdir" && {
+    ln -s "usr/lib" "lib"
+    ln -s "usr/lib" "lib64"
+    ln -s "usr/bin" "bin"
+    ln -s "usr/bin" "sbin"
+    cd "$tmpdir/usr"
+    ln -s "bin" "sbin"
+    ln -s "lib" "lib64"
+} )
 
 # TODO parse fstab | crypttab
 #while [ "$use_fstab" -eq 1 ] && read fs dir type opts; do thing; done < /etc/fstab
+
+# install mdev
+#mkdir "$tmpdir/usr/lib/mdev"
+#cp ./mdev/mdev.conf ./mdev/passwd ./mdev/group "$tmpdir/etc"
+#cp ./mdev/usbdev ./mdev/usbdisk_link ./mdev/ide_links "$tmpdir/usr/lib/mdev"
+#chmod +x $tmpdir/usr/lib/mdev/*
+
+# install udev
+find "/usr/lib/udev" -type f | grep -v "rc_keymaps\|hwdb.d" | cpio -pd "$tmpdir"
+
+#cat <<EOF > "$tmpdir/etc/group"
+#root:x:0:
+#tty:x:5:
+#dialout:x:11:
+#kmem:x:3:
+#input:x:25:
+#video:x:13:
+#audio:x:12:
+#lp:x:10:
+#disk:x:9:
+#cdrom:x:16:
+#tape:x:6:
+#kvm:x:24:
+#floppy:x:8:
+#EOF
+
+#cat <<EOF > "$tmpdir/etc/passwd"
+#root:x:0:0::/root:/bin/sh
+#nobody:x:99:99::/dev/null:/bin/false
+#EOF
+
+# TODO implement use_lvmconf
+# handle lvm
+if [ "$use_lvm" = 1 ] && [ -x "$(command -v lvm)" ]; then
+    binaries="lvm dmsetup $binaries"
+    mkdir "$tmpdir/etc/lvm"
+    echo "use_lvmetad = 0" >> "$tmpdir/etc/lvm/lvm.conf"
+    if [ "$lvm_discard" = 1 ]; then
+	echo "issue_discards = 1" >> "$tmpdir/etc/lvm/lvm.conf"
+    fi
+fi
+
+# TODO handle luks
+#if [ "$use_luks" = 1 ] && [ -x "$(command -v cryptsetup)" ]; then
+#    binaries="cryptsetup $binaries"
+#fi
 
 # TODO rewrite drivers installing | handle $drivers config var
 # install drivers

@@ -6,28 +6,28 @@
 #use_fstab=0
 
 # root fs
-root="/dev/sda1"
+root="UUID=28305682-0dfe-40a9-bf39-5df42123b749"
 
 # root fs type
-rootfstype="ext4"
+#rootfstype=""
 
 # root fs mount options
-rootflags=""
+#rootflags=""
 
 # drivers
-drivers="ext4 virtio-scsi virtio-pci sd-mod"
+#drivers=""
 
 # binaries
-binaries="./busybox findfs mount modprobe umount"
+#binaries=""
 
 # LVM support
-#use_lvm=0
+use_lvm=1
 
 # LVM include config
-#use_lvmconf=0
+use_lvmconf=0
 
 # LVM issue_discards
-#lvm_discard=0
+lvm_discard=0
 
 # LUKS support
 #use_luks=0

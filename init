@@ -20,17 +20,21 @@ mount -t sysfs none /sys
 mount -t devtmpfs none /dev
 
 # setup mdev
-#echo "/bin/mdev" >/proc/sys/kernel/hotplug
+#echo "/sbin/mdev" >/proc/sys/kernel/hotplug
 #mdev -s
+
+# setup udev
+udevd --daemon
+udevadm trigger --action=add --type=subsystems
+udevadm trigger --action=add --type=devices
+udevadm settle
 
 # TODO parse /proc/cmdline
 
 # load drivers
-modprobe -a $drivers
+#modprobe -a $drivers
 
-# find rootfs
-# TODO busybox findfs doesn't support PART{UUID,LABEL}.
-root="$(findfs $root)" || panic
+# merge mount flags
 [ -n "$rootflags" ] && mountargs="$rootflags"
 [ -n "$rootfstype" ] && mountargs="$mountargs -t $rootfstype"
 
@@ -38,6 +42,8 @@ root="$(findfs $root)" || panic
 mount $mountargs "$root" "/mnt/root" || panic
 
 # clean up
+udevadm control --exit
+
 umount "/dev"
 umount "/sys"
 umount "/proc"

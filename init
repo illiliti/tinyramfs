@@ -4,7 +4,7 @@
 set -x
 
 # install busybox
-/usr/bin/busybox --install -s /usr/bin
+/usr/bin/busybox --install
 
 panic() { echo "bruh moment :(" && sh; }
 
@@ -19,8 +19,9 @@ mount -t proc none /proc
 mount -t sysfs none /sys
 mount -t devtmpfs none /dev
 
+# TODO implement busybox mdev/mdevd
 # setup mdev
-#echo "/sbin/mdev" >/proc/sys/kernel/hotplug
+#echo /sbin/mdev >/proc/sys/kernel/hotplug
 #mdev -s
 
 # setup udev
@@ -31,23 +32,27 @@ udevadm settle
 
 # TODO parse /proc/cmdline
 
+# unlock cryptsetup container
+[ "$use_luks" = 1 ] && {
+    luks_root="$(findfs $luks_root)"
+    # TODO improve mapper name ( crypttab or config option )
+    cryptsetup $luks_args luksOpen "$luks_root" luks_root || panic
+}
+
 # load drivers
 #modprobe -a $drivers
 
 # merge mount flags
-[ -n "$rootflags" ] && mountargs="$rootflags"
-[ -n "$rootfstype" ] && mountargs="$mountargs -t $rootfstype"
+[ -n "$root_args" ] && mount_args="$root_args"
+[ -n "$root_type" ] && mount_args="$mount_args -t $root_type"
 
 # mount rootfs
-mount $mountargs "$root" "/mnt/root" || panic
+mount $mount_args "$root" /mnt/root || panic
 
 # clean up
 udevadm control --exit
-
-umount "/dev"
-umount "/sys"
-umount "/proc"
+umount /dev /sys /proc
 
 # boot system
 echo SUCCESS
-exec switch_root "/mnt/root" "/sbin/init"
+exec switch_root /mnt/root /sbin/init

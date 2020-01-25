@@ -5,14 +5,14 @@
 # parse fstab
 #use_fstab=0
 
-# root fs
-root="UUID=28305682-0dfe-40a9-bf39-5df42123b749"
+# root fs ( device,partuuid,uuid,label )
+root="UUID=07729c48-25d8-4096-acaf-ce5322915680"
 
-# root fs type
-#rootfstype=""
+# root type
+#root_type=""
 
-# root fs mount options
-#rootflags=""
+# root mount options
+#root_args=""
 
 # drivers
 #drivers=""
@@ -24,22 +24,28 @@ root="UUID=28305682-0dfe-40a9-bf39-5df42123b749"
 use_lvm=1
 
 # LVM include config
-use_lvmconf=0
+#use_lvmconf=0
 
 # LVM issue_discards
-lvm_discard=0
+lvm_discard=1
 
 # LUKS support
-#use_luks=0
+use_luks=1
 
 # parse crypttab
 #use_crypttab=0
 
-# LUKS header
-#luks_header=/path/to/header
+# LUKS encrypted root ( device,partuuid,uuid,label )
+luks_root="PARTUUID=b04395be-f467-458b-8630-9a429b487600"
+
+# LUKS detached header
+#luks_header="/path/to/header"
 
 # LUKS keyfile
-#luks_keyfile=/path/to/keyfile
+#luks_keyfile="/path/to/keyfile"
 
 # LUKS allow_discards
-#luks_discard=0
+luks_discard=1
+
+# LUKS unlock options
+#luks_args=""

@@ -28,87 +28,97 @@ fi
 tmpdir="$(mktemp -d /tmp/initramfs.XXXXXXXX)"
 kernel="$(uname -r)"
 moddir="/lib/modules"
-binaries="./busybox findfs blkid udevd udevadm mount modprobe umount $binaries"
+binaries="./busybox findfs blkid mount modprobe umount $binaries"
 
 # structure
-for d in dev var run etc usr/lib usr/bin mnt/root proc root sys; do
+for d in dev tmp var run etc usr/lib usr/bin mnt/root proc root sys; do
     mkdir -p "$tmpdir/$d"
 done
 
 # symlinks
 ( cd "$tmpdir" && {
-    ln -s "usr/lib" "lib"
-    ln -s "usr/lib" "lib64"
-    ln -s "usr/bin" "bin"
-    ln -s "usr/bin" "sbin"
+    ln -s usr/lib lib
+    ln -s usr/lib lib64
+    ln -s usr/bin bin
+    ln -s usr/bin sbin
+    ln -s ../run var/run
     cd "$tmpdir/usr"
-    ln -s "bin" "sbin"
-    ln -s "lib" "lib64"
+    ln -s bin sbin
+    ln -s lib lib64
 } )
 
 # TODO parse fstab | crypttab
 #while [ "$use_fstab" -eq 1 ] && read fs dir type opts; do thing; done < /etc/fstab
 
-# TODO implement busybox mdev/mdevd
-# install mdev
-#mkdir "$tmpdir/usr/lib/mdev"
-#cp ./mdev/mdev.conf ./mdev/passwd ./mdev/group "$tmpdir/etc"
-#cp ./mdev/usbdev ./mdev/usbdisk_link ./mdev/ide_links "$tmpdir/usr/lib/mdev"
-#chmod +x $tmpdir/usr/lib/mdev/*
+# handle device managers
+if [ "$use_mdevd" = 1 ]; then
+    # install mdevd
+    binaries="mdevd mdevd-coldplug $binaries"
+    mkdir "$tmpdir/lib/mdev"
+    cp mdev.conf "$tmpdir/etc"
+    cp storage-device "$tmpdir/lib/mdev"
+    chmod +x "$tmpdir/lib/mdev/storage-device"
+elif [ "$use_mdev" = 1 ]; then
+    # install mdev
+    mkdir "$tmpdir/lib/mdev"
+    cp mdev.conf "$tmpdir/etc"
+    cp storage-device "$tmpdir/lib/mdev"
+    chmod +x "$tmpdir/lib/mdev/storage-device"
+elif [ "$use_udev" = 1 ]; then
+    # install udev
+    binaries="udevd udevadm dmsetup $binaries"
+    find /usr/lib/udev -type f | grep -v "rc_keymaps\|hwdb.d" | cpio -pd "$tmpdir"
+fi
 
-# install udev
-find "/usr/lib/udev" -type f | grep -v "rc_keymaps\|hwdb.d" | cpio -pd "$tmpdir"
+cat <<EOF > "$tmpdir/etc/group"
+root:x:0:
+tty:x:5:
+dialout:x:11:
+uucp:x:14:
+kmem:x:3:
+input:x:25:
+video:x:13:
+audio:x:12:
+lp:x:10:
+disk:x:9:
+cdrom:x:16:
+tape:x:6:
+kvm:x:24:
+floppy:x:8:
+EOF
 
-#cat <<EOF > "$tmpdir/etc/group"
-#root:x:0:
-#tty:x:5:
-#dialout:x:11:
-#kmem:x:3:
-#input:x:25:
-#video:x:13:
-#audio:x:12:
-#lp:x:10:
-#disk:x:9:
-#cdrom:x:16:
-#tape:x:6:
-#kvm:x:24:
-#floppy:x:8:
-#EOF
-
-#cat <<EOF > "$tmpdir/etc/passwd"
-#root:x:0:0::/root:/bin/sh
-#nobody:x:99:99::/dev/null:/bin/false
-#EOF
+cat <<EOF > "$tmpdir/etc/passwd"
+root:x:0:0::/root:/bin/sh
+nobody:x:99:99::/:/bin/false
+EOF
 
 # handle lvm
 if [ "$use_lvm" = 1 ] && [ -x "$(command -v lvm)" ]; then
-    binaries="lvm dmsetup $binaries"
-    mkdir "$tmpdir/etc/lvm"
+    binaries="lvm $binaries"
+    #mkdir "$tmpdir/etc/lvm"
 
-    # avoid lvmetad warning message
-    echo "use_lvmetad = 0" >> "$tmpdir/etc/lvm/lvm.conf"
-
-    if [ "$lvm_discard" = 1 ]; then
-	echo "issue_discards = 1" >> "$tmpdir/etc/lvm/lvm.conf"
-    fi
+    # use_lvmetad = 0 - avoid lvmetad missing warning message
+    #cat <<EOF > "$tmpdir/etc/lvm/lvmlocal.conf"
+    #local {
+    #	issue_discards = ${lvm_discard:-0}
+    #	use_lvmetad = 0
+    #}
+    #EOF
     # TODO implement use_lvmconf
 fi
 
 # handle luks
 if [ "$use_luks" = 1 ] && [ -x "$(command -v cryptsetup)" ]; then
-    binaries="cryptsetup dmsetup $binaries"
+    binaries="cryptsetup $binaries"
 
     # avoid locking directory missing warning message
     mkdir "$tmpdir/run/cryptsetup"
 
     # TODO get rid of this workaround
     # workaround for luks2
-    cp "$(readlink -f libgcc_s.so.1)" "$tmpdir/usr/lib"
-    cp -a /usr/lib/libgcc_s.so.1 "$tmpdir/usr/lib"
+    cp /usr/lib/libgcc_s.so.1 "$tmpdir/usr/lib"
 
-    if [ "$luks_discard" = 1 ]; then
-	luks_args="--allow-discards $luks_args"
-    fi
+    [ "$luks_discard" = 1 ] && luks_args="--allow-discards $luks_args"
 
     # TODO detached header
     # TODO keyfile
@@ -158,10 +168,13 @@ for b in $(echo $binaries); do
 	# check symlink
 	if [ -h "$l" ]; then
 	    # check lib already existence
-	    if [ ! -e "$tmpdir/usr/lib/${l##*/}" ] && [ ! -e "$tmpdir/usr/lib/$(readlink $l)" ]; then
+	    if [ ! -e "$tmpdir/usr/lib/${l##*/}" ] && [ ! -e "$tmpdir$(readlink -f $l)" ]; then
 		# regular
 		cp "$(readlink -f $l)" "$tmpdir/usr/lib"
-		strip -s "$tmpdir/usr/lib/$(readlink $l)"
+		strip -s "$tmpdir$(readlink -f $l)"
+		# TODO handle all symlinks
+		# symlink may link to symlink
+		[ -h "/usr/lib/$(readlink $l)" ] && cp -a "/usr/lib/$(readlink $l)" "$tmpdir/usr/lib"
 		# symlink
 		cp -a "$l" "$tmpdir/usr/lib"
 	    fi
@@ -183,14 +196,15 @@ cat <<EOF > "$tmpdir/config"
 root="$root"
 root_type="$root_type"
 root_args="$root_args"
+use_mdevd="$use_mdevd"
+use_mdev="$use_mdev"
+use_udev="$use_udev"
 #drivers="$drivers"
 use_lvm="$use_lvm"
-lvm_discard="$lvm_discard"
 use_luks="$use_luks"
 luks_root="$luks_root"
 luks_header="$luks_header"
 luks_keyfile="$luks_keyfile"
-luks_discard="$luks_discard"
 luks_args="$luks_args"
 EOF
 

@@ -14,6 +14,15 @@ root="UUID=07729c48-25d8-4096-acaf-ce5322915680"
 # root mount options
 #root_args=""
 
+# mdevd support
+use_mdevd=0
+
+# busybox mdev support
+use_mdev=1
+
+# udev support
+use_udev=0
+
 # drivers
 #drivers=""
 

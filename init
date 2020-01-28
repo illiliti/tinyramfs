@@ -9,7 +9,9 @@ set -x
 panic() { echo "bruh moment :(" && sh; }
 
 # silence is golden
-#echo 0 > /proc/sys/kernel/printk
+#echo 0 >/proc/sys/kernel/printk
+
+# TODO parse /proc/cmdline
 
 # check config
 [ -f /config ] && . /config || panic
@@ -19,18 +21,49 @@ mount -t proc none /proc
 mount -t sysfs none /sys
 mount -t devtmpfs none /dev
 
-# TODO implement busybox mdev/mdevd
-# setup mdev
-#echo /sbin/mdev >/proc/sys/kernel/hotplug
-#mdev -s
+# handle device managers
+if [ "$use_mdevd" = 1 ]; then
+    # setup mdevd
+    mdevd &
+    # trigger uevents
+    mdevd-coldplug
 
-# setup udev
-udevd --daemon
-udevadm trigger --action=add --type=subsystems
-udevadm trigger --action=add --type=devices
-udevadm settle
+    # TODO investigate this
+    # avoid race condition
+    sleep 1.5
+elif [ "$use_mdev" = 1 ]; then
+    # setup mdev
+    if [ -e /proc/sys/kernel/hotplug ]; then
+	echo /sbin/mdev >/proc/sys/kernel/hotplug
+    else
+	uevent mdev &
+    fi
 
-# TODO parse /proc/cmdline
+    # trigger mdev
+    mdev -s
+
+    # trigger uevent for usb devices
+    for u in /sys/bus/usb/devices/*; do
+	case ${u##*/} in
+	    [0-9]*-[0-9]*)
+	    echo add > "$u/uevent"
+            ;;
+        esac
+    done
+
+    # load drivers
+    find /sys -name 'modalias' -type f -exec cat '{}' + | sort -u | xargs modprobe -ba
+elif [ "$use_udev" = 1 ]; then
+    # setup udev
+    udevd --daemon
+    udevadm trigger --action=add --type=subsystems
+    udevadm trigger --action=add --type=devices
+    udevadm settle
+else
+    panic
+fi
+
+# TODO handle situations when LUKS on LVM
 
 # unlock cryptsetup container
 [ "$use_luks" = 1 ] && {
@@ -39,8 +72,10 @@ udevadm settle
     cryptsetup $luks_args luksOpen "$luks_root" luks_root || panic
 }
 
-# load drivers
-#modprobe -a $drivers
+# manually trigger LVM if udev disabled
+[ "$use_lvm" = 1 ] && [ "$use_udev" = 0 ] && {
+    lvm vgchange --sysinit -a y
+}
 
 # merge mount flags
 [ -n "$root_args" ] && mount_args="$root_args"
@@ -50,7 +85,9 @@ udevadm settle
 mount $mount_args "$root" /mnt/root || panic
 
 # clean up
-udevadm control --exit
+[ "$use_mdevd" = 1 ] && killall mdevd
+[ "$use_mdev" = 1 ] && { echo "" >/proc/sys/kernel/hotplug || killall uevent; }
+[ "$use_udev" = 1 ] && udevadm control --exit
 umount /dev /sys /proc
 
 # boot system

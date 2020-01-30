@@ -230,7 +230,7 @@ EOF
 }
 
 # TODO add more compession tools
-# create cpio archive and compress
+# create and compress cpio archive
 create_initramfs() {
     {
 	( cd "$tmpdir" && {
@@ -257,7 +257,9 @@ check_requirements
 
 # handle debug mode
 [ "$debug" = 1 ] && {
+    # debug shell commands
     set -x
+    # don't remove anything
     trap : EXIT INT
 }
 

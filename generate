@@ -184,6 +184,7 @@ install_libraries() {
 }
 
 install_files() {
+# FIXME eof broken
 # initialize config
 cat <<EOF > "${tmpdir}/config"
 debug="$debug"
@@ -191,7 +192,6 @@ root="$root"
 root_type="$root_type"
 root_args="$root_args"
 devmgr="$devmgr"
-use_mdev="1"
 #drivers="$drivers"
 use_lvm="$use_lvm"
 use_luks="$use_luks"
@@ -241,18 +241,12 @@ create_initramfs() {
     [ "$?" = 0 ] || panic "failed to generate initramfs image"
 }
 
-# main function :)
+# TODO cd to script directory
 
 [ "$(id -u)" = 0 ] || panic "must be run as root"
 
 # remove tmpdir on exit or unexpected error
 trap remove_tmpdir EXIT INT
-
-# handle debug mode
-[ "$debug" = 1 ] && {
-    set -x
-    trap : EXIT INT
-}
 
 # variables
 tmpdir="$(mktemp -d /tmp/initramfs.XXXXXXXX)" || panic "failed to create working directory"
@@ -260,6 +254,13 @@ kernel="$(uname -r)"
 moddir="/lib/modules/"
 
 check_requirements
+
+# handle debug mode
+[ "$debug" = 1 ] && {
+    set -x
+    trap : EXIT INT
+}
+
 create_structure
 create_symlinks
 #parse_fstab

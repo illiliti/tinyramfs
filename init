@@ -3,12 +3,7 @@
 # tiny init script
 
 panic() {
-    printf "panic >> %s\n" "$@"
-    exit 1
-}
-
-info() {
-    printf "info >> %s\n" "$@"
+    printf "panic >> %s\n" "$@" && sh
 }
 
 # parse_cmdline() {
@@ -43,7 +38,7 @@ use_mdev() {
     done
 
     # load drivers
-    find /sys -name 'modalias' -type f -exec cat '{}' + | sort -u | xargs modprobe -ba
+    find /sys -name "modalias" -type f -exec cat "{}" + | sort -u | xargs modprobe -ba
 }
 
 use_mdevd() {
@@ -90,25 +85,16 @@ mnt_rootfs() {
 
 cleanup() {
     # clean up
-    [ "$use_mdev" = 1 ] && { printf "" >/proc/sys/kernel/hotplug || killall uevent; } >/dev/null 2>&1
-    [ "$use_mdevd" = 1 ] && killall mdevd
-    [ "$use_udev" = 1 ] && udevadm control --exit
+    [ "$devmgr" = "mdev" ] && { printf "" >/proc/sys/kernel/hotplug || killall uevent; } >/dev/null 2>&1
+    [ "$devmgr" = "mdevd" ] && killall mdevd
+    [ "$devmgr" = "udev" ] && udevadm control --exit
     umount /dev /sys /proc
 }
 
 boot_system() {
     # boot system
-    [ "$debug" = 1 ] && info SUCCESS
     exec switch_root /mnt/root /sbin/init || panic "failed to boot system"
 }
-
-if [ "$debug" = 1 ]; then
-    # debug shell commands 
-    set -x
-else
-    # silence is golden
-    printf 0 >/proc/sys/kernel/printk
-fi
 
 # install busybox
 /sbin/busybox --install -s
@@ -120,16 +106,27 @@ else
     panic "config doesn't exists"
 fi
 
+if [ "$debug" = 1 ]; then
+    # debug shell commands 
+    set -x
+else
+    # silence is golden
+    printf 0 >/proc/sys/kernel/printk
+fi
+
 #parse_cmdline
 mnt_pseudofs
+
 case "$devmgr" in
     mdev) use_mdev ;;
     mdevd) use_mdevd ;;
     udev) use_udev ;;
+    *) panic "devmgr option broken" ;;
 esac
+
 # TODO handle situations when LUKS on LVM
 [ "$use_luks" = 1 ] && unlock_luks
-[ "$use_lvm" = 1 ] && [ "$use_udev" = 0 ] && trigger_lvm
+[ "$use_lvm" = 1 ] && [ "$devmgr" != "udev" ] && trigger_lvm
 mnt_rootfs
 cleanup
 boot_system

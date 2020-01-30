@@ -18,7 +18,7 @@ root="UUID=07729c48-25d8-4096-acaf-ce5322915680"
 #root_args=""
 
 # device manager ( mdev,mdevd,udev )
-devmgr="mdev"
+devmgr="udev"
 
 # drivers
 #drivers=""

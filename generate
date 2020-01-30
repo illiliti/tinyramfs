@@ -186,6 +186,7 @@ install_libraries() {
 install_files() {
 # initialize config
 cat <<EOF > "${tmpdir}/config"
+debug="$debug"
 root="$root"
 root_type="$root_type"
 root_args="$root_args"
@@ -234,7 +235,7 @@ create_initramfs() {
     {
 	( cd "$tmpdir" && {
 	    find . | cpio -oH newc | gzip -9
-	} ) > "/root/initramfs-${kernel}.img.gz"
+	} ) > "./initramfs-${kernel}.img.gz"
     } >/dev/null 2>&1
 
     [ "$?" = 0 ] || panic "failed to generate initramfs image"
@@ -245,8 +246,7 @@ create_initramfs() {
 [ "$(id -u)" = 0 ] || panic "must be run as root"
 
 # remove tmpdir on exit or unexpected error
-#trap remove_tmpdir EXIT INT
-set -x
+trap remove_tmpdir EXIT INT
 
 # handle debug mode
 [ "$debug" = 1 ] && {

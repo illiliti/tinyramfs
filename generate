@@ -2,75 +2,206 @@
 #
 # tiny initramfs generation tool
 
-# debugging
-set -x
-
-# check root and files
-if [ "$(id -u)" != 0 ]; then
-    echo "must be run as root"
+panic() {
+    printf "panic >> %s\n" "$@"
     exit 1
-elif [ ! -e ./config ]; then
-    echo "config doesn't exists"
-    exit 1
-elif [ ! -e ./init ]; then
-    echo "init doesn't exists"
-    exit 1
-# TODO remove static busybox dependency | handle busybox requirements ( busybox --list | grep ash )
-elif [ ! -n "$(ldd ./busybox | grep "not a dynamic executable")" ]; then
-    echo "busybox doesn't exists or dynamically linked. please download or/and build static busybox"
-    exit 1
-fi
+}
 
-# source config
-. ./config
+info() {
+    printf "info >> %s\n" "$@"
+}
 
-# variables
-tmpdir="$(mktemp -d /tmp/initramfs.XXXXXXXX)"
-kernel="$(uname -r)"
-moddir="/lib/modules"
-binaries="./busybox findfs blkid mount modprobe umount $binaries"
+remove_tmpdir() {
+    # remove tmpdir
+    rm -rf "$tmpdir"
+}
 
-# structure
-for d in dev tmp var run etc usr/lib usr/bin mnt/root proc root sys; do
-    mkdir -p "$tmpdir/$d"
-done
+check_requirements() {
+    # check needed files
+    for f in ./config ./init ./busybox; do
+	[ -e "$f" ] || panic "$f doesn't exists"
+    done
 
-# symlinks
-( cd "$tmpdir" && {
-    ln -s usr/lib lib
-    ln -s usr/lib lib64
-    ln -s usr/bin bin
-    ln -s usr/bin sbin
-    ln -s ../run var/run
-    cd "$tmpdir/usr"
-    ln -s bin sbin
-    ln -s lib lib64
-} )
+    # TODO handle busybox requirements ( busybox --list | grep ash )
 
-# TODO parse fstab | crypttab
+    # source config
+    . ./config
+}
+
+create_structure() {
+    # create FHS directory structure
+    for d in dev tmp var run etc usr/lib usr/bin mnt/root proc root sys; do
+	mkdir -p "${tmpdir}/${d}"
+    done
+}
+
+create_symlinks() {
+    # some dynamically linked libraries and binaries compiled with hardcoded
+    # dependencies path. to make it worked we need create symlinks for them.
+    # also POSIX ln doesn't have --relative flag like in GNU ln. as workaround
+    # we change directory to tmpdir and make needed symlinks.
+    ( cd "$tmpdir" && {
+	ln -s usr/lib lib
+	ln -s usr/lib lib64
+	ln -s usr/bin bin
+	ln -s usr/bin sbin
+	ln -s ../run var/run
+	cd "$tmpdir/usr"
+	ln -s bin sbin
+	ln -s lib lib64
+    } )
+}
+
+#parse_fstab() {
+# TODO parse fstab
 #while [ "$use_fstab" -eq 1 ] && read fs dir type opts; do thing; done < /etc/fstab
+#}
+
+#parse_crypttab() {
+# TODO parse crypttab
+#}
 
 # handle device managers
-if [ "$use_mdevd" = 1 ]; then
-    # install mdevd
-    binaries="mdevd mdevd-coldplug $binaries"
-    mkdir "$tmpdir/lib/mdev"
-    cp mdev.conf "$tmpdir/etc"
-    cp storage-device "$tmpdir/lib/mdev"
-    chmod +x "$tmpdir/lib/mdev/storage-device"
-elif [ "$use_mdev" = 1 ]; then
+use_mdev() {
     # install mdev
-    mkdir "$tmpdir/lib/mdev"
-    cp mdev.conf "$tmpdir/etc"
-    cp storage-device "$tmpdir/lib/mdev"
-    chmod +x "$tmpdir/lib/mdev/storage-device"
-elif [ "$use_udev" = 1 ]; then
-    # install udev
-    binaries="udevd udevadm dmsetup $binaries"
-    find /usr/lib/udev -type f | grep -v "rc_keymaps\|hwdb.d" | cpio -pd "$tmpdir"
-fi
+    install -m644 mdev.conf -t "$tmpdir/etc"
+    install -Dm755 storage-device -t "$tmpdir/lib/mdev"
+}
 
-cat <<EOF > "$tmpdir/etc/group"
+use_mdevd() {
+    # install mdevd
+    install_binaries mdevd mdevd-coldplug
+    install -m644 mdev.conf -t "$tmpdir/etc"
+    install -Dm755 storage-device -t "$tmpdir/lib/mdev"
+}
+
+use_udev() {
+    # install udev
+    install_binaries udevd udevadm dmsetup
+    # FIXME rewrite this piece of crap
+    find /usr/lib/udev -type f | grep -v "rc_keymaps\|hwdb.d" | cpio -pd "$tmpdir" >/dev/null 2>&1
+}
+
+# handle lvm
+use_lvm() {
+    install_binaries lvm
+    # FIXME this code doesn't working with udev
+    #mkdir "$tmpdir/etc/lvm"
+    # use_lvmetad = 0 - avoid lvmetad missing warning message
+    #cat <<EOF > "$tmpdir/etc/lvm/lvmlocal.conf"
+    #local {
+    #	issue_discards = ${lvm_discard:-0}
+    #	use_lvmetad = 0
+    #}
+    #EOF
+    # TODO implement use_lvmconf
+}
+
+# handle luks
+use_luks() {
+    install_binaries cryptsetup
+
+    # avoid locking directory missing warning message
+    mkdir "${tmpdir}/run/cryptsetup"
+
+    # TODO get rid of this workaround
+    # workaround for luks2
+    install -s -m755 /usr/lib/libgcc_s.so.1 -t "${tmpdir}/usr/lib"
+
+    [ "$luks_discard" = 1 ] && luks_args="--allow-discards $luks_args"
+
+    # TODO detached header
+    # TODO keyfile
+}
+
+# TODO implement hostonly mode
+# install drivers
+install_drivers() {
+    modker="${moddir}${kernel}"
+    find \
+	"${modker}/kernel/drivers/virtio" \
+	"${modker}/kernel/arch" \
+	"${modker}/kernel/crypto" \
+	"${modker}/kernel/fs" \
+	"${modker}/kernel/lib" \
+	"${modker}/kernel/drivers/block" \
+	"${modker}/kernel/drivers/ata" \
+	"${modker}/kernel/drivers/md" \
+	"${modker}/kernel/drivers/scsi" \
+	"${modker}/kernel/drivers/usb/storage" \
+	"${modker}/kernel/drivers/usb/host" \
+	-type f | cpio -pd "$tmpdir" >/dev/null 2>&1
+
+    # install list of drivers
+    cp "${modker}/modules.softdep" "${modker}/modules.builtin" "${modker}/modules.order" "${tmpdir}/${modker}"
+
+    # generate dependencies list of drivers
+    depmod -b "$tmpdir" "$kernel"
+}
+
+# TODO make strip optional
+# handle binaries
+install_binaries() {
+    for b in $(printf "%s\n" "$@" | tr " " "\n"); do
+	# check binary existence
+	command -v "$b" >/dev/null 2>&1 || panic "$b doesn't exists"
+
+	# install and strip binary
+	install -s -m755 "$(command -v $b)" -t "${tmpdir}/usr/bin"
+
+        # check statically linking
+	ldd "$(command -v $b)" >/dev/null 2>&1 || continue
+
+	# install libraries
+	install_libraries $b
+    done
+}
+
+# TODO make strip optional
+# handle libraries
+install_libraries() {
+    for l in $(ldd "$(command -v $1)" | sed -nre 's,.* (/.*lib.*/.*.so.*) .*,\1,p' -e 's,.*(/lib.*/ld.*.so.*) .*,\1,p'); do
+	# check symlink
+	if [ -h "$l" ]; then
+	    # check lib already existence
+	    if [ ! -e "${tmpdir}/usr/lib/${l##*/}" ] && [ ! -e "${tmpdir}/$(readlink -f $l)" ]; then
+		# regular
+		install -s -m755 "$(readlink -f $l)" -t "${tmpdir}/usr/lib"
+
+		# FIXME handle all symlinks
+		# symlink may link to symlink
+		[ -h "/usr/lib/$(readlink $l)" ] && cp -a "/usr/lib/$(readlink $l)" "${tmpdir}/usr/lib"
+
+		# symlink
+		cp -a "$l" "${tmpdir}/usr/lib"
+	    fi
+	else
+	    if [ ! -e "${tmpdir}/usr/lib/${l##*/}" ]; then
+		install -s -m755 "$l" -t "${tmpdir}/usr/lib"
+	    fi
+	fi
+    done
+}
+
+install_files() {
+# initialize config
+cat <<EOF > "${tmpdir}/config"
+root="$root"
+root_type="$root_type"
+root_args="$root_args"
+devmgr="$devmgr"
+use_mdev="1"
+#drivers="$drivers"
+use_lvm="$use_lvm"
+use_luks="$use_luks"
+luks_root="$luks_root"
+luks_header="$luks_header"
+luks_keyfile="$luks_keyfile"
+luks_args="$luks_args"
+EOF
+
+# needed for devmgr
+cat <<EOF > "${tmpdir}/etc/group"
 root:x:0:
 tty:x:5:
 dialout:x:11:
@@ -87,135 +218,66 @@ kvm:x:24:
 floppy:x:8:
 EOF
 
-cat <<EOF > "$tmpdir/etc/passwd"
+# needed for devmgr
+cat <<EOF > "${tmpdir}/etc/passwd"
 root:x:0:0::/root:/bin/sh
 nobody:x:99:99::/:/bin/false
 EOF
 
-# handle lvm
-if [ "$use_lvm" = 1 ] && [ -x "$(command -v lvm)" ]; then
-    binaries="lvm $binaries"
-    #mkdir "$tmpdir/etc/lvm"
+    # install init script
+    install -m755 ./init -t "$tmpdir"
+}
 
-    # use_lvmetad = 0 - avoid lvmetad missing warning message
-    #cat <<EOF > "$tmpdir/etc/lvm/lvmlocal.conf"
-    #local {
-    #	issue_discards = ${lvm_discard:-0}
-    #	use_lvmetad = 0
-    #}
-    #EOF
-    # TODO implement use_lvmconf
-fi
+# TODO add more compession tools
+# create cpio archive and compress
+create_initramfs() {
+    {
+	( cd "$tmpdir" && {
+	    find . | cpio -oH newc | gzip -9
+	} ) > "/root/initramfs-${kernel}.img.gz"
+    } >/dev/null 2>&1
 
-# handle luks
-if [ "$use_luks" = 1 ] && [ -x "$(command -v cryptsetup)" ]; then
-    binaries="cryptsetup $binaries"
+    [ "$?" = 0 ] || panic "failed to generate initramfs image"
+}
 
-    # avoid locking directory missing warning message
-    mkdir "$tmpdir/run/cryptsetup"
+# main function :)
 
-    # TODO get rid of this workaround
-    # workaround for luks2
-    cp /usr/lib/libgcc_s.so.1 "$tmpdir/usr/lib"
+[ "$(id -u)" = 0 ] || panic "must be run as root"
 
-    [ "$luks_discard" = 1 ] && luks_args="--allow-discards $luks_args"
+# remove tmpdir on exit or unexpected error
+#trap remove_tmpdir EXIT INT
+set -x
 
-    # TODO detached header
-    # TODO keyfile
-fi
+# handle debug mode
+[ "$debug" = 1 ] && {
+    set -x
+    trap : EXIT INT
+}
 
-# TODO rewrite drivers installing | handle $drivers config var
-# install drivers
-find \
-    "$moddir/$kernel/kernel/drivers/virtio" \
-    "$moddir/$kernel/kernel/arch" \
-    "$moddir/$kernel/kernel/crypto" \
-    "$moddir/$kernel/kernel/fs" \
-    "$moddir/$kernel/kernel/lib" \
-    "$moddir/$kernel/kernel/drivers/block" \
-    "$moddir/$kernel/kernel/drivers/ata" \
-    "$moddir/$kernel/kernel/drivers/md" \
-    "$moddir/$kernel/kernel/drivers/scsi" \
-    "$moddir/$kernel/kernel/drivers/usb/storage" \
-    "$moddir/$kernel/kernel/drivers/usb/host" \
-    -type f | cpio -pd "$tmpdir" 2>/dev/null
+# variables
+tmpdir="$(mktemp -d /tmp/initramfs.XXXXXXXX)" || panic "failed to create working directory"
+kernel="$(uname -r)"
+moddir="/lib/modules/"
 
-# install list of drivers
-cp "$moddir/$kernel/modules.softdep" "$moddir/$kernel/modules.builtin" "$moddir/$kernel/modules.order" "$tmpdir/$moddir/$kernel"
+check_requirements
+create_structure
+create_symlinks
+#parse_fstab
+#parse_crypttab
+install_binaries $binaries
+install_drivers
+install_files
 
-# generate dependencies list of drivers
-depmod -b "$tmpdir" "$kernel"
+case "$devmgr" in
+    mdev) use_mdev ;;
+    mdevd) use_mdevd ;;
+    udev) use_udev ;;
+    *) panic "devmgr option broken" ;;
+esac
 
-# TODO make strip optional
-# install and strip binaries and libraries
-for b in $(echo $binaries); do
-    # check binary existence
-    if [ ! "$(command -v $b)" ]; then
-	echo "$b doesn't exists or permission denied"
-	exit 1
-    fi
+[ "$use_luks" = 1 ] && use_luks
+[ "$use_lvm" = 1 ] && use_lvm
 
-    # copy and strip binary
-    cp "$(command -v $b)" "$tmpdir/usr/bin"
-    chmod +x "$tmpdir/usr/bin/$b"
-    strip -s "$tmpdir/usr/bin/$b"
+create_initramfs
 
-    # check statically linking
-    ldd "$(command -v $b)" >/dev/null || continue
-
-    # handle libraries symlinks for dymanically linked binaries
-    for l in $(ldd "$(command -v $b)" | sed -nre 's,.* (/.*lib.*/.*.so.*) .*,\1,p' -e 's,.*(/lib.*/ld.*.so.*) .*,\1,p'); do
-	# check symlink
-	if [ -h "$l" ]; then
-	    # check lib already existence
-	    if [ ! -e "$tmpdir/usr/lib/${l##*/}" ] && [ ! -e "$tmpdir$(readlink -f $l)" ]; then
-		# regular
-		cp "$(readlink -f $l)" "$tmpdir/usr/lib"
-		strip -s "$tmpdir$(readlink -f $l)"
-		# TODO handle all symlinks
-		# symlink may link to symlink
-		[ -h "/usr/lib/$(readlink $l)" ] && cp -a "/usr/lib/$(readlink $l)" "$tmpdir/usr/lib"
-		# symlink
-		cp -a "$l" "$tmpdir/usr/lib"
-	    fi
-	else
-	    if [ ! -e "$tmpdir/usr/lib/${l##*/}" ]; then
-		cp "$l" "$tmpdir/usr/lib"
-		strip -s "$tmpdir/usr/lib/${l##*/}"
-	    fi
-	fi
-    done
-done
-
-# install init
-cp ./init "$tmpdir/init"
-chmod +x "$tmpdir/init"
-
-# initialize config
-cat <<EOF > "$tmpdir/config"
-root="$root"
-root_type="$root_type"
-root_args="$root_args"
-use_mdevd="$use_mdevd"
-use_mdev="$use_mdev"
-use_udev="$use_udev"
-#drivers="$drivers"
-use_lvm="$use_lvm"
-use_luks="$use_luks"
-luks_root="$luks_root"
-luks_header="$luks_header"
-luks_keyfile="$luks_keyfile"
-luks_args="$luks_args"
-EOF
-
-# TODO add another compession tools
-# packing
-if ! ( cd "$tmpdir" && find . | cpio --create --verbose --format=newc | gzip --best ) > "./initramfs-$kernel.img.gz" 2>/dev/null; then
-    echo "failed"
-    exit 1
-fi
-
-# remove tmpdir
-rm -rf "$tmpdir"
-
-echo "done! check out initramfs-$kernel.img.gz"
+info "done! check out initramfs-${kernel}.img.gz"

@@ -2,6 +2,9 @@
 # configuration
 #
 
+# debug mode
+debug=1
+
 # parse fstab
 #use_fstab=0
 
@@ -14,20 +17,14 @@ root="UUID=07729c48-25d8-4096-acaf-ce5322915680"
 # root mount options
 #root_args=""
 
-# mdevd support
-use_mdevd=0
-
-# busybox mdev support
-use_mdev=1
-
-# udev support
-use_udev=0
+# device manager ( mdev,mdevd,udev )
+devmgr="mdev"
 
 # drivers
 #drivers=""
 
 # binaries
-#binaries=""
+binaries="./busybox findfs blkid mount modprobe umount"
 
 # LVM support
 use_lvm=1

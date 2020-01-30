@@ -1,40 +1,31 @@
 #!/sbin/busybox sh
+#
+# tiny init script
 
-# debugging
-set -x
+panic() {
+    printf "panic >> %s\n" "$@"
+    exit 1
+}
 
-# install busybox
-/sbin/busybox --install -s
+info() {
+    printf "info >> %s\n" "$@"
+}
 
-panic() { echo "bruh moment :(" && sh; }
-
-# silence is golden
-#echo 0 >/proc/sys/kernel/printk
-
+# parse_cmdline() {
 # TODO parse /proc/cmdline
+#}
 
-# check config
-[ -f /config ] && . /config || panic
+mnt_pseudofs() {
+    # mount pseudofs's
+    mount -t proc none /proc
+    mount -t sysfs none /sys
+    mount -t devtmpfs none /dev
+}
 
-# mount pseudofs's
-mount -t proc none /proc
-mount -t sysfs none /sys
-mount -t devtmpfs none /dev
-
-# handle device managers
-if [ "$use_mdevd" = 1 ]; then
-    # setup mdevd
-    mdevd &
-    # trigger uevents
-    mdevd-coldplug
-
-    # TODO investigate this
-    # avoid race condition
-    sleep 1.5
-elif [ "$use_mdev" = 1 ]; then
+use_mdev() {
     # setup mdev
     if [ -e /proc/sys/kernel/hotplug ]; then
-	echo /sbin/mdev >/proc/sys/kernel/hotplug
+	printf /sbin/mdev >/proc/sys/kernel/hotplug
     else
 	uevent mdev &
     fi
@@ -46,50 +37,99 @@ elif [ "$use_mdev" = 1 ]; then
     for u in /sys/bus/usb/devices/*; do
 	case ${u##*/} in
 	    [0-9]*-[0-9]*)
-	    echo add > "$u/uevent"
+	    printf add > "${u}/uevent"
             ;;
         esac
     done
 
     # load drivers
     find /sys -name 'modalias' -type f -exec cat '{}' + | sort -u | xargs modprobe -ba
-elif [ "$use_udev" = 1 ]; then
+}
+
+use_mdevd() {
+    # setup mdevd
+    mdevd &
+    # trigger uevents
+    mdevd-coldplug
+
+    # TODO investigate this
+    # avoid race condition
+    sleep 1.5
+}
+
+use_udev() {
     # setup udev
     udevd --daemon
     udevadm trigger --action=add --type=subsystems
     udevadm trigger --action=add --type=devices
     udevadm settle
-else
-    panic
-fi
-
-# TODO handle situations when LUKS on LVM
-
-# unlock cryptsetup container
-[ "$use_luks" = 1 ] && {
-    luks_root="$(findfs $luks_root)"
-    # TODO improve mapper name ( crypttab or config option )
-    cryptsetup $luks_args luksOpen "$luks_root" luks_root || panic
 }
 
-# manually trigger LVM if udev disabled
-[ "$use_lvm" = 1 ] && [ "$use_udev" = 0 ] && {
+unlock_luks() {
+    # find device of luks root
+    luks_root="$(findfs $luks_root)"
+
+    # TODO improve mapper name ( crypttab or config option )
+    # unlock luks container
+    cryptsetup $luks_args luksOpen "$luks_root" luks_root || panic "failed to unlock luks container"
+}
+
+trigger_lvm() {
+    # manually trigger LVM if udev disabled
     lvm vgchange --sysinit -a y
 }
 
-# merge mount flags
-[ -n "$root_args" ] && mount_args="$root_args"
-[ -n "$root_type" ] && mount_args="$mount_args -t $root_type"
+mnt_rootfs() {
+    # merge mount flags
+    [ -n "$root_args" ] && mount_args="$root_args"
+    [ -n "$root_type" ] && mount_args="$mount_args -t $root_type"
 
-# mount rootfs
-mount $mount_args "$root" /mnt/root || panic
+    # mount rootfs    
+    mount $mount_args "$root" /mnt/root || panic "failed to mount rootfs"
+}
 
-# clean up
-[ "$use_mdevd" = 1 ] && killall mdevd
-[ "$use_mdev" = 1 ] && { echo "" >/proc/sys/kernel/hotplug || killall uevent; }
-[ "$use_udev" = 1 ] && udevadm control --exit
-umount /dev /sys /proc
+cleanup() {
+    # clean up
+    [ "$use_mdev" = 1 ] && { printf "" >/proc/sys/kernel/hotplug || killall uevent; } >/dev/null 2>&1
+    [ "$use_mdevd" = 1 ] && killall mdevd
+    [ "$use_udev" = 1 ] && udevadm control --exit
+    umount /dev /sys /proc
+}
 
-# boot system
-echo SUCCESS
-exec switch_root /mnt/root /sbin/init
+boot_system() {
+    # boot system
+    [ "$debug" = 1 ] && info SUCCESS
+    exec switch_root /mnt/root /sbin/init || panic "failed to boot system"
+}
+
+if [ "$debug" = 1 ]; then
+    # debug shell commands 
+    set -x
+else
+    # silence is golden
+    printf 0 >/proc/sys/kernel/printk
+fi
+
+# install busybox
+/sbin/busybox --install -s
+
+# check config
+if [ -e /config ]; then
+    . /config
+else
+    panic "config doesn't exists"
+fi
+
+#parse_cmdline
+mnt_pseudofs
+case "$devmgr" in
+    mdev) use_mdev ;;
+    mdevd) use_mdevd ;;
+    udev) use_udev ;;
+esac
+# TODO handle situations when LUKS on LVM
+[ "$use_luks" = 1 ] && unlock_luks
+[ "$use_lvm" = 1 ] && [ "$use_udev" = 0 ] && trigger_lvm
+mnt_rootfs
+cleanup
+boot_system

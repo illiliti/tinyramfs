@@ -68,27 +68,27 @@ create_symlinks() {
 #}
 
 # install mdev
-use_mdev() {
+install_mdev() {
     install -m644 mdev.conf -t "${tmpdir}/etc"
     install -Dm755 storage-device -t "${tmpdir}/lib/mdev"
 }
 
 # install mdevd
-use_mdevd() {
+install_mdevd() {
     install_binaries mdevd mdevd-coldplug
     install -m644 mdev.conf -t "${tmpdir}/etc"
     install -Dm755 storage-device -t "${tmpdir}/lib/mdev"
 }
 
 # install udev
-use_udev() {
+install_udev() {
     install_binaries udevd udevadm dmsetup
     # FIXME rewrite this piece of crap
     find /usr/lib/udev -type f | grep -v "rc_keymaps\|hwdb.d" | cpio -pd "$tmpdir" >/dev/null 2>&1
 }
 
 # handle lvm
-use_lvm() {
+install_lvm() {
     install_binaries lvm
     # FIXME this code doesn't working with udev
     #mkdir "$tmpdir/etc/lvm"
@@ -103,7 +103,7 @@ use_lvm() {
 }
 
 # handle luks
-use_luks() {
+install_luks() {
     install_binaries cryptsetup
 
     # avoid locking directory missing warning message
@@ -282,14 +282,14 @@ install_files
 
 # handle device manager
 case "$devmgr" in
-    mdev) use_mdev ;;
-    mdevd) use_mdevd ;;
-    udev) use_udev ;;
+    mdev) install_mdev ;;
+    mdevd) install_mdevd ;;
+    udev) install_udev ;;
     *) panic "devmgr option broken" ;;
 esac
 
-[ "$use_luks" = 1 ] && use_luks
-[ "$use_lvm" = 1 ] && use_lvm
+[ "$use_luks" = 1 ] && install_luks
+[ "$use_lvm" = 1 ] && install_lvm
 
 create_initramfs
 

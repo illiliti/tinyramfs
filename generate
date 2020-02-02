@@ -11,35 +11,41 @@ info() {
     printf "info >> %s\n" "$@"
 }
 
+# remove tmpdir
 remove_tmpdir() {
-    # remove tmpdir
     rm -rf "$tmpdir"
 }
 
+# change current directory to script directory if user haven't do it
+check_currentdir() {
+    script_dir=$(dirname $(readlink -f -- "$0"))
+    [ "$PWD" = "$script_dir" ] || {
+	cd "$script_dir" || panic "failed to change directory"
+    }
+}
+
+# check needed files
 check_requirements() {
-    # check needed files
-    for f in ./config ./init ./busybox; do
+    # TODO use system busybox
+    for f in ./init ./busybox $binaries; do
 	[ -e "$f" ] || panic "$f doesn't exists"
     done
 
     # TODO handle busybox requirements ( busybox --list | grep ash )
-
-    # source config
-    . ./config
 }
 
+# create FHS directory structure
 create_structure() {
-    # create FHS directory structure
     for d in dev tmp var run etc usr/lib usr/bin mnt/root proc root sys; do
 	mkdir -p "${tmpdir}/${d}"
     done
 }
 
+# some dynamically linked libraries and binaries compiled with hardcoded
+# dependencies path. to make it worked we need create symlinks for them.
+# also POSIX ln doesn't have --relative flag like in GNU ln. as workaround
+# we change directory to tmpdir and make needed symlinks.
 create_symlinks() {
-    # some dynamically linked libraries and binaries compiled with hardcoded
-    # dependencies path. to make it worked we need create symlinks for them.
-    # also POSIX ln doesn't have --relative flag like in GNU ln. as workaround
-    # we change directory to tmpdir and make needed symlinks.
     ( cd "$tmpdir" && {
 	ln -s usr/lib lib
 	ln -s usr/lib lib64
@@ -61,22 +67,21 @@ create_symlinks() {
 # TODO parse crypttab
 #}
 
-# handle device managers
+# install mdev
 use_mdev() {
-    # install mdev
     install -m644 mdev.conf -t "$tmpdir/etc"
     install -Dm755 storage-device -t "$tmpdir/lib/mdev"
 }
 
+# install mdevd
 use_mdevd() {
-    # install mdevd
     install_binaries mdevd mdevd-coldplug
     install -m644 mdev.conf -t "$tmpdir/etc"
     install -Dm755 storage-device -t "$tmpdir/lib/mdev"
 }
 
+# install udev
 use_udev() {
-    # install udev
     install_binaries udevd udevadm dmsetup
     # FIXME rewrite this piece of crap
     find /usr/lib/udev -type f | grep -v "rc_keymaps\|hwdb.d" | cpio -pd "$tmpdir" >/dev/null 2>&1
@@ -241,9 +246,21 @@ create_initramfs() {
     [ "$?" = 0 ] || panic "failed to generate initramfs image"
 }
 
-# TODO cd to script directory
-
+# check root
 [ "$(id -u)" = 0 ] || panic "must be run as root"
+
+check_currentdir
+
+# source config
+. ./config || panic "./config doesn't exists"
+
+# handle debug mode
+[ "$debug" = 1 ] && {
+    # debug shell commands
+    set -x
+    # don't remove anything
+    trap : EXIT INT
+}
 
 # remove tmpdir on exit or unexpected error
 trap remove_tmpdir EXIT INT
@@ -255,14 +272,6 @@ moddir="/lib/modules/"
 
 check_requirements
 
-# handle debug mode
-[ "$debug" = 1 ] && {
-    # debug shell commands
-    set -x
-    # don't remove anything
-    trap : EXIT INT
-}
-
 create_structure
 create_symlinks
 #parse_fstab
@@ -271,6 +280,7 @@ install_binaries $binaries
 install_drivers
 install_files
 
+# handle device manager
 case "$devmgr" in
     mdev) use_mdev ;;
     mdevd) use_mdevd ;;

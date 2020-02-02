@@ -27,7 +27,7 @@ check_currentdir() {
 # check needed files
 check_requirements() {
     # TODO use system busybox
-    for f in ./init ./busybox $binaries; do
+    for f in ./init ./busybox; do
 	[ -e "$f" ] || panic "$f doesn't exists"
     done
 
@@ -52,7 +52,7 @@ create_symlinks() {
 	ln -s usr/bin bin
 	ln -s usr/bin sbin
 	ln -s ../run var/run
-	cd "$tmpdir/usr"
+	cd "${tmpdir}/usr"
 	ln -s bin sbin
 	ln -s lib lib64
     } )
@@ -69,15 +69,15 @@ create_symlinks() {
 
 # install mdev
 use_mdev() {
-    install -m644 mdev.conf -t "$tmpdir/etc"
-    install -Dm755 storage-device -t "$tmpdir/lib/mdev"
+    install -m644 mdev.conf -t "${tmpdir}/etc"
+    install -Dm755 storage-device -t "${tmpdir}/lib/mdev"
 }
 
 # install mdevd
 use_mdevd() {
     install_binaries mdevd mdevd-coldplug
-    install -m644 mdev.conf -t "$tmpdir/etc"
-    install -Dm755 storage-device -t "$tmpdir/lib/mdev"
+    install -m644 mdev.conf -t "${tmpdir}/etc"
+    install -Dm755 storage-device -t "${tmpdir}/lib/mdev"
 }
 
 # install udev
@@ -240,7 +240,7 @@ create_initramfs() {
     {
 	( cd "$tmpdir" && {
 	    find . | cpio -oH newc | gzip -9
-	} ) > "./initramfs-${kernel}.img.gz"
+	} ) > "${script_dir}/initramfs-${kernel}.img.gz"
     } >/dev/null 2>&1
 
     [ "$?" = 0 ] || panic "failed to generate initramfs image"

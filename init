@@ -10,15 +10,16 @@ panic() {
 # TODO parse /proc/cmdline
 #}
 
+# mount pseudofs's
 mnt_pseudofs() {
-    # mount pseudofs's
     mount -t proc none /proc
     mount -t sysfs none /sys
     mount -t devtmpfs none /dev
 }
 
+# setup mdev
 use_mdev() {
-    # setup mdev
+    # setup hotplugger
     if [ -e /proc/sys/kernel/hotplug ]; then
 	printf /sbin/mdev >/proc/sys/kernel/hotplug
     else
@@ -41,8 +42,9 @@ use_mdev() {
     find /sys -name "modalias" -type f -exec cat "{}" + | sort -u | xargs modprobe -ba
 }
 
+# setup mdevd
 use_mdevd() {
-    # setup mdevd
+    # setup daemon
     mdevd &
     # trigger uevents
     mdevd-coldplug
@@ -52,15 +54,17 @@ use_mdevd() {
     sleep 1.5
 }
 
+# setup udev
 use_udev() {
-    # setup udev
     udevd --daemon
     udevadm trigger --action=add --type=subsystems
     udevadm trigger --action=add --type=devices
     udevadm settle
 }
 
+# unlock LUKS container
 unlock_luks() {
+    # TODO implement POSIX findfs
     # find device of luks root
     luks_root="$(findfs $luks_root)"
 
@@ -69,11 +73,12 @@ unlock_luks() {
     cryptsetup $luks_args luksOpen "$luks_root" luks_root || panic "failed to unlock luks container"
 }
 
+# manually trigger LVM if udev disabled
 trigger_lvm() {
-    # manually trigger LVM if udev disabled
     lvm vgchange --sysinit -a y
 }
 
+# mount rootfs to /mnt/root
 mnt_rootfs() {
     # merge mount flags
     [ -n "$root_args" ] && mount_args="$root_args"
@@ -83,28 +88,29 @@ mnt_rootfs() {
     mount $mount_args "$root" /mnt/root || panic "failed to mount rootfs"
 }
 
+# kill and unmount
 cleanup() {
-    # clean up
+    # stop mdev
     [ "$devmgr" = "mdev" ] && { printf "" >/proc/sys/kernel/hotplug || killall uevent; } >/dev/null 2>&1
+    # stop mdevd
     [ "$devmgr" = "mdevd" ] && killall mdevd
+    # stop udev
     [ "$devmgr" = "udev" ] && udevadm control --exit
+    # if debug mode off then restore kernel logging
+    [ "$debug" = 0 ] && printf 1 >/proc/sys/kernel/printk
     umount /dev /sys /proc
 }
 
+# exec /mnt/root/sbin/init
 boot_system() {
-    # boot system
     exec switch_root /mnt/root /sbin/init || panic "failed to boot system"
 }
 
 # install busybox
 /sbin/busybox --install -s
 
-# check config
-if [ -e /config ]; then
-    . /config
-else
-    panic "config doesn't exists"
-fi
+# source config
+. /config || panic "config doesn't exists"
 
 if [ "$debug" = 1 ]; then
     # debug shell commands 

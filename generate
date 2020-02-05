@@ -126,12 +126,12 @@ install_drivers() {
     if [ "$hostonly" = 1 ]; then
 	[ -n "$root_type" ] || panic "hostonly mode required root_type option to be configured"
 	for modalias in $(find /sys/devices -name modalias -exec sort -u "{}" "+"); do
-	    for driver in $(modprobe -D $modalias 2>/dev/null | cut -d " " -f 2); do
+	    for driver in $(modprobe -D "$modalias" 2>/dev/null | cut -d " " -f 2); do
 		install -Dm644 "$driver" "${tmpdir}${driver}"
 	    done
 	done
 
-	for root_driver in $(modprobe -D $root_type 2>/dev/null | cut -d " " -f 2); do
+	for root_driver in $(modprobe -D "$root_type" 2>/dev/null | cut -d " " -f 2); do
 	    install -Dm644 "$root_driver" "${tmpdir}${root_driver}"
 	done
 

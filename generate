@@ -113,10 +113,20 @@ install_luks() {
     # workaround for luks2
     install -s -m755 /usr/lib/libgcc_s.so.1 -t "${tmpdir}/usr/lib"
 
+    # block discard support
     [ "$luks_discard" = 1 ] && luks_args="--allow-discards $luks_args"
 
-    # TODO detached header
-    # TODO keyfile
+    # copy luks header
+    [ -f "$luks_header" ] && {
+	install -m600 "$luks_header" "${tmpdir}/root/luks_header"
+	luks_args="--header=/root/luks_header $luks_args"
+    }
+
+    # copy luks keyfile
+    [ -f "$luks_keyfile" ] && {
+	install -m600 "$luks_keyfile" "${tmpdir}/root/luks_keyfile"
+	luks_args="--key-file=/root/luks_keyfile $luks_args"
+    }
 }
 
 # install drivers

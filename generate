@@ -123,19 +123,27 @@ install_luks() {
 # install drivers
 install_drivers() {
     modker="${moddir}${kernel}"
-    find \
-	"${modker}/kernel/drivers/virtio" \
-	"${modker}/kernel/arch" \
-	"${modker}/kernel/crypto" \
-	"${modker}/kernel/fs" \
-	"${modker}/kernel/lib" \
-	"${modker}/kernel/drivers/block" \
-	"${modker}/kernel/drivers/ata" \
-	"${modker}/kernel/drivers/md" \
-	"${modker}/kernel/drivers/scsi" \
-	"${modker}/kernel/drivers/usb/storage" \
-	"${modker}/kernel/drivers/usb/host" \
-	-type f | cpio -pd "$tmpdir" >/dev/null 2>&1
+    if [ "$hostonly" = 1 ]; then
+	for modalias in $(find /sys/devices -name modalias -exec sort -u "{}" "+"); do
+	    for driver in $(modprobe -D $modalias 2>/dev/null | cut -d " " -f 2); do
+		install -Dm644 "$driver" "${tmpdir}${driver}"
+	    done
+	done
+    else
+	find \
+	    "${modker}/kernel/drivers/virtio" \
+	    "${modker}/kernel/arch" \
+	    "${modker}/kernel/crypto" \
+	    "${modker}/kernel/fs" \
+	    "${modker}/kernel/lib" \
+	    "${modker}/kernel/drivers/block" \
+	    "${modker}/kernel/drivers/ata" \
+	    "${modker}/kernel/drivers/md" \
+	    "${modker}/kernel/drivers/scsi" \
+	    "${modker}/kernel/drivers/usb/storage" \
+	    "${modker}/kernel/drivers/usb/host" \
+	    -type f | cpio -pd "$tmpdir" >/dev/null 2>&1
+    fi
 
     # install list of drivers
     cp "${modker}/modules.softdep" "${modker}/modules.builtin" "${modker}/modules.order" "${tmpdir}/${modker}"
@@ -249,6 +257,9 @@ create_initramfs() {
 # check root
 [ "$(id -u)" = 0 ] || panic "must be run as root"
 
+# remove tmpdir on exit or unexpected error
+trap remove_tmpdir EXIT INT
+
 check_currentdir
 
 # source config
@@ -261,9 +272,6 @@ check_currentdir
     # don't remove anything
     trap : EXIT INT
 }
-
-# remove tmpdir on exit or unexpected error
-trap remove_tmpdir EXIT INT
 
 # variables
 tmpdir="$(mktemp -d /tmp/initramfs.XXXXXXXX)" || panic "failed to create working directory"

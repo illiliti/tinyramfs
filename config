@@ -12,7 +12,7 @@
 root="UUID=07729c48-25d8-4096-acaf-ce5322915680"
 
 # root type
-#root_type=""
+#root_type="ext4"
 
 # root mount options
 #root_args=""

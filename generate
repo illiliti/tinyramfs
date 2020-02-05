@@ -119,24 +119,43 @@ install_luks() {
     # TODO keyfile
 }
 
-# TODO implement hostonly mode
 # install drivers
 install_drivers() {
     modker="${moddir}${kernel}"
+    # TODO reimplement using functions
     if [ "$hostonly" = 1 ]; then
 	[ -n "$root_type" ] || panic "hostonly mode required root_type option to be configured"
-	for modalias in $(find /sys/devices -name modalias -exec sort -u "{}" "+"); do
-	    for driver in $(modprobe -D "$modalias" 2>/dev/null | cut -d " " -f 2); do
-		install -Dm644 "$driver" "${tmpdir}${driver}"
+	for driver in $(find /sys/devices -name modalias -exec sort -u "{}" "+"); do
+	    for driver_dep in $(modprobe -D "$driver" 2>/dev/null | cut -d " " -f 2); do
+		install -Dm644 "$driver_dep" "${tmpdir}${driver_dep}"
 	    done
 	done
 
+	# TODO separate root type option
+	# install root fs driver
 	for root_driver in $(modprobe -D "$root_type" 2>/dev/null | cut -d " " -f 2); do
 	    install -Dm644 "$root_driver" "${tmpdir}${root_driver}"
 	done
 
-	# TODO LUKS
-	# TODO LVM
+	# TODO move to install_luks function
+	# install LUKS drivers
+	[ "$use_luks" = 1 ] && {
+	    for luks_driver in aes dm-crypt sha256 sha512 wp512 ecb lrw xts twofish serpent; do
+		for luks_driver_dep in $(modprobe -D "$luks_driver" 2>/dev/null | cut -d " " -f 2); do
+		    install -Dm644 "${luks_driver_dep}" "${tmpdir}${luks_driver_dep}"
+		done
+	    done
+	}
+
+	# TODO move to install_lvm function
+	# install LVM drivers
+	[ "$use_lvm" = 1 ] && {
+	    for lvm_driver in dm-thin-pool dm-multipath dm-snapshot dm-cache dm-log dm-mirror; do
+		for lvm_driver_dep in $(modprobe -D "$lvm_driver" 2>/dev/null | cut -d " " -f 2); do
+		    install -Dm644 "$lvm_driver_dep" "${tmpdir}${lvm_driver_dep}"
+		done
+	    done
+	}
     else
 	find \
 	    "${modker}/kernel/drivers/virtio" \

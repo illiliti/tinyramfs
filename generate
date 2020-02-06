@@ -90,6 +90,16 @@ install_udev() {
 # handle lvm
 install_lvm() {
     install_binaries lvm
+
+    # if hostonly mode enabled install only needed drivers
+    [ "$hostonly" = 1 ] && {
+	for lvm_driver in dm-thin-pool dm-multipath dm-snapshot dm-cache dm-log dm-mirror; do
+	    for lvm_driver_dep in $(modprobe -D "$lvm_driver" 2>/dev/null | cut -d " " -f 2); do
+		install -Dm644 "$lvm_driver_dep" "${tmpdir}${lvm_driver_dep}" 2>/dev/null
+	    done
+	done
+    }
+
     # FIXME this code doesn't working with udev
     #mkdir "$tmpdir/etc/lvm"
     # use_lvmetad = 0 - avoid lvmetad missing warning message
@@ -106,6 +116,15 @@ install_lvm() {
 install_luks() {
     install_binaries cryptsetup
 
+    # if hostonly mode enabled install only needed drivers
+    [ "$hostonly" = 1 ] && {
+	for luks_driver in aes dm-crypt sha256 sha512 wp512 ecb lrw xts twofish serpent; do
+	    for luks_driver_dep in $(modprobe -D "$luks_driver" 2>/dev/null | cut -d " " -f 2); do
+		install -Dm644 "$luks_driver_dep" "${tmpdir}${luks_driver_dep}" 2>/dev/null
+	    done
+	done
+    }
+
     # avoid locking directory missing warning message
     mkdir "${tmpdir}/run/cryptsetup"
 
@@ -118,70 +137,64 @@ install_luks() {
 
     # copy luks header
     [ -f "$luks_header" ] && {
-	install -m600 "$luks_header" "${tmpdir}/root/luks_header"
+	install -m400 "$luks_header" "${tmpdir}/root/luks_header"
 	luks_args="--header=/root/luks_header $luks_args"
     }
 
     # copy luks keyfile
     [ -f "$luks_keyfile" ] && {
-	install -m600 "$luks_keyfile" "${tmpdir}/root/luks_keyfile"
+	install -m400 "$luks_keyfile" "${tmpdir}/root/luks_keyfile"
 	luks_args="--key-file=/root/luks_keyfile $luks_args"
     }
 }
 
 # install drivers
 install_drivers() {
-    modker="${moddir}${kernel}"
-    # TODO reimplement using functions
-    if [ "$hostonly" = 1 ]; then
-	[ -n "$root_type" ] || panic "hostonly mode required root_type option to be configured"
-	for driver in $(find /sys/devices -name modalias -exec sort -u "{}" "+"); do
-	    for driver_dep in $(modprobe -D "$driver" 2>/dev/null | cut -d " " -f 2); do
-		install -Dm644 "$driver_dep" "${tmpdir}${driver_dep}"
+    [ -n "$root_type" ] || panic "hostonly mode required root_type option to be configured"
+
+    # perform autodetection of drivers via /sys
+    for driver in $(find /sys/devices -name modalias -exec sort -u "{}" "+"); do
+        for driver_dep in $(modprobe -D "$driver" 2>/dev/null | cut -d " " -f 2); do
+	    install -Dm644 "$driver_dep" "${tmpdir}${driver_dep}" 2>/dev/null
+        done
+    done
+
+    # TODO autodetect root fs driver
+    # TODO separate root type option
+    # install root fs driver
+    for root_driver in $(modprobe -D "$root_type" 2>/dev/null | cut -d " " -f 2); do
+        install -Dm644 "$root_driver" "${tmpdir}${root_driver}" 2>/dev/null
+    done
+
+    # install user specified drivers
+    [ -n "$drivers" ] && {
+	for custom_driver in $(printf "%s\n" "$drivers" | tr " " "\n"); do
+	    for custom_driver_dep in $(modprobe -D "$custom_driver" 2>/dev/null | cut -d " " -f 2); do
+		install -Dm644 "$custom_driver_dep" "${tmpdir}${custom_driver_dep}" 2>/dev/null
 	    done
 	done
+    }
+}
 
-	# TODO separate root type option
-	# install root fs driver
-	for root_driver in $(modprobe -D "$root_type" 2>/dev/null | cut -d " " -f 2); do
-	    install -Dm644 "$root_driver" "${tmpdir}${root_driver}"
-	done
+# find and install all drivers
+install_all_drivers() {
+    find \
+        "${modker}/kernel/arch" \
+        "${modker}/kernel/crypto" \
+        "${modker}/kernel/fs" \
+        "${modker}/kernel/lib" \
+        "${modker}/kernel/drivers/block" \
+        "${modker}/kernel/drivers/ata" \
+        "${modker}/kernel/drivers/md" \
+        "${modker}/kernel/drivers/scsi" \
+        "${modker}/kernel/drivers/usb/storage" \
+        "${modker}/kernel/drivers/usb/host" \
+        "${modker}/kernel/drivers/virtio" \
+        -type f | cpio -pd "$tmpdir" >/dev/null 2>&1
+}
 
-	# TODO move to install_luks function
-	# install LUKS drivers
-	[ "$use_luks" = 1 ] && {
-	    for luks_driver in aes dm-crypt sha256 sha512 wp512 ecb lrw xts twofish serpent; do
-		for luks_driver_dep in $(modprobe -D "$luks_driver" 2>/dev/null | cut -d " " -f 2); do
-		    install -Dm644 "$luks_driver_dep" "${tmpdir}${luks_driver_dep}"
-		done
-	    done
-	}
-
-	# TODO move to install_lvm function
-	# install LVM drivers
-	[ "$use_lvm" = 1 ] && {
-	    for lvm_driver in dm-thin-pool dm-multipath dm-snapshot dm-cache dm-log dm-mirror; do
-		for lvm_driver_dep in $(modprobe -D "$lvm_driver" 2>/dev/null | cut -d " " -f 2); do
-		    install -Dm644 "$lvm_driver_dep" "${tmpdir}${lvm_driver_dep}"
-		done
-	    done
-	}
-    else
-	find \
-	    "${modker}/kernel/drivers/virtio" \
-	    "${modker}/kernel/arch" \
-	    "${modker}/kernel/crypto" \
-	    "${modker}/kernel/fs" \
-	    "${modker}/kernel/lib" \
-	    "${modker}/kernel/drivers/block" \
-	    "${modker}/kernel/drivers/ata" \
-	    "${modker}/kernel/drivers/md" \
-	    "${modker}/kernel/drivers/scsi" \
-	    "${modker}/kernel/drivers/usb/storage" \
-	    "${modker}/kernel/drivers/usb/host" \
-	    -type f | cpio -pd "$tmpdir" >/dev/null 2>&1
-    fi
-
+# generate "modules" files
+generate_depmod() {
     # install list of drivers
     cp "${modker}/modules.softdep" "${modker}/modules.builtin" "${modker}/modules.order" "${tmpdir}/${modker}"
 
@@ -233,10 +246,11 @@ install_libraries() {
     done
 }
 
+# install important files
 install_files() {
-# FIXME eof broken
-# initialize config
-cat <<EOF > "${tmpdir}/config"
+    # FIXME eof broken
+    # initialize config
+    cat <<EOF > "${tmpdir}/config"
 debug="$debug"
 root="$root"
 root_type="$root_type"
@@ -249,8 +263,8 @@ luks_root="$luks_root"
 luks_args="$luks_args"
 EOF
 
-# needed for devmgr
-cat <<EOF > "${tmpdir}/etc/group"
+    # needed for devmgr
+    cat <<EOF > "${tmpdir}/etc/group"
 root:x:0:
 tty:x:5:
 dialout:x:11:
@@ -267,8 +281,8 @@ kvm:x:24:
 floppy:x:8:
 EOF
 
-# needed for devmgr
-cat <<EOF > "${tmpdir}/etc/passwd"
+    # needed for devmgr
+    cat <<EOF > "${tmpdir}/etc/passwd"
 root:x:0:0::/root:/bin/sh
 nobody:x:99:99::/:/bin/false
 EOF
@@ -312,6 +326,7 @@ check_currentdir
 tmpdir="$(mktemp -d /tmp/initramfs.XXXXXXXX)" || panic "failed to create working directory"
 kernel="$(uname -r)"
 moddir="/lib/modules/"
+modker="${moddir}${kernel}"
 
 check_requirements
 
@@ -320,7 +335,14 @@ create_symlinks
 #parse_fstab
 #parse_crypttab
 install_binaries $binaries
-install_drivers
+
+if [ "$hostonly" = 1 ]; then
+    install_drivers
+else
+    install_all_drivers
+fi
+
+generate_depmod
 
 # handle device manager
 case "$devmgr" in

@@ -152,7 +152,7 @@ install_drivers() {
 	[ "$use_luks" = 1 ] && {
 	    for luks_driver in aes dm-crypt sha256 sha512 wp512 ecb lrw xts twofish serpent; do
 		for luks_driver_dep in $(modprobe -D "$luks_driver" 2>/dev/null | cut -d " " -f 2); do
-		    install -Dm644 "${luks_driver_dep}" "${tmpdir}${luks_driver_dep}"
+		    install -Dm644 "$luks_driver_dep" "${tmpdir}${luks_driver_dep}"
 		done
 	    done
 	}
@@ -246,8 +246,6 @@ devmgr="$devmgr"
 use_lvm="$use_lvm"
 use_luks="$use_luks"
 luks_root="$luks_root"
-luks_header="$luks_header"
-luks_keyfile="$luks_keyfile"
 luks_args="$luks_args"
 EOF
 
@@ -323,7 +321,6 @@ create_symlinks
 #parse_crypttab
 install_binaries $binaries
 install_drivers
-install_files
 
 # handle device manager
 case "$devmgr" in
@@ -336,6 +333,7 @@ esac
 [ "$use_luks" = 1 ] && install_luks
 [ "$use_lvm" = 1 ] && install_lvm
 
+install_files
 create_initramfs
 
 info "done! check out initramfs-${kernel}.img.gz"

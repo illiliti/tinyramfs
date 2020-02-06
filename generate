@@ -2,13 +2,20 @@
 #
 # tiny initramfs generation tool
 
-panic() {
-    printf "panic >> %s\n" "$@"
-    exit 1
-}
-
-info() {
-    printf "info >> %s\n" "$@"
+# print message
+msg() {
+    case "$1" in
+	warn)
+	    printf "warning >> %s\n" "$2"
+	    ;;
+	info)
+	    printf "info >> %s\n" "$2"
+	    ;;
+	panic)
+	    printf "panic >> %s\n" "$2"
+	    exit 1
+	    ;;
+    esac
 }
 
 # remove tmpdir
@@ -20,7 +27,7 @@ remove_tmpdir() {
 check_currentdir() {
     script_dir=$(dirname $(readlink -f -- "$0"))
     [ "$PWD" = "$script_dir" ] || {
-	cd "$script_dir" || panic "failed to change directory"
+	cd "$script_dir" || msg panic "failed to change directory"
     }
 }
 
@@ -28,7 +35,7 @@ check_currentdir() {
 check_requirements() {
     # TODO use system busybox
     for f in ./init ./busybox; do
-	[ -e "$f" ] || panic "$f doesn't exists"
+	[ -e "$f" ] || msg panic "$f doesn't exists"
     done
 
     # TODO handle busybox requirements ( busybox --list | grep ash )
@@ -150,7 +157,7 @@ install_luks() {
 
 # install drivers
 install_drivers() {
-    [ -n "$root_type" ] || panic "hostonly mode required root_type option to be configured"
+    [ -n "$root_type" ] || msg panic "hostonly mode required root_type option to be configured"
 
     # perform autodetection of drivers via /sys
     for driver in $(find /sys/devices -name modalias -exec sort -u "{}" "+"); do
@@ -207,7 +214,7 @@ generate_depmod() {
 install_binaries() {
     for b in $(printf "%s\n" "$@" | tr " " "\n"); do
 	# check binary existence
-	command -v "$b" >/dev/null 2>&1 || panic "$b doesn't exists"
+	command -v "$b" >/dev/null 2>&1 || msg panic "$b doesn't exists"
 
 	# install and strip binary
 	install -s -m755 "$(command -v $b)" -t "${tmpdir}/usr/bin"
@@ -300,11 +307,11 @@ create_initramfs() {
 	} ) > "${script_dir}/initramfs-${kernel}.img.gz"
     } >/dev/null 2>&1
 
-    [ "$?" = 0 ] || panic "failed to generate initramfs image"
+    [ "$?" = 0 ] || msg panic "failed to generate initramfs image"
 }
 
 # check root
-[ "$(id -u)" = 0 ] || panic "must be run as root"
+[ "$(id -u)" = 0 ] || msg panic "must be run as root"
 
 # remove tmpdir on exit or unexpected error
 trap remove_tmpdir EXIT INT
@@ -312,7 +319,7 @@ trap remove_tmpdir EXIT INT
 check_currentdir
 
 # source config
-. ./config || panic "./config doesn't exists"
+. ./config || msg panic "./config doesn't exists"
 
 # handle debug mode
 [ "$debug" = 1 ] && {
@@ -323,7 +330,7 @@ check_currentdir
 }
 
 # variables
-tmpdir="$(mktemp -d /tmp/initramfs.XXXXXXXX)" || panic "failed to create working directory"
+tmpdir="$(mktemp -d /tmp/initramfs.XXXXXXXX)" || msg panic "failed to create working directory"
 kernel="$(uname -r)"
 moddir="/lib/modules/"
 modker="${moddir}${kernel}"
@@ -349,7 +356,7 @@ case "$devmgr" in
     mdev) install_mdev ;;
     mdevd) install_mdevd ;;
     udev) install_udev ;;
-    *) panic "devmgr option broken" ;;
+    *) msg panic "devmgr option broken" ;;
 esac
 
 [ "$use_luks" = 1 ] && install_luks
@@ -358,4 +365,4 @@ esac
 install_files
 create_initramfs
 
-info "done! check out initramfs-${kernel}.img.gz"
+msg info "done! check out initramfs-${kernel}.img.gz"

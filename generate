@@ -101,7 +101,7 @@ install_lvm() {
     # if hostonly mode enabled install only needed drivers
     [ "$hostonly" = 1 ] && {
 	for lvm_driver in dm-thin-pool dm-multipath dm-snapshot dm-cache dm-log dm-mirror; do
-	    for lvm_driver_dep in $(modprobe -D "$lvm_driver" 2>/dev/null | cut -d " " -f 2); do
+	    for lvm_driver_dep in $(modprobe -D "$lvm_driver" 2>/dev/null | grep -v builtin | cut -d " " -f 2); do
 		install -Dm644 "$lvm_driver_dep" "${tmpdir}${lvm_driver_dep}" 2>/dev/null
 	    done
 	done
@@ -126,7 +126,7 @@ install_luks() {
     # if hostonly mode enabled install only needed drivers
     [ "$hostonly" = 1 ] && {
 	for luks_driver in aes dm-crypt sha256 sha512 wp512 ecb lrw xts twofish serpent; do
-	    for luks_driver_dep in $(modprobe -D "$luks_driver" 2>/dev/null | cut -d " " -f 2); do
+	    for luks_driver_dep in $(modprobe -D "$luks_driver" 2>/dev/null | grep -v builtin | cut -d " " -f 2); do
 		install -Dm644 "$luks_driver_dep" "${tmpdir}${luks_driver_dep}" 2>/dev/null
 	    done
 	done
@@ -161,7 +161,7 @@ install_drivers() {
 
     # perform autodetection of drivers via /sys
     for driver in $(find /sys/devices -name modalias -exec sort -u "{}" "+"); do
-        for driver_dep in $(modprobe -D "$driver" 2>/dev/null | cut -d " " -f 2); do
+        for driver_dep in $(modprobe -D "$driver" 2>/dev/null | grep -v builtin | cut -d " " -f 2); do
 	    install -Dm644 "$driver_dep" "${tmpdir}${driver_dep}" 2>/dev/null
         done
     done
@@ -169,14 +169,14 @@ install_drivers() {
     # TODO autodetect root fs driver
     # TODO separate root type option
     # install root fs driver
-    for root_driver in $(modprobe -D "$root_type" 2>/dev/null | cut -d " " -f 2); do
+    for root_driver in $(modprobe -D "$root_type" 2>/dev/null | grep -v builtin | cut -d " " -f 2); do
         install -Dm644 "$root_driver" "${tmpdir}${root_driver}" 2>/dev/null
     done
 
     # install user specified drivers
     [ -n "$drivers" ] && {
 	for custom_driver in $(printf "%s\n" "$drivers" | tr " " "\n"); do
-	    for custom_driver_dep in $(modprobe -D "$custom_driver" 2>/dev/null | cut -d " " -f 2); do
+	    for custom_driver_dep in $(modprobe -D "$custom_driver" 2>/dev/null | grep -v builtin | cut -d " " -f 2); do
 		install -Dm644 "$custom_driver_dep" "${tmpdir}${custom_driver_dep}" 2>/dev/null
 	    done
 	done

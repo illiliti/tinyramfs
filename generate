@@ -5,14 +5,11 @@
 # print message
 msg() {
     case "$1" in
-	warn)
-	    printf "warning >> %s\n" "$2"
-	    ;;
 	info)
-	    printf "info >> %s\n" "$2"
+	    printf "info >> %s\n" "$2" >&2
 	    ;;
 	panic)
-	    printf "panic >> %s\n" "$2"
+	    printf "panic >> %s\n" "$2" >&2
 	    exit 1
 	    ;;
     esac
@@ -20,11 +17,13 @@ msg() {
 
 # remove tmpdir
 remove_tmpdir() {
+    msg info "removing work dir"
     rm -rf "$tmpdir"
 }
 
 # change current directory to script directory if user haven't do it
 check_currentdir() {
+    msg info "changing directory to script dir"
     script_dir=$(dirname $(readlink -f -- "$0"))
     [ "$PWD" = "$script_dir" ] || {
 	cd "$script_dir" || msg panic "failed to change directory"
@@ -33,6 +32,7 @@ check_currentdir() {
 
 # check needed files
 check_requirements() {
+    msg info "checking requirements"
     # TODO use system busybox
     for f in ./init ./busybox; do
 	[ -e "$f" ] || msg panic "$f doesn't exists"
@@ -43,6 +43,7 @@ check_requirements() {
 
 # create FHS directory structure
 create_structure() {
+    msg info "creating directory structure"
     for d in dev tmp var run etc usr/lib usr/bin mnt/root proc root sys; do
 	mkdir -p "${tmpdir}/${d}"
     done
@@ -53,6 +54,7 @@ create_structure() {
 # also POSIX ln doesn't have --relative flag like in GNU ln. as workaround
 # we change directory to tmpdir and make needed symlinks.
 create_symlinks() {
+    msg info "creating symlinks"
     ( cd "$tmpdir" && {
 	ln -s usr/lib lib
 	ln -s usr/lib lib64
@@ -76,12 +78,14 @@ create_symlinks() {
 
 # install mdev
 install_mdev() {
+    msg info "installing mdev"
     install -m644 mdev.conf -t "${tmpdir}/etc"
     install -Dm755 storage-device -t "${tmpdir}/lib/mdev"
 }
 
 # install mdevd
 install_mdevd() {
+    msg info "installing mdevd"
     install_binaries mdevd mdevd-coldplug
     install -m644 mdev.conf -t "${tmpdir}/etc"
     install -Dm755 storage-device -t "${tmpdir}/lib/mdev"
@@ -89,6 +93,7 @@ install_mdevd() {
 
 # install udev
 install_udev() {
+    msg info "installing udev"
     install_binaries udevd udevadm dmsetup
     # FIXME rewrite this piece of crap
     find /usr/lib/udev -type f | grep -v "rc_keymaps\|hwdb.d" | cpio -pd "$tmpdir" >/dev/null 2>&1
@@ -96,13 +101,14 @@ install_udev() {
 
 # handle lvm
 install_lvm() {
+    msg info "installing LVM"
     install_binaries lvm
 
     # if hostonly mode enabled install only needed drivers
     [ "$hostonly" = 1 ] && {
 	for lvm_driver in dm-thin-pool dm-multipath dm-snapshot dm-cache dm-log dm-mirror; do
 	    for lvm_driver_dep in $(modprobe -D "$lvm_driver" 2>/dev/null | grep -v builtin | cut -d " " -f 2); do
-		install -Dm644 "$lvm_driver_dep" "${tmpdir}${lvm_driver_dep}" 2>/dev/null
+		install -Dm644 "$lvm_driver_dep" "${tmpdir}${lvm_driver_dep}"
 	    done
 	done
     }
@@ -121,13 +127,14 @@ install_lvm() {
 
 # handle luks
 install_luks() {
+    msg info "installing LUKS"
     install_binaries cryptsetup
 
     # if hostonly mode enabled install only needed drivers
     [ "$hostonly" = 1 ] && {
 	for luks_driver in aes dm-crypt sha256 sha512 wp512 ecb lrw xts twofish serpent; do
 	    for luks_driver_dep in $(modprobe -D "$luks_driver" 2>/dev/null | grep -v builtin | cut -d " " -f 2); do
-		install -Dm644 "$luks_driver_dep" "${tmpdir}${luks_driver_dep}" 2>/dev/null
+		install -Dm644 "$luks_driver_dep" "${tmpdir}${luks_driver_dep}"
 	    done
 	done
     }
@@ -137,32 +144,33 @@ install_luks() {
 
     # TODO get rid of this workaround
     # workaround for luks2
-    install -s -m755 /usr/lib/libgcc_s.so.1 -t "${tmpdir}/usr/lib"
+    install -s -m755 /usr/lib/libgcc_s.so.1 -t "${tmpdir}/usr/lib" || msg panic "failed to install LUKS libraries"
 
     # block discard support
     [ "$luks_discard" = 1 ] && luks_args="--allow-discards $luks_args"
 
     # copy luks header
     [ -f "$luks_header" ] && {
-	install -m400 "$luks_header" "${tmpdir}/root/luks_header"
+	install -m400 "$luks_header" "${tmpdir}/root/luks_header" || msg panic "failed to copy LUKS header"
 	luks_args="--header=/root/luks_header $luks_args"
     }
 
     # copy luks keyfile
     [ -f "$luks_keyfile" ] && {
-	install -m400 "$luks_keyfile" "${tmpdir}/root/luks_keyfile"
+	install -m400 "$luks_keyfile" "${tmpdir}/root/luks_keyfile" || msg panic "failed to copy LUKS keyfile"
 	luks_args="--key-file=/root/luks_keyfile $luks_args"
     }
 }
 
 # install drivers
 install_drivers() {
+    msg info "installing hostonly drivers"
     [ -n "$root_type" ] || msg panic "hostonly mode required root_type option to be configured"
 
     # perform autodetection of drivers via /sys
     for driver in $(find /sys/devices -name modalias -exec sort -u "{}" "+"); do
         for driver_dep in $(modprobe -D "$driver" 2>/dev/null | grep -v builtin | cut -d " " -f 2); do
-	    install -Dm644 "$driver_dep" "${tmpdir}${driver_dep}" 2>/dev/null
+	    install -Dm644 "$driver_dep" "${tmpdir}${driver_dep}"
         done
     done
 
@@ -170,14 +178,14 @@ install_drivers() {
     # TODO separate root type option
     # install root fs driver
     for root_driver in $(modprobe -D "$root_type" 2>/dev/null | grep -v builtin | cut -d " " -f 2); do
-        install -Dm644 "$root_driver" "${tmpdir}${root_driver}" 2>/dev/null
+        install -Dm644 "$root_driver" "${tmpdir}${root_driver}"
     done
 
     # install user specified drivers
     [ -n "$drivers" ] && {
 	for custom_driver in $(printf "%s\n" "$drivers" | tr " " "\n"); do
 	    for custom_driver_dep in $(modprobe -D "$custom_driver" 2>/dev/null | grep -v builtin | cut -d " " -f 2); do
-		install -Dm644 "$custom_driver_dep" "${tmpdir}${custom_driver_dep}" 2>/dev/null
+		install -Dm644 "$custom_driver_dep" "${tmpdir}${custom_driver_dep}"
 	    done
 	done
     }
@@ -185,6 +193,7 @@ install_drivers() {
 
 # find and install all drivers
 install_all_drivers() {
+    msg info "installing all drivers"
     find \
         "${modker}/kernel/arch" \
         "${modker}/kernel/crypto" \
@@ -202,6 +211,7 @@ install_all_drivers() {
 
 # generate "modules" files
 generate_depmod() {
+    msg info "generating dependendies list of drivers"
     # install list of drivers
     cp "${modker}/modules.softdep" "${modker}/modules.builtin" "${modker}/modules.order" "${tmpdir}/${modker}"
 
@@ -213,6 +223,7 @@ generate_depmod() {
 # handle binaries
 install_binaries() {
     for b in $(printf "%s\n" "$@" | tr " " "\n"); do
+	msg info "installing binary $b"
 	# check binary existence
 	command -v "$b" >/dev/null 2>&1 || msg panic "$b doesn't exists"
 
@@ -231,6 +242,7 @@ install_binaries() {
 # handle libraries
 install_libraries() {
     for l in $(ldd "$(command -v $1)" | sed -nre 's,.* (/.*lib.*/.*.so.*) .*,\1,p' -e 's,.*(/lib.*/ld.*.so.*) .*,\1,p'); do
+	msg info "installing library $l"
 	# check symlink
 	if [ -h "$l" ]; then
 	    # check lib already existence
@@ -253,8 +265,9 @@ install_libraries() {
     done
 }
 
-# install important files
+# install important files used by init
 install_files() {
+    msg info "installing files"
     # FIXME eof broken
     # initialize config
     cat <<EOF > "${tmpdir}/config"
@@ -301,6 +314,7 @@ EOF
 # TODO add more compession tools
 # create and compress cpio archive
 create_initramfs() {
+    msg info "creating initramfs image"
     {
 	( cd "$tmpdir" && {
 	    find . | cpio -oH newc | gzip -9

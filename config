@@ -33,7 +33,7 @@ binaries="./busybox findfs blkid mount modprobe umount"
 use_lvm=1
 
 # LVM include config
-#use_lvmconf=0
+#lvm_conf=1
 
 # LVM issue_discards
 lvm_discard=1

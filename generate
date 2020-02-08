@@ -23,9 +23,9 @@ remove_tmpdir() {
 
 # change current directory to script directory if user haven't do it
 check_currentdir() {
-    msg info "changing directory to script dir"
     script_dir=$(dirname $(readlink -f -- "$0"))
     [ "$PWD" = "$script_dir" ] || {
+	msg info "changing directory to script dir"
 	cd "$script_dir" || msg panic "failed to change directory"
     }
 }
@@ -113,16 +113,17 @@ install_lvm() {
 	done
     }
 
-    # FIXME this code doesn't working with udev
-    #mkdir "$tmpdir/etc/lvm"
-    # use_lvmetad = 0 - avoid lvmetad missing warning message
-    #cat <<EOF > "$tmpdir/etc/lvm/lvmlocal.conf"
-    #local {
-    #	issue_discards = ${lvm_discard:-0}
-    #	use_lvmetad = 0
-    #}
-    #EOF
-    # TODO implement use_lvmconf
+    if [ "$lvm_conf" = 1 ]; then
+	install -Dm644 /etc/lvm/*.conf -t "${tmpdir}/etc/lvm" || msg panic "failed to install LVM config"
+    else
+	mkdir "${tmpdir}/etc/lvm"
+	cat <<EOF > "${tmpdir}/etc/lvm/lvmlocal.conf"
+local {
+    issue_discards = ${lvm_discard:-0}
+    use_lvmetad = 0
+}
+EOF
+    fi
 }
 
 # handle luks

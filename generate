@@ -8,6 +8,11 @@ msg() {
 	info)
 	    printf "info >> %s\n" "$2" >&2
 	    ;;
+	warn)
+	    printf "warning >> %s\n" "$2" >&2
+	    printf "do you want to continue? press enter or ctrl+c to exit\n"
+	    read -r _
+	    ;;
 	panic)
 	    printf "panic >> %s\n" "$2" >&2
 	    exit 1
@@ -23,7 +28,7 @@ remove_tmpdir() {
 
 # change current directory to script directory if user haven't do it
 check_currentdir() {
-    script_dir=$(dirname $(readlink -f -- "$0"))
+    script_dir=$(dirname $(readlink -f "$0"))
     [ "$PWD" = "$script_dir" ] || {
 	msg info "changing directory to script dir"
 	cd "$script_dir" || msg panic "failed to change directory"
@@ -33,19 +38,54 @@ check_currentdir() {
 # check needed files
 check_requirements() {
     msg info "checking requirements"
-    # TODO use system busybox
-    for f in ./init ./busybox; do
-	[ -e "$f" ] || msg panic "$f doesn't exists"
-    done
 
-    # TODO handle busybox requirements ( busybox --list | grep ash )
+    # check busybox installed
+    command -v busybox >/dev/null 2>&1 && {
+	# check busybox supports CONFIG_FEATURE_INSTALLER
+	busybox --help | grep -q "\-\-install \[\-s\]" || msg panic "recompile busybox with CONFIG_FEATURE_INSTALLER"
+
+	# check requirements for init
+	for busybox_dep in mdev uevent switch_root; do
+	    busybox $busybox_dep --help >/dev/null 2>&1 || msg panic "recompile busybox with $busybox_dep"
+	done
+    } || msg panic "busybox doesn't installed"
+
+    # check kmod modprobe installed
+    command -v modprobe >/dev/null 2>&1 && {
+	# busybox modprobe doesn't supported(yet)
+	modprobe --version 2>&1 | grep -q "kmod" || msg panic "kmod modprobe version doesn't installed"
+    } || msg panic "modprobe doesn't installed"
+
+    # TODO need rethink
+    # i can fully get rid of util-linux package, but PARTUUID is
+    # required to boot LUKS with detached header. so stay as is(yet)
+
+    # check util-linux tools
+    command -v mount >/dev/null 2>&1 && {
+	mount --version 2>&1 | grep -q "util-linux" || msg warning "util-linux mount version doesn't installed. PARTUUID support will be missing"
+    } || msg panic "mount doesn't installed"
+
+    command -v blkid >/dev/null 2>&1 && {
+	blkid --version 2>&1 | grep -q "util-linux" || msg warning "util-linux blkid version doesn't installed. PARTUUID support will be missing"
+    } || msg panic "blkid doesn't installed"
+
+    # findfs will be removed soon
+    command -v findfs >/dev/null 2>&1 && {
+	findfs --version 2>&1 | grep -q "util-linux" || msg warning "util-linux findfs version doesn't installed. PARTUUID support will be missing"
+    } || msg panic "findfs doesn't installed"
+}
+
+# install mandatory binaries
+install_requirements() {
+    msg info "installing requirements"
+    install_binaries busybox modprobe mount blkid findfs
 }
 
 # create FHS directory structure
 create_structure() {
     msg info "creating directory structure"
-    for d in dev tmp var run etc usr/lib usr/bin mnt/root proc root sys; do
-	mkdir -p "${tmpdir}/${d}"
+    for dir in dev tmp var run etc usr/lib usr/bin mnt/root proc root sys; do
+	mkdir -p "${tmpdir}/${dir}"
     done
 }
 
@@ -169,7 +209,7 @@ install_drivers() {
     [ -n "$root_type" ] || msg panic "hostonly mode required root_type option to be configured"
 
     # perform autodetection of drivers via /sys
-    for driver in $(find /sys/devices -name modalias -exec sort -u "{}" "+"); do
+    find /sys/devices -name modalias -exec sort -u "{}" "+" | while read -r driver; do
         for driver_dep in $(modprobe -D "$driver" 2>/dev/null | grep -v builtin | cut -d " " -f 2); do
 	    install -Dm644 "$driver_dep" "${tmpdir}${driver_dep}"
         done
@@ -184,7 +224,7 @@ install_drivers() {
 
     # install user specified drivers
     [ -n "$drivers" ] && {
-	for custom_driver in $(printf "%s\n" "$drivers" | tr " " "\n"); do
+	printf "%s\n" "$drivers" | while read -r custom_driver; do
 	    for custom_driver_dep in $(modprobe -D "$custom_driver" 2>/dev/null | grep -v builtin | cut -d " " -f 2); do
 		install -Dm644 "$custom_driver_dep" "${tmpdir}${custom_driver_dep}"
 	    done
@@ -223,44 +263,44 @@ generate_depmod() {
 # TODO make strip optional
 # handle binaries
 install_binaries() {
-    for b in $(printf "%s\n" "$@" | tr " " "\n"); do
-	msg info "installing binary $b"
+    printf "%s\n" "$@" | while read -r binary; do
+	msg info "installing binary $binary"
 	# check binary existence
-	command -v "$b" >/dev/null 2>&1 || msg panic "$b doesn't exists"
+	command -v "$binary" >/dev/null 2>&1 || msg panic "$binary doesn't exists"
 
 	# install and strip binary
-	install -s -m755 "$(command -v $b)" -t "${tmpdir}/usr/bin"
+	install -s -m755 "$(command -v $binary)" -t "${tmpdir}/usr/bin"
 
         # check statically linking
-	ldd "$(command -v $b)" >/dev/null 2>&1 || continue
+	ldd "$(command -v $binary)" >/dev/null 2>&1 || continue
 
 	# install libraries
-	install_libraries $b
+	install_libraries $binary
     done
 }
 
 # TODO make strip optional
 # handle libraries
 install_libraries() {
-    for l in $(ldd "$(command -v $1)" | sed -nre 's,.* (/.*lib.*/.*.so.*) .*,\1,p' -e 's,.*(/lib.*/ld.*.so.*) .*,\1,p'); do
-	msg info "installing library $l"
+    for library in $(ldd "$(command -v $1)" | sed -nre 's,.* (/.*lib.*/.*.so.*) .*,\1,p' -e 's,.*(/lib.*/ld.*.so.*) .*,\1,p'); do
+	msg info "installing library $library"
 	# check symlink
-	if [ -h "$l" ]; then
+	if [ -h "$library" ]; then
 	    # check lib already existence
-	    if [ ! -e "${tmpdir}/usr/lib/${l##*/}" ] && [ ! -e "${tmpdir}/$(readlink -f $l)" ]; then
+	    if [ ! -e "${tmpdir}/usr/lib/${library##*/}" ] && [ ! -e "${tmpdir}/$(readlink -f $library)" ]; then
 		# regular
-		install -s -m755 "$(readlink -f $l)" -t "${tmpdir}/usr/lib"
+		install -s -m755 "$(readlink -f $library)" -t "${tmpdir}/usr/lib"
 
 		# FIXME handle all symlinks
 		# symlink may link to symlink
-		[ -h "/usr/lib/$(readlink $l)" ] && cp -a "/usr/lib/$(readlink $l)" "${tmpdir}/usr/lib"
+		[ -h "/usr/lib/$(readlink $library)" ] && cp -a "/usr/lib/$(readlink $library)" "${tmpdir}/usr/lib"
 
 		# symlink
-		cp -a "$l" "${tmpdir}/usr/lib"
+		cp -a "$library" "${tmpdir}/usr/lib"
 	    fi
 	else
-	    if [ ! -e "${tmpdir}/usr/lib/${l##*/}" ]; then
-		install -s -m755 "$l" -t "${tmpdir}/usr/lib"
+	    if [ ! -e "${tmpdir}/usr/lib/${library##*/}" ]; then
+		install -s -m755 "$library" -t "${tmpdir}/usr/lib"
 	    fi
 	fi
     done
@@ -351,12 +391,11 @@ moddir="/lib/modules/"
 modker="${moddir}${kernel}"
 
 check_requirements
-
 create_structure
 create_symlinks
 #parse_fstab
 #parse_crypttab
-install_binaries $binaries
+install_requirements
 
 if [ "$hostonly" = 1 ]; then
     install_drivers

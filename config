@@ -3,7 +3,7 @@
 #
 
 # debug mode
-debug=1
+#debug=1
 
 # parse fstab
 #use_fstab=0
@@ -27,7 +27,7 @@ hostonly=1
 #drivers=""
 
 # binaries
-binaries="./busybox findfs blkid mount modprobe umount"
+#binaries=""
 
 # LVM support
 use_lvm=1

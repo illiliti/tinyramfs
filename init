@@ -3,7 +3,7 @@
 # tiny init script
 
 panic() {
-    printf "panic >> %s\n" "$@" && sh
+    printf "panic >> %s\n" "$1" && sh
 }
 
 # parse_cmdline() {
@@ -15,6 +15,7 @@ mnt_pseudofs() {
     mount -t proc none /proc
     mount -t sysfs none /sys
     mount -t devtmpfs none /dev
+    mount -t tmpfs none /tmp
 }
 
 # setup mdev
@@ -62,11 +63,35 @@ use_udev() {
     udevadm settle
 }
 
+# shell findfs
+findfs_sh() {
+    case "${1%%=*}" in
+	LABEL)
+	    printf "/dev/disk/by-label/%s\n" "${1##*=}"
+	    ;;
+	UUID)
+	    printf "/dev/disk/by-uuid/%s\n" "${1##*=}"
+	    ;;
+	PARTUUID)
+	    printf "/dev/disk/by-partuuid/%s\n" "${1##*=}"
+	    ;;
+	/dev/*)
+	    printf "%s\n" "$1"
+	    ;;
+	*)
+	    panic "findfs option broken"
+	    ;;
+    esac
+}
+
 # unlock LUKS container
 unlock_luks() {
-    # TODO implement POSIX findfs
     # find device of luks root
-    luks_root="$(findfs $luks_root)"
+    luks_root="$(findfs_sh $luks_root)"
+
+    # TODO investigate this
+    # avoid race condition
+    [ "$devmgr" != "udev" ] && sleep 1.5
 
     # TODO improve mapper name ( crypttab or config option )
     # unlock luks container
@@ -75,7 +100,7 @@ unlock_luks() {
 
 # manually trigger LVM if udev disabled
 trigger_lvm() {
-    lvm vgchange --sysinit -a y
+    lvm vgchange --quiet --sysinit -a y >/dev/null
 }
 
 # mount rootfs to /mnt/root
@@ -84,21 +109,36 @@ mnt_rootfs() {
     [ -n "$root_args" ] && mount_args="$root_args"
     [ -n "$root_type" ] && mount_args="$mount_args -t $root_type"
 
+    # find root
+    root="$(findfs_sh $root)"
+
     # mount rootfs    
     mount $mount_args "$root" /mnt/root || panic "failed to mount rootfs"
 }
 
 # kill and unmount
 cleanup() {
-    # stop mdev
-    [ "$devmgr" = "mdev" ] && { printf "" >/proc/sys/kernel/hotplug || killall uevent; } >/dev/null 2>&1
-    # stop mdevd
-    [ "$devmgr" = "mdevd" ] && killall mdevd
-    # stop udev
-    [ "$devmgr" = "udev" ] && udevadm control --exit
+    case "$devmgr" in
+	mdev)
+	    # stop mdev
+	    { printf "" >/proc/sys/kernel/hotplug || killall uevent; } >/dev/null 2>&1
+	    ;;
+	mdevd)
+	    # stop mdevd
+	    killall mdevd
+	    ;;
+	udev)
+	    # stop udev
+	    udevadm control --exit
+	    ;;
+    esac
+
+    # TODO re-do
     # if debug mode off then restore kernel logging
     [ "$debug" = 0 ] && printf 1 >/proc/sys/kernel/printk
-    umount /dev /sys /proc
+
+    # unmount pseudofs's
+    umount /dev /sys /proc /tmp
 }
 
 # exec /mnt/root/sbin/init
@@ -112,6 +152,7 @@ boot_system() {
 # source config
 . /config || panic "config doesn't exists"
 
+# TODO re-do
 if [ "$debug" = 1 ]; then
     # debug shell commands 
     set -x

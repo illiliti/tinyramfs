@@ -56,29 +56,42 @@ check_requirements() {
 	modprobe --version 2>&1 | grep -q "kmod" || msg panic "kmod modprobe version doesn't installed"
     } || msg panic "modprobe doesn't installed"
 
-    # TODO need rethink
-    # i can fully get rid of util-linux package, but PARTUUID is
-    # required to boot LUKS with detached header. so stay as is(yet)
-
     # check util-linux tools
-    command -v mount >/dev/null 2>&1 && {
-	mount --version 2>&1 | grep -q "util-linux" || msg warning "util-linux mount version doesn't installed. PARTUUID support will be missing"
-    } || msg panic "mount doesn't installed"
+    [ "$use_util_linux" = 1 ] && {
+	# check mount installed
+	if command -v mount >/dev/null 2>&1; then
+	    mount --version 2>&1 | grep -q "util-linux" || {
+		msg warning "util-linux mount version doesn't installed. PARTUUID and filesystem type autodetection support will be missing"
+		use_util_linux=0
+	    }
+	else
+	    msg panic "mount doesn't installed"
+	fi
 
-    command -v blkid >/dev/null 2>&1 && {
-	blkid --version 2>&1 | grep -q "util-linux" || msg warning "util-linux blkid version doesn't installed. PARTUUID support will be missing"
-    } || msg panic "blkid doesn't installed"
-
-    # findfs will be removed soon
-    command -v findfs >/dev/null 2>&1 && {
-	findfs --version 2>&1 | grep -q "util-linux" || msg warning "util-linux findfs version doesn't installed. PARTUUID support will be missing"
-    } || msg panic "findfs doesn't installed"
+	# check blkid installed
+	if command -v blkid >/dev/null 2>&1; then
+	    blkid --version 2>&1 | grep -q "util-linux" || {
+		msg warning "util-linux blkid version doesn't installed. PARTUUID support will be missing"
+		use_util_linux=0
+	    }
+	else
+	    msg panic "blkid doesn't installed"
+	fi
+    }
 }
 
-# install mandatory binaries
+# install requirements
 install_requirements() {
     msg info "installing requirements"
-    install_binaries busybox modprobe mount blkid findfs
+
+    # install user specified binaries
+    [ -n "$binaries" ] && install_binaries $binaries
+
+    # install util-linux binaries
+    [ "$use_util_linux" = 1 ] && install_binaries mount blkid
+
+    # install mandatory binaries
+    install_binaries busybox modprobe
 }
 
 # create FHS directory structure
@@ -157,9 +170,12 @@ install_lvm() {
 	install -Dm644 /etc/lvm/*.conf -t "${tmpdir}/etc/lvm" || msg panic "failed to install LVM config"
     else
 	mkdir "${tmpdir}/etc/lvm"
-	cat <<EOF > "${tmpdir}/etc/lvm/lvmlocal.conf"
-local {
+	cat <<EOF > "${tmpdir}/etc/lvm/lvm.conf"
+devices {
     issue_discards = ${lvm_discard:-0}
+}
+
+global {
     use_lvmetad = 0
 }
 EOF
@@ -356,6 +372,7 @@ EOF
 # create and compress cpio archive
 create_initramfs() {
     msg info "creating initramfs image"
+    # TODO rewrite this ugly mess | dash doesn't working here
     {
 	( cd "$tmpdir" && {
 	    find . | cpio -oH newc | gzip -9

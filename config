@@ -12,10 +12,16 @@
 root="UUID=07729c48-25d8-4096-acaf-ce5322915680"
 
 # root type
+# change this if you using busybox util-linux
 root_type="ext4"
 
 # root mount options
 #root_args=""
+
+# disable this if you want to get rid of util-linux
+# NOTE busybox util-linux implemetation doesn't have
+# PARTUUID support and proper filesystem type autodetection
+use_util_linux=1
 
 # device manager ( mdev,mdevd,udev )
 devmgr="mdev"
@@ -23,10 +29,10 @@ devmgr="mdev"
 # hostonly mode
 hostonly=1
 
-# drivers
+# custom drivers
 #drivers=""
 
-# binaries
+# custom binaries
 #binaries=""
 
 # LVM support

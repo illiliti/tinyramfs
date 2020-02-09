@@ -39,7 +39,7 @@ use_mdev() {
     done
 
     # load drivers
-    find /sys -name "modalias" -type f -exec sort -u "{}" "+" | xargs modprobe -ba
+    find /sys -name "modalias" -type f -exec sort -u "{}" "+" | xargs modprobe -qba
 }
 
 # setup mdevd

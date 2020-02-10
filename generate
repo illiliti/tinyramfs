@@ -372,14 +372,13 @@ EOF
 # create and compress cpio archive
 create_initramfs() {
     msg info "creating initramfs image"
-    # TODO rewrite this ugly mess | dash doesn't working here
     {
-	( cd "$tmpdir" && {
-	    find . | cpio -oH newc | gzip -9
-	} ) > "${script_dir}/initramfs-${kernel}.img.gz"
-    } >/dev/null 2>&1
-
-    [ "$?" = 0 ] || msg panic "failed to generate initramfs image"
+	( cd "$tmpdir"
+	find . |
+	cpio -oH newc |
+	gzip -9 ) |
+	tee "${script_dir}/initramfs-${kernel}.img.gz"
+    } >/dev/null 2>&1 || msg panic "failed to generate initramfs image"
 }
 
 # check root

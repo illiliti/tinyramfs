@@ -1,23 +1,41 @@
 # initramfs
 Just another one implemetation of initramfs
 
-### Features
-- POSIX compliant
-- Easy configuration without complexity
-- LUKS detached header and keyfile
+Features
+--------
+- POSIX compliance
+- Easy configuration
+- LUKS
 - LVM
-- busybox mdev,mdevd and eudev
+- mdev,mdevd and eudev
 
-### Installation
-Simply run as root generate script. Then move generated initramfs to /boot directory and update your bootloader
+Dependencies
+------------
+### Basic
+```
+busybox
+kmod
+```
+### Optional
+```
+cryptsetup - LUKS support
+lvm2 - LVM support
+util-linux - PARTUUID support
+```
 
-### Dependencies
-#### Basic
-`busybox kmod util-linux`
-#### Optional
-`cryptsetup lvm2 device-mapper`
+Installation
+------------
+```
+git clone https://github.com/illiliti/initramfs
+cd initramfs
+```
 
-### License
+Configuration
+-------------
+TODO
+
+License
+-------
 Licensed under GPLv3
 
 Exceptions:

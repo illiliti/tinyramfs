@@ -20,6 +20,23 @@ msg() {
     esac
 }
 
+# create tmpdir
+create_tmpdir() {
+    if [ -n "$XDG_CACHE_HOME" ]; then
+        tmpdir="${XDG_CACHE_HOME}/initramfs.$$"
+        mkdir "$tmpdir"
+        printf "%s\n" "$tmpdir"
+    elif [ -n "$TMPDIR" ]; then
+        tmpdir="${TMPDIR}/initramfs.$$"
+        mkdir "$tmpdir"
+        printf "%s\n" "$tmpdir"
+    else
+        tmpdir="/tmp/initramfs.$$"
+        mkdir "$tmpdir"
+        printf "%s\n" "$tmpdir"
+    fi
+}
+
 # remove tmpdir
 remove_tmpdir() {
     msg info "removing work dir"
@@ -401,10 +418,10 @@ check_currentdir
 }
 
 # variables
-tmpdir="$(mktemp -d /tmp/initramfs.XXXXXXXX)" || msg panic "failed to create working directory"
+tmpdir="$(create_tmpdir)" || msg panic "failed to create working directory"
 kernel="$(uname -r)"
-moddir="/lib/modules/"
-modker="${moddir}${kernel}"
+moddir="/lib/modules"
+modker="${moddir}/${kernel}"
 
 check_requirements
 create_structure

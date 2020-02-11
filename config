@@ -5,6 +5,9 @@
 # debug mode
 #debug=1
 
+# custom kernel version
+#kernel=""
+
 # parse fstab
 #use_fstab=0
 

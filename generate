@@ -413,7 +413,7 @@ check_currentdir
 
 # variables
 tmpdir="$(create_tmpdir)" || msg panic "failed to create working directory"
-kernel="$(uname -r)"
+kernel="${kernel:-$(uname -r)}"
 moddir="/lib/modules"
 modker="${moddir}/${kernel}"
 

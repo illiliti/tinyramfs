@@ -175,13 +175,7 @@ install_lvm() {
     install_binaries lvm
 
     # if hostonly mode enabled install only needed drivers
-    [ "$hostonly" = 1 ] && {
-        for lvm_driver in dm-thin-pool dm-multipath dm-snapshot dm-cache dm-log dm-mirror; do
-            for lvm_driver_dep in $(modprobe -D "$lvm_driver" 2> /dev/null | grep -v builtin | cut -d " " -f 2); do
-                install -Dm644 "$lvm_driver_dep" "${tmpdir}${lvm_driver_dep}"
-            done
-        done
-    }
+    [ "$hostonly" = 1 ] && install_drivers dm-thin-pool dm-multipath dm-snapshot dm-cache dm-log dm-mirror
 
     if [ "$lvm_conf" = 1 ]; then
         install -Dm644 /etc/lvm/*.conf -t "${tmpdir}/etc/lvm" || msg panic "failed to install LVM config"
@@ -205,13 +199,7 @@ install_luks() {
     install_binaries cryptsetup
 
     # if hostonly mode enabled install only needed drivers
-    [ "$hostonly" = 1 ] && {
-        for luks_driver in aes dm-crypt sha256 sha512 wp512 ecb lrw xts twofish serpent; do
-            for luks_driver_dep in $(modprobe -D "$luks_driver" 2> /dev/null | grep -v builtin | cut -d " " -f 2); do
-                install -Dm644 "$luks_driver_dep" "${tmpdir}${luks_driver_dep}"
-            done
-        done
-    }
+    [ "$hostonly" = 1 ] && install_drivers aes dm-crypt sha256 sha512 wp512 ecb lrw xts twofish serpent
 
     # avoid locking directory missing warning message
     mkdir "${tmpdir}/run/cryptsetup"
@@ -236,37 +224,35 @@ install_luks() {
     }
 }
 
-# install drivers
+# install drivers and deps
 install_drivers() {
-    msg info "installing hostonly drivers"
-    [ -n "$root_type" ] || msg panic "hostonly mode required root_type option to be configured"
-
-    # perform autodetection of drivers via /sys
-    find /sys/devices -name modalias -exec sort -u "{}" "+" | while read -r driver; do
+    printf "%s\n" "$@" | while read -r driver; do
         for driver_dep in $(modprobe -D "$driver" 2> /dev/null | grep -v builtin | cut -d " " -f 2); do
             install -Dm644 "$driver_dep" "${tmpdir}${driver_dep}"
         done
     done
+}
+
+# install hostonly drivers
+install_hostonly_drivers() {
+    msg info "installing hostonly drivers"
+    [ -n "$root_type" ] || msg panic "hostonly mode required root_type option to be configured"
+
+    # perform autodetection of drivers via /sys
+    install_drivers $(find /sys/devices -name modalias -exec sort -u "{}" "+")
 
     # TODO autodetect root fs driver
     # TODO separate root type option
     # install root fs driver
-    for root_driver in $(modprobe -D "$root_type" 2> /dev/null | grep -v builtin | cut -d " " -f 2); do
-        install -Dm644 "$root_driver" "${tmpdir}${root_driver}"
-    done
+    install_drivers "$root_type"
 
     # install user specified drivers
-    [ -n "$drivers" ] && {
-        printf "%s\n" "$drivers" | while read -r custom_driver; do
-            for custom_driver_dep in $(modprobe -D "$custom_driver" 2> /dev/null | grep -v builtin | cut -d " " -f 2); do
-                install -Dm644 "$custom_driver_dep" "${tmpdir}${custom_driver_dep}"
-            done
-        done
-    }
+    [ -n "$drivers" ] && install_drivers "$drivers"
 }
 
 # find and install all drivers
 install_all_drivers() {
+    # TODO use install_drivers function instead of cpio
     msg info "installing all drivers"
     find \
         "${modker}/kernel/arch" \
@@ -433,7 +419,7 @@ create_symlinks
 install_requirements
 
 if [ "$hostonly" = 1 ]; then
-    install_drivers
+    install_hostonly_drivers
 else
     install_all_drivers
 fi

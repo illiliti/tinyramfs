@@ -231,6 +231,9 @@ install_drivers() {
             install -Dm644 "$driver_dep" "${tmpdir}${driver_dep}"
         done
     done
+
+    # TODO implement monolithic kernel support
+    [ -e "${tmpdir}/lib/modules" ] || msg panic "failed to install drivers"
 }
 
 # install hostonly drivers
@@ -267,6 +270,9 @@ install_all_drivers() {
         "${modker}/kernel/drivers/usb/host" \
         "${modker}/kernel/drivers/virtio" \
         -type f | cpio -pd "$tmpdir" > /dev/null 2>&1
+
+    # TODO implement monolithic kernel support
+    [ -e "${tmpdir}/lib/modules" ] || msg panic "failed to install drivers"
 }
 
 # generate "modules" files

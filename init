@@ -22,9 +22,9 @@ mnt_pseudofs() {
 use_mdev() {
     # setup hotplugger
     if [ -e /proc/sys/kernel/hotplug ]; then
-	printf /sbin/mdev >/proc/sys/kernel/hotplug
+        printf /sbin/mdev > /proc/sys/kernel/hotplug
     else
-	uevent mdev &
+        uevent mdev &
     fi
 
     # trigger mdev
@@ -32,10 +32,10 @@ use_mdev() {
 
     # trigger uevent for usb devices
     for u in /sys/bus/usb/devices/*; do
-	case ${u##*/} in
-	    [0-9]*-[0-9]*)
-	    printf add > "${u}/uevent"
-            ;;
+        case ${u##*/} in
+            [0-9]*-[0-9]*)
+                printf add > "${u}/uevent"
+                ;;
         esac
     done
 
@@ -66,21 +66,21 @@ use_udev() {
 # shell findfs
 findfs_sh() {
     case "${1%%=*}" in
-	LABEL)
-	    printf "/dev/disk/by-label/%s\n" "${1##*=}"
-	    ;;
-	UUID)
-	    printf "/dev/disk/by-uuid/%s\n" "${1##*=}"
-	    ;;
-	PARTUUID)
-	    printf "/dev/disk/by-partuuid/%s\n" "${1##*=}"
-	    ;;
-	/dev/*)
-	    printf "%s\n" "$1"
-	    ;;
-	*)
-	    panic "findfs option broken"
-	    ;;
+        LABEL)
+            printf "/dev/disk/by-label/%s\n" "${1##*=}"
+            ;;
+        UUID)
+            printf "/dev/disk/by-uuid/%s\n" "${1##*=}"
+            ;;
+        PARTUUID)
+            printf "/dev/disk/by-partuuid/%s\n" "${1##*=}"
+            ;;
+        /dev/*)
+            printf "%s\n" "$1"
+            ;;
+        *)
+            panic "findfs option broken"
+            ;;
     esac
 }
 
@@ -100,7 +100,7 @@ unlock_luks() {
 
 # manually trigger LVM if udev disabled
 trigger_lvm() {
-    lvm vgchange --quiet --sysinit -a y >/dev/null
+    lvm vgchange --quiet --sysinit -a y > /dev/null
 }
 
 # mount rootfs to /mnt/root
@@ -112,30 +112,30 @@ mnt_rootfs() {
     # find root
     root="$(findfs_sh $root)"
 
-    # mount rootfs    
+    # mount rootfs
     mount $mount_args "$root" /mnt/root || panic "failed to mount rootfs"
 }
 
 # kill and unmount
 cleanup() {
     case "$devmgr" in
-	mdev)
-	    # stop mdev
-	    { printf "" >/proc/sys/kernel/hotplug || killall uevent; } >/dev/null 2>&1
-	    ;;
-	mdevd)
-	    # stop mdevd
-	    killall mdevd
-	    ;;
-	udev)
-	    # stop udev
-	    udevadm control --exit
-	    ;;
+        mdev)
+            # stop mdev
+            { printf "" > /proc/sys/kernel/hotplug || killall uevent; } > /dev/null 2>&1
+            ;;
+        mdevd)
+            # stop mdevd
+            killall mdevd
+            ;;
+        udev)
+            # stop udev
+            udevadm control --exit
+            ;;
     esac
 
     # TODO re-do
     # if debug mode off then restore kernel logging
-    [ "$debug" = 0 ] && printf 1 >/proc/sys/kernel/printk
+    [ "$debug" = 0 ] && printf 1 > /proc/sys/kernel/printk
 
     # unmount pseudofs's
     umount /dev /sys /proc /tmp
@@ -154,11 +154,11 @@ boot_system() {
 
 # TODO re-do
 if [ "$debug" = 1 ]; then
-    # debug shell commands 
+    # debug shell commands
     set -x
 else
     # silence is golden
-    printf 0 >/proc/sys/kernel/printk
+    printf 0 > /proc/sys/kernel/printk
 fi
 
 #parse_cmdline

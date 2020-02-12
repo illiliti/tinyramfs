@@ -45,7 +45,7 @@ remove_tmpdir() {
 
 # change current directory to script directory if user haven't do it
 check_currentdir() {
-    script_dir=$(dirname $(readlink -f "$0"))
+    script_dir=$(dirname "$0")
     [ "$PWD" = "$script_dir" ] || {
         msg info "changing directory to script dir"
         cd "$script_dir" || msg panic "failed to change directory"

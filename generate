@@ -57,7 +57,7 @@ check_requirements() {
     msg info "checking requirements"
 
     # check busybox installed
-    command -v busybox > /dev/null 2>&1 && {
+    if command -v busybox > /dev/null 2>&1; then
         # check busybox supports CONFIG_FEATURE_INSTALLER
         busybox --help | grep -q "\-\-install \[\-s\]" || msg panic "recompile busybox with CONFIG_FEATURE_INSTALLER"
 
@@ -65,13 +65,17 @@ check_requirements() {
         for busybox_dep in mdev uevent switch_root; do
             busybox $busybox_dep --help > /dev/null 2>&1 || msg panic "recompile busybox with $busybox_dep"
         done
-    } || msg panic "busybox doesn't installed"
+    else
+        msg panic "busybox doesn't installed"
+    fi
 
     # check kmod modprobe installed
-    command -v modprobe > /dev/null 2>&1 && {
+    if command -v modprobe > /dev/null 2>&1; then
         # busybox modprobe doesn't supported(yet)
         modprobe --version 2>&1 | grep -q "kmod" || msg panic "kmod modprobe version doesn't installed"
-    } || msg panic "modprobe doesn't installed"
+    else
+        msg panic "modprobe doesn't installed"
+    fi
 
     # check util-linux tools
     [ "$use_util_linux" = 1 ] && {

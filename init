@@ -50,10 +50,6 @@ use_mdevd() {
     mdevd &
     # trigger uevents
     mdevd-coldplug
-
-    # TODO investigate this
-    # avoid race condition
-    sleep 1.5
 }
 
 # setup udev
@@ -89,19 +85,23 @@ findfs_sh() {
 unlock_luks() {
     # TODO investigate this
     # avoid race condition
-    [ "$devmgr" != "udev" ] && sleep 1.5
+    sleep 1.5
 
     # TODO improve mapper name ( crypttab or config option )
     cryptsetup $luks_args luksOpen $(findfs_sh "$luks_root") luks_root || panic "failed to unlock luks container"
 }
 
-# manually trigger LVM
+# trigger LVM
 trigger_lvm() {
     lvm vgchange --quiet --sysinit -a y > /dev/null
 }
 
 # mount rootfs to /mnt/root
 mnt_rootfs() {
+    # TODO investigate this
+    # avoid race condition
+    sleep 1.5
+
     mount $root_type $root_args $(findfs_sh "$root") /mnt/root || panic "failed to mount rootfs"
 }
 
@@ -153,7 +153,7 @@ esac
 
 # TODO handle situations when LUKS on LVM
 [ "$use_luks" = 1 ] && unlock_luks
-[ "$use_lvm" = 1 ] && [ "$devmgr" != "udev" ] && trigger_lvm
+[ "$use_lvm" = 1 ] && trigger_lvm
 mnt_rootfs
 cleanup
 boot_system

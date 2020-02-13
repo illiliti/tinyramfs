@@ -3,7 +3,8 @@
 # tiny init script
 
 panic() {
-    printf "panic >> %s\n" "$1" && sh
+    printf "panic >> %s\n" "$1"
+    sh -l
 }
 
 # parse_cmdline() {
@@ -31,10 +32,10 @@ use_mdev() {
     mdev -s
 
     # trigger uevent for usb devices
-    for u in /sys/bus/usb/devices/*; do
-        case ${u##*/} in
+    for device in /sys/bus/usb/devices/*; do
+        case ${device##*/} in
             [0-9]*-[0-9]*)
-                printf add > "${u}/uevent"
+                printf add > "${device}/uevent"
                 ;;
         esac
     done
@@ -86,51 +87,32 @@ findfs_sh() {
 
 # unlock LUKS container
 unlock_luks() {
-    # find device of luks root
-    luks_root="$(findfs_sh $luks_root)"
-
     # TODO investigate this
     # avoid race condition
     [ "$devmgr" != "udev" ] && sleep 1.5
 
     # TODO improve mapper name ( crypttab or config option )
     # unlock luks container
-    cryptsetup $luks_args luksOpen "$luks_root" luks_root || panic "failed to unlock luks container"
+    cryptsetup $luks_args luksOpen $(findfs_sh "$luks_root") luks_root || panic "failed to unlock luks container"
 }
 
-# manually trigger LVM if udev disabled
+# manually trigger LVM
 trigger_lvm() {
     lvm vgchange --quiet --sysinit -a y > /dev/null
 }
 
 # mount rootfs to /mnt/root
 mnt_rootfs() {
-    # merge mount flags
-    [ -n "$root_args" ] && mount_args="$root_args"
-    [ -n "$root_type" ] && mount_args="$mount_args -t $root_type"
-
-    # find root
-    root="$(findfs_sh $root)"
-
     # mount rootfs
-    mount $mount_args "$root" /mnt/root || panic "failed to mount rootfs"
+    mount $root_type $root_args $(findfs_sh "$root") /mnt/root || panic "failed to mount rootfs"
 }
 
 # kill and unmount
 cleanup() {
     case "$devmgr" in
-        mdev)
-            # stop mdev
-            { printf "" > /proc/sys/kernel/hotplug || killall uevent; } > /dev/null 2>&1
-            ;;
-        mdevd)
-            # stop mdevd
-            killall mdevd
-            ;;
-        udev)
-            # stop udev
-            udevadm control --exit
-            ;;
+        mdev) { printf "" > /proc/sys/kernel/hotplug || killall uevent; } > /dev/null 2>&1 ;;
+        mdevd) killall mdevd ;;
+        udev) udevadm control --exit ;;
     esac
 
     # TODO re-do
@@ -150,7 +132,7 @@ boot_system() {
 /sbin/busybox --install -s
 
 # source config
-. /config || panic "config doesn't exists"
+. /config || panic "failed to source config"
 
 # TODO re-do
 if [ "$debug" = 1 ]; then

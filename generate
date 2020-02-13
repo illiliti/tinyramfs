@@ -22,6 +22,7 @@ msg() {
 
 # create tmpdir
 create_tmpdir() {
+    msg info "creating working directory"
     if [ -n "$XDG_CACHE_HOME" ]; then
         tmpdir="${XDG_CACHE_HOME}/initramfs.$$"
     elif [ -n "$TMPDIR" ]; then
@@ -35,7 +36,7 @@ create_tmpdir() {
 
 # remove tmpdir
 remove_tmpdir() {
-    msg info "removing work dir"
+    msg info "removing working dir"
     rm -rf "$tmpdir"
 }
 
@@ -276,12 +277,13 @@ install_all_drivers() {
             "${modker}/drivers/virtio" \
             -type f 2> /dev/null)
 
-    modker="${moddir}/${kernel}"
 }
 
 # generate "modules" files
 generate_depmod() {
-    msg info "generating dependendies list of drivers"
+    msg info "running depmod"
+    modker="${moddir}/${kernel}"
+
     # install list of drivers
     cp "${modker}/modules.softdep" "${modker}/modules.builtin" "${modker}/modules.order" "${tmpdir}/${modker}"
 
@@ -312,7 +314,6 @@ install_binaries() {
 # handle libraries
 install_libraries() {
     for library in $(ldd "$(command -v $1)" | sed -nre 's,.* (/.*lib.*/.*.so.*) .*,\1,p' -e 's,.*(/lib.*/ld.*.so.*) .*,\1,p'); do
-        msg info "installing library $library"
         # check symlink
         if [ -h "$library" ]; then
             # check lib already existence
@@ -407,7 +408,7 @@ trap remove_tmpdir EXIT INT
 check_currentdir
 
 # source config
-. ./config || msg panic "./config doesn't exists"
+. ./config || msg panic "failed to source config"
 
 # handle debug mode
 [ "$debug" = 1 ] && {

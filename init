@@ -92,7 +92,6 @@ unlock_luks() {
     [ "$devmgr" != "udev" ] && sleep 1.5
 
     # TODO improve mapper name ( crypttab or config option )
-    # unlock luks container
     cryptsetup $luks_args luksOpen $(findfs_sh "$luks_root") luks_root || panic "failed to unlock luks container"
 }
 
@@ -103,7 +102,6 @@ trigger_lvm() {
 
 # mount rootfs to /mnt/root
 mnt_rootfs() {
-    # mount rootfs
     mount $root_type $root_args $(findfs_sh "$root") /mnt/root || panic "failed to mount rootfs"
 }
 

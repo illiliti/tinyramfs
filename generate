@@ -36,7 +36,7 @@ create_tmpdir() {
 
 # remove tmpdir
 remove_tmpdir() {
-    msg info "removing working dir"
+    msg info "removing working directory"
     rm -rf "$tmpdir"
 }
 
@@ -44,7 +44,7 @@ remove_tmpdir() {
 check_currentdir() {
     script_dir=$(dirname "$0")
     [ "$PWD" = "$script_dir" ] || {
-        msg info "changing directory to script dir"
+        msg info "changing current directory to script directory"
         cd "$script_dir" || msg panic "failed to change directory"
     }
 }

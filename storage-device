@@ -55,9 +55,9 @@ create_uuid_label_symlink() {
 add_symlinks() {
     # Skip temp cryptsetup nodes.
     case "$MDEV" in
-        "dm-"[0-9]*)
-            case "$(cat "/sys/block/${MDEV}/dm/name")" in
-                "temporary-cryptsetup-"[0-9]*)
+        dm-[0-9]*)
+            case $(cat "/sys/block/${MDEV}/dm/name") in
+                temporary-cryptsetup-[0-9]*)
                     return 0
                     ;;
             esac

@@ -276,7 +276,6 @@ install_all_drivers() {
             "${modker}/drivers/usb/host" \
             "${modker}/drivers/virtio" \
             -type f 2> /dev/null)
-
 }
 
 # generate "modules" files

@@ -38,91 +38,97 @@
 
 umask 077
 
-storage_dir="/dev/.mdev-like-a-boss"
-[ -d "${storage_dir}" ] || mkdir "${storage_dir}"
+# TODO use /tmp
+storage_dir="/tmp/.mdev-like-a-boss"
+[ -d "$storage_dir" ] || mkdir "$storage_dir"
 
-[ "${MDEV}" ] || exit 2
+[ "$MDEV" ] || exit 2
 
 create_uuid_label_symlink() {
-	local target_dir="/dev/disk/by-${1}"
-	local target_symlink="${target_dir}/${2}"
-	[ -e "${target_symlink}" ] && return
-	mkdir -p "${target_dir}"
-	ln -snf "/dev/${MDEV}" "${target_symlink}"
-	echo "${target_symlink}" >"${storage_dir}/storage_symlink_${1}_${MDEV}"
+    target_dir="/dev/disk/by-${1}"
+    target_symlink="${target_dir}/${2}"
+    [ -e "$target_symlink" ] && return
+    mkdir -p "$target_dir"
+    ln -sf "/dev/${MDEV}" "$target_symlink"
+    printf "%s\n" "$target_symlink" > "${storage_dir}/storage_symlink_${1}_${MDEV}"
 }
 
 add_symlinks() {
-	# Skip temp cryptsetup nodes.
-	case "${MDEV}" in
-		'dm-'[0-9]*)
-			case "$(cat "/sys/block/${MDEV}/dm/name")" in
-				'temporary-cryptsetup-'[0-9]*)
-					return 0
-				;;
-			esac
-		;;
-	esac
+    # Skip temp cryptsetup nodes.
+    case "$MDEV" in
+        "dm-"[0-9]*)
+            case "$(cat "/sys/block/${MDEV}/dm/name")" in
+                "temporary-cryptsetup-"[0-9]*)
+                    return 0
+                    ;;
+            esac
+            ;;
+    esac
 
-	if command -v blkid >/dev/null 2>&1; then
-		local field name value UUID LABEL TYPE PTTYPE PARTUUID
-		local blkid_output="$(blkid "/dev/${MDEV}")"
-		eval "${blkid_output#*: }"
+    if command -v blkid > /dev/null 2>&1; then
+        blkid_output=$(blkid "/dev/${MDEV}")
+        eval "${blkid_output#*: }"
 
-		[ "${UUID}" ] && create_uuid_label_symlink 'uuid' "${UUID}"
-		[ "${LABEL}" ] && create_uuid_label_symlink 'label' "${LABEL}"
-		[ "${PARTUUID}" ] && create_uuid_label_symlink 'partuuid' "${PARTUUID}"
-	fi
+        [ "$UUID" ] && create_uuid_label_symlink uuid "$UUID"
+        [ "$LABEL" ] && create_uuid_label_symlink label "$LABEL"
+        [ "$PARTUUID" ] && create_uuid_label_symlink partuuid "$PARTUUID"
+    fi
 
-	if [ -f "/sys/block/${MDEV}/dm/name" ]; then
-		[ -d '/dev/mapper' ] || mkdir '/dev/mapper'
-		if ! [ -c '/dev/mapper/control' ]; then
-			awk '$2 == "device-mapper" { foo = system("mknod /dev/mapper/control c 10 " $1); exit foo }' /proc/misc || exit 1
-		fi
-		local dmname="$(cat "/sys/block/${MDEV}/dm/name")"
-		if [ "${dmname}" ]; then
-			local target_symlink="/dev/mapper/${dmname}"
-			[ -e "${target_symlink}" ] && return
-			ln -snf "/dev/${MDEV}" "${target_symlink}"
-			echo "${target_symlink}" >"${storage_dir}/storage_symlink_mapper_${MDEV}"
-		fi
-	fi
+    if [ -f "/sys/block/${MDEV}/dm/name" ]; then
+        [ -d /dev/mapper ] || mkdir /dev/mapper
+        if ! [ -c /dev/mapper/control ]; then
+            #awk '$2 == "device-mapper" { foo = system("mknod /dev/mapper/control c 10 " $1); exit foo }' /proc/misc || exit 1
+            while read -r dm; do
+                [ "${dm#* }" = device-mapper ] && {
+                    mknod /dev/mapper/control c 10 "${dm% *}" || exit 1
+                }
+            done < /proc/misc
+        fi
+
+        dmname=$(cat "/sys/block/${MDEV}/dm/name")
+        if [ "$dmname" ]; then
+            target_symlink="/dev/mapper/${dmname}"
+            [ -e "$target_symlink" ] && return
+            ln -sf "/dev/${MDEV}" "$target_symlink"
+            printf "%s\n" "$target_symlink" > "${storage_dir}/storage_symlink_mapper_${MDEV}"
+        fi
+    fi
 }
 
 set_readahead() {
-	read_ahead_kb_control="/sys/class/block/${MDEV}/queue/read_ahead_kb"
-	new_read_ahead_kb="2048"
-	if [ -f "${read_ahead_kb_control}" ]; then
-		read_ahead_kb="$(cat "${read_ahead_kb_control}")"
-		if [ "${read_ahead_kb}" -lt "${new_read_ahead_kb}" ]; then
-			logger -t mdev "Changing ${MDEV} read_ahead_kb from ${read_ahead_kb} to ${new_read_ahead_kb}"
-			echo -n "${new_read_ahead_kb}" >"${read_ahead_kb_control}"
-		fi
-	fi
+    read_ahead_kb_control="/sys/class/block/${MDEV}/queue/read_ahead_kb"
+    new_read_ahead_kb="2048"
+
+    if [ -f "$read_ahead_kb_control" ]; then
+        read_ahead_kb=$(cat "$read_ahead_kb_control")
+        if [ "$read_ahead_kb" -lt "$new_read_ahead_kb" ]; then
+            logger -t mdev "Changing $MDEV read_ahead_kb from $read_ahead_kb to $new_read_ahead_kb"
+            printf "%s" "$new_read_ahead_kb" > "$read_ahead_kb_control"
+        fi
+    fi
 }
 
 drop_symlinks() {
-	local type
-	for type in uuid label mapper; do
-		[ -f "${storage_dir}/storage_symlink_${type}_${MDEV}" ] || continue
-		local target_symlink="$(cat "${storage_dir}/storage_symlink_${type}_${MDEV}" 2>/dev/null)"
-		[ "${target_symlink}" ] || continue
+    for type in uuid label mapper; do
+        [ -f "${storage_dir}/storage_symlink_${type}_${MDEV}" ] || continue
+        target_symlink=$(cat "${storage_dir}/storage_symlink_${type}_${MDEV}" 2> /dev/null)
+        [ "$target_symlink" ] || continue
 
-		local target_symlink_device="$(readlink "${target_symlink}")"
-		if [ "${target_symlink_device}" = "/dev/${MDEV}" ]; then
-			rm "${target_symlink}"
-		fi
-		rm "${storage_dir}/storage_symlink_${type}_${MDEV}"
-	done
+        target_symlink_device=$(readlink "$target_symlink")
+        if [ "$target_symlink_device" = "/dev/${MDEV}" ]; then
+            rm "$target_symlink"
+        fi
+
+        rm "${storage_dir}/storage_symlink_${type}_${MDEV}"
+    done
 }
 
-case "${ACTION}" in
-	'add'|'')
-		add_symlinks
-		set_readahead
-	;;
-	'remove')
-		drop_symlinks
-	;;
+case "$ACTION" in
+    add | "")
+        add_symlinks
+        set_readahead
+        ;;
+    remove)
+        drop_symlinks
+        ;;
 esac
-

@@ -43,5 +43,5 @@ Exceptions:
 The "mdev.conf" configuration file is modified version from "mdev-like-a-boss" project, Copyright (c) 2012-2020, Piotr Karbowski <piotr.karbowski@gmail.com>.
 Please consult the license notice in the file for terms and conditions.
 
-The "storage-device" script from "mdev-like-a-boss" project, Copyright (c) 2012-2020, Piotr Karbowski <piotr.karbowski@gmail.com>.
+The "storage-device" script is modified version from "mdev-like-a-boss" project, Copyright (c) 2012-2020, Piotr Karbowski <piotr.karbowski@gmail.com>.
 Please consult the license notice in the file for terms and conditions.

@@ -38,7 +38,6 @@
 
 umask 077
 
-# TODO use /tmp
 storage_dir="/tmp/.mdev-like-a-boss"
 [ -d "$storage_dir" ] || mkdir "$storage_dir"
 
@@ -77,7 +76,6 @@ add_symlinks() {
     if [ -f "/sys/block/${MDEV}/dm/name" ]; then
         [ -d /dev/mapper ] || mkdir /dev/mapper
         if ! [ -c /dev/mapper/control ]; then
-            #awk '$2 == "device-mapper" { foo = system("mknod /dev/mapper/control c 10 " $1); exit foo }' /proc/misc || exit 1
             while read -r dm; do
                 [ "${dm#* }" = device-mapper ] && {
                     mknod /dev/mapper/control c 10 "${dm% *}" || exit 1

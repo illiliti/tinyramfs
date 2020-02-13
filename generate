@@ -24,17 +24,13 @@ msg() {
 create_tmpdir() {
     if [ -n "$XDG_CACHE_HOME" ]; then
         tmpdir="${XDG_CACHE_HOME}/initramfs.$$"
-        mkdir "$tmpdir"
-        printf "%s\n" "$tmpdir"
     elif [ -n "$TMPDIR" ]; then
         tmpdir="${TMPDIR}/initramfs.$$"
-        mkdir "$tmpdir"
-        printf "%s\n" "$tmpdir"
     else
         tmpdir="/tmp/initramfs.$$"
-        mkdir "$tmpdir"
-        printf "%s\n" "$tmpdir"
     fi
+
+    mkdir "$tmpdir" || msg panic "failed to create working directory"
 }
 
 # remove tmpdir
@@ -403,6 +399,8 @@ create_initramfs() {
 # check root
 [ "$(id -u)" = 0 ] || msg panic "must be run as root"
 
+create_tmpdir
+
 # remove tmpdir on exit or unexpected error
 trap remove_tmpdir EXIT INT
 
@@ -420,7 +418,6 @@ check_currentdir
 }
 
 # variables
-tmpdir="$(create_tmpdir)" || msg panic "failed to create working directory"
 kernel="${kernel:-$(uname -r)}"
 moddir="/lib/modules"
 

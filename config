@@ -15,7 +15,7 @@
 #compress=""
 
 # parse fstab
-#use_fstab=0
+#fstab=0
 
 # root fs ( device,partuuid,uuid,label )
 root="UUID=07729c48-25d8-4096-acaf-ce5322915680"
@@ -30,7 +30,7 @@ root_type="ext4"
 # disable this if you want to get rid of util-linux
 # NOTE busybox util-linux implemetation doesn't have
 # PARTUUID support and proper filesystem type autodetection
-use_util_linux=1
+util_linux=1
 
 # device manager ( mdev,mdevd,udev )
 devmgr="mdev"
@@ -45,7 +45,7 @@ hostonly=1
 #binaries=""
 
 # LVM support
-use_lvm=1
+lvm=1
 
 # LVM include config
 #lvm_conf=1
@@ -54,10 +54,10 @@ use_lvm=1
 lvm_discard=1
 
 # LUKS support
-use_luks=1
+luks=1
 
 # parse crypttab
-#use_crypttab=0
+#crypttab=0
 
 # LUKS encrypted root ( device,partuuid,uuid,label )
 luks_root="PARTUUID=b04395be-f467-458b-8630-9a429b487600"

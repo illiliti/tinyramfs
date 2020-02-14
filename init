@@ -20,7 +20,7 @@ mnt_pseudofs() {
 }
 
 # setup mdev
-use_mdev() {
+setup_mdev() {
     # setup hotplugger
     if [ -e /proc/sys/kernel/hotplug ]; then
         printf /sbin/mdev > /proc/sys/kernel/hotplug
@@ -45,7 +45,7 @@ use_mdev() {
 }
 
 # setup mdevd
-use_mdevd() {
+setup_mdevd() {
     # setup daemon
     mdevd &
     # trigger uevents
@@ -53,7 +53,7 @@ use_mdevd() {
 }
 
 # setup udev
-use_udev() {
+setup_udev() {
     udevd --daemon
     udevadm trigger --action=add --type=subsystems
     udevadm trigger --action=add --type=devices
@@ -145,15 +145,15 @@ fi
 mnt_pseudofs
 
 case "$devmgr" in
-    mdev) use_mdev ;;
-    mdevd) use_mdevd ;;
-    udev) use_udev ;;
+    mdev) setup_mdev ;;
+    mdevd) setup_mdevd ;;
+    udev) setup_udev ;;
     *) panic "devmgr option broken" ;;
 esac
 
 # TODO handle situations when LUKS on LVM
-[ "$use_luks" = 1 ] && unlock_luks
-[ "$use_lvm" = 1 ] && trigger_lvm
+[ "$luks" = 1 ] && unlock_luks
+[ "$lvm" = 1 ] && trigger_lvm
 mnt_rootfs
 cleanup
 boot_system

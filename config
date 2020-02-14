@@ -5,8 +5,14 @@
 # debug mode
 #debug=1
 
+# custom output name
+#initramfs=""
+
 # custom kernel version
 #kernel=""
+
+# custom compression program
+#compress=""
 
 # parse fstab
 #use_fstab=0

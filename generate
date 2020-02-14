@@ -390,9 +390,9 @@ create_initramfs() {
             cd "$tmpdir"
             find . \
                 | cpio -oH newc \
-                | gzip -9
+                | ${compress:-gzip -9}
         ) \
-            | tee "${script_dir}/initramfs-${kernel}.img.gz"
+            | tee "${script_dir}/${initramfs:-initramfs-${kernel}}"
     } > /dev/null 2>&1 || msg panic "failed to generate initramfs image"
 }
 
@@ -450,4 +450,4 @@ esac
 install_files
 create_initramfs
 
-msg info "done! check out initramfs-${kernel}.img.gz"
+msg info "done! check out ${initramfs:-initramfs-${kernel}}"

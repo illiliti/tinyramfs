@@ -229,7 +229,8 @@ install_driver() {
         # strip path and extension
         driver="${driver##*/}"
         driver="${driver%%.*}"
-        for driver_dep in $(modprobe -D "$driver" 2> /dev/null | grep -v builtin | cut -d " " -f 2); do
+        # TODO busybox modprobe doesn't support -S option
+        for driver_dep in $(modprobe -S "$kernel" -D "$driver" 2> /dev/null | grep -v builtin | cut -d " " -f 2); do
             install -Dm644 "$driver_dep" "${wrkdir}${driver_dep}"
         done
     done

@@ -64,29 +64,30 @@ setup_udev() {
 findfs_sh() {
     case "${1%%=*}" in
         LABEL)
-            printf "/dev/disk/by-label/%s\n" "${1##*=}"
+            device="/dev/disk/by-label/${1##*=}"
             ;;
         UUID)
-            printf "/dev/disk/by-uuid/%s\n" "${1##*=}"
+            device="/dev/disk/by-uuid/${1##*=}"
             ;;
         PARTUUID)
-            printf "/dev/disk/by-partuuid/%s\n" "${1##*=}"
+            device="/dev/disk/by-partuuid/${1##*=}"
             ;;
         /dev/*)
-            printf "%s\n" "$1"
+            device="$1"
             ;;
         *)
             panic "findfs option broken"
             ;;
     esac
+
+    # avoid race condition
+    until [ -e "$device" ]; do sleep 0.5; done
+
+    printf "%s\n" "$device"
 }
 
 # unlock LUKS container
 unlock_luks() {
-    # TODO investigate this
-    # avoid race condition
-    sleep 1.5
-
     # TODO improve mapper name ( crypttab or config option )
     cryptsetup $luks_args luksOpen $(findfs_sh "$luks_root") luks_root || panic "failed to unlock luks container"
 }
@@ -98,11 +99,7 @@ trigger_lvm() {
 
 # mount rootfs to /mnt/root
 mnt_rootfs() {
-    # TODO investigate this
-    # avoid race condition
-    sleep 1.5
-
-    mount $root_type $root_args $(findfs_sh "$root") /mnt/root || panic "failed to mount rootfs"
+    mount ${root_type:+-t $root_type} $root_args $(findfs_sh "$root") /mnt/root || panic "failed to mount rootfs"
 }
 
 # kill and unmount

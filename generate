@@ -42,7 +42,7 @@ remove_wrkdir() {
 
 # change current directory to script directory if user haven't do it
 check_currentdir() {
-    scriptdir=$(dirname "$0")
+    scriptdir=$(readlink -f $(dirname "$0"))
     [ "$PWD" = "$scriptdir" ] || {
         msg info "changing current directory to script directory"
         cd "$scriptdir" || msg panic "failed to change directory"

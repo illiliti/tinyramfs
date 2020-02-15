@@ -315,7 +315,7 @@ install_library() {
         # check symlink
         if [ -h "$library" ]; then
             # check lib already existence
-            if [ ! -e "${wrkdir}/usr/lib/${library##*/}" ] && [ ! -e "${tmpdir}/$(readlink -f $library)" ]; then
+            if [ ! -e "${wrkdir}/usr/lib/${library##*/}" ] && [ ! -e "${wrkdir}/$(readlink -f $library)" ]; then
                 # regular
                 install -s -m755 "$(readlink -f $library)" -t "${wrkdir}/usr/lib"
 

@@ -9,26 +9,28 @@ Features
 - LVM
 - mdev,mdevd and eudev
 
-Dependencies
-------------
-### Basic
-```
-busybox
-kmod
-```
-### Optional
-```
-cryptsetup - LUKS support
-lvm2 - LVM support
-util-linux - PARTUUID support
-```
-
 Installation
 ------------
+Requirements:
+* busybox
+  - --install [-s] [DIR]
+  - mdev
+  - uevent
+  - switch_root
+  - mount
+  - umount
+  - blkid
+* kmod
+* cryptsetup - LUKS 
+* lvm2 - LVM
+* util-linux - PARTUUID 
+
+Download & Setup:
 ```
 git clone https://github.com/illiliti/initramfs
 cd initramfs
 ```
+TODO
 
 Configuration
 -------------

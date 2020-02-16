@@ -177,6 +177,9 @@ install_luks() {
 
 # install drivers and deps
 install_driver() {
+    # check monolithic kernel(builtin drivers)
+    [ -d "${moddir}/${kernel}" ] || return 0
+
     printf "%s\n" "$@" | while read -r driver; do
         # strip path and extension
         driver="${driver##*/}"
@@ -186,9 +189,6 @@ install_driver() {
             install -Dm644 "$driver_dep" "${wrkdir}${driver_dep}"
         done
     done
-
-    # TODO implement monolithic kernel support
-    [ -e "${wrkdir}/lib/modules" ] || msg panic "failed to install drivers"
 }
 
 # install hostonly drivers

@@ -49,54 +49,6 @@ check_currentdir() {
     }
 }
 
-# check needed files
-check_requirements() {
-    msg info "checking requirements"
-    # check busybox installed
-    if command -v busybox > /dev/null 2>&1; then
-        # check busybox supports CONFIG_FEATURE_INSTALLER
-        busybox --help | grep -q "\-\-install \[\-s\]" || msg panic "recompile busybox with CONFIG_FEATURE_INSTALLER"
-
-        # check requirements for init
-        for busybox_dep in mdev uevent switch_root; do
-            busybox $busybox_dep --help > /dev/null 2>&1 || msg panic "recompile busybox with $busybox_dep"
-        done
-    else
-        msg panic "busybox doesn't installed"
-    fi
-
-    # check kmod modprobe installed
-    if command -v modprobe > /dev/null 2>&1; then
-        # busybox modprobe doesn't supported(yet)
-        modprobe --version 2>&1 | grep -q "kmod" || msg panic "kmod modprobe version doesn't installed"
-    else
-        msg panic "modprobe doesn't installed"
-    fi
-
-    # check util-linux tools
-    [ "$util_linux" = 1 ] && {
-        # check mount installed
-        if command -v mount > /dev/null 2>&1; then
-            mount --version 2>&1 | grep -q "util-linux" || {
-                msg warning "util-linux mount version doesn't installed. PARTUUID and filesystem type autodetection support will be missing"
-                util_linux=0
-            }
-        else
-            msg panic "mount doesn't installed"
-        fi
-
-        # check blkid installed
-        if command -v blkid > /dev/null 2>&1; then
-            blkid --version 2>&1 | grep -q "util-linux" || {
-                msg warning "util-linux blkid version doesn't installed. PARTUUID support will be missing"
-                util_linux=0
-            }
-        else
-            msg panic "blkid doesn't installed"
-        fi
-    }
-}
-
 # install requirements
 install_requirements() {
     msg info "installing requirements"
@@ -420,7 +372,6 @@ check_currentdir
 kernel="${kernel:-$(uname -r)}"
 moddir="/lib/modules"
 
-check_requirements
 create_structure
 create_symlinks
 #parse_fstab

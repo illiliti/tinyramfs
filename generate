@@ -235,7 +235,7 @@ generate_depmod() {
     modker="${moddir}/${kernel}"
 
     # install list of drivers
-    cp "${modker}/modules.softdep" "${modker}/modules.builtin" "${modker}/modules.order" "${wrkdir}/${modker}"
+    cp "${modker}/modules.builtin" "${modker}/modules.order" "${wrkdir}/${modker}"
 
     # generate dependencies list of drivers
     depmod -b "$wrkdir" "$kernel"

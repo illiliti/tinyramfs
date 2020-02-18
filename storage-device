@@ -79,6 +79,7 @@ add_symlinks() {
             while read -r dm; do
                 [ "${dm#* }" = device-mapper ] && {
                     mknod /dev/mapper/control c 10 "${dm% *}" || exit 1
+                    break
                 }
             done < /proc/misc
         fi

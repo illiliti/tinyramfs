@@ -20,7 +20,6 @@ msg() {
     esac
 }
 
-# create wrkdir
 create_wrkdir() {
     msg info "creating working directory"
     if [ -n "$XDG_CACHE_HOME" ]; then
@@ -34,7 +33,6 @@ create_wrkdir() {
     mkdir "$wrkdir" || msg panic "failed to create working directory"
 }
 
-# remove wrkdir
 remove_wrkdir() {
     msg info "removing working directory"
     rm -rf "$wrkdir"
@@ -49,11 +47,11 @@ check_currentdir() {
     }
 }
 
-# install requirements
 install_requirements() {
     msg info "installing requirements"
+
     # install user specified binaries
-    [ -n "$binaries" ] && install_binary $binaries
+    [ -n "$binaries" ] && install_binary "$binaries"
 
     # install util-linux binaries
     [ "$util_linux" = 1 ] && install_binary mount blkid
@@ -62,7 +60,6 @@ install_requirements() {
     install_binary busybox modprobe
 }
 
-# create FHS directory structure
 create_structure() {
     msg info "creating directory structure"
     for dir in dev tmp var run etc usr/lib usr/bin mnt/root proc root sys; do
@@ -97,14 +94,12 @@ create_symlinks() {
 # TODO parse crypttab
 #}
 
-# install mdev
 install_mdev() {
     msg info "installing mdev"
     install -m644 mdev.conf -t "${wrkdir}/etc"
     install -Dm755 storage-device -t "${wrkdir}/lib/mdev"
 }
 
-# install mdevd
 install_mdevd() {
     msg info "installing mdevd"
     install_binary mdevd mdevd-coldplug
@@ -112,7 +107,6 @@ install_mdevd() {
     install -Dm755 storage-device -t "${wrkdir}/lib/mdev"
 }
 
-# install udev
 install_udev() {
     msg info "installing udev"
     install_binary udevd udevadm dmsetup
@@ -120,39 +114,40 @@ install_udev() {
     find /usr/lib/udev -type f | grep -v "rc_keymaps\|hwdb.d" | cpio -pd "$wrkdir" > /dev/null 2>&1
 }
 
-# handle lvm
 install_lvm() {
     msg info "installing LVM"
     install_binary lvm
 
-    # if hostonly mode enabled install only needed drivers
-    [ "$hostonly" = 1 ] && install_driver dm-thin-pool dm-multipath dm-snapshot dm-cache dm-log dm-mirror
+    lvm_drivers="dm-thin-pool dm-multipath dm-snapshot dm-cache dm-log dm-mirror"
+    [ "$hostonly" = 1 ] && install_driver "$lvm_drivers"
 
+    # install lvm config
     if [ "$lvm_conf" = 1 ]; then
         install -Dm644 /etc/lvm/*.conf -t "${wrkdir}/etc/lvm" || msg panic "failed to install LVM config"
     else
         mkdir "${wrkdir}/etc/lvm"
         cat << EOF > "${wrkdir}/etc/lvm/lvm.conf"
 devices {
+    # block discard support
     issue_discards = ${lvm_discard:-0}
 }
 
 global {
+    # disable lvmetad
     use_lvmetad = 0
 }
 EOF
     fi
 }
 
-# handle luks
 install_luks() {
     msg info "installing LUKS"
     install_binary cryptsetup
 
-    # if hostonly mode enabled install only needed drivers
-    [ "$hostonly" = 1 ] && install_driver aes dm-crypt sha256 sha512 wp512 ecb lrw xts twofish serpent
+    luks_drivers="aes dm-crypt sha256 sha512 wp512 ecb lrw xts twofish serpent"
+    [ "$hostonly" = 1 ] && install_driver "$luks_drivers"
 
-    # avoid locking directory missing warning message
+    # avoid "locking directory missing" warning message
     mkdir "${wrkdir}/run/cryptsetup"
 
     # TODO get rid of this workaround
@@ -175,7 +170,6 @@ install_luks() {
     }
 }
 
-# install drivers and deps
 install_driver() {
     # check monolithic kernel(builtin drivers)
     [ -d "${moddir}/${kernel}" ] || return 0
@@ -184,20 +178,20 @@ install_driver() {
         # strip path and extension
         driver="${driver##*/}"
         driver="${driver%%.*}"
+
         # TODO busybox modprobe doesn't support -S option
-        for driver_dep in $(modprobe -S "$kernel" -D "$driver" 2> /dev/null | grep -v builtin | cut -d " " -f 2); do
+        modprobe -S "$kernel" -D "$driver" 2> /dev/null | grep -v builtin | cut -d " " -f 2 | while read -r driver_dep; do
             install -Dm644 "$driver_dep" "${wrkdir}${driver_dep}"
         done
     done
 }
 
-# install hostonly drivers
 install_hostonly_drivers() {
     msg info "installing hostonly drivers"
     [ -n "$root_type" ] || msg panic "hostonly mode required root_type option to be configured"
 
     # perform autodetection of drivers via /sys
-    install_driver $(find /sys -name modalias -exec sort -u "{}" "+")
+    install_driver "$(find /sys -name modalias -exec sort -u "{}" "+")"
 
     # TODO autodetect root fs driver
     # TODO separate root type option
@@ -208,13 +202,12 @@ install_hostonly_drivers() {
     [ -n "$drivers" ] && install_driver "$drivers"
 }
 
-# find and install all drivers
 install_all_drivers() {
     msg info "installing all drivers"
     modker="${moddir}/${kernel}/kernel"
 
     install_driver \
-        $(find \
+        "$(find \
             "${modker}/arch" \
             "${modker}/crypto" \
             "${modker}/fs" \
@@ -226,23 +219,18 @@ install_all_drivers() {
             "${modker}/drivers/usb/storage" \
             "${modker}/drivers/usb/host" \
             "${modker}/drivers/virtio" \
-            -type f 2> /dev/null)
+            -type f 2> /dev/null)"
 }
 
-# generate "modules" files
 generate_depmod() {
     msg info "running depmod"
     modker="${moddir}/${kernel}"
 
-    # install list of drivers
     cp "${modker}/modules.builtin" "${modker}/modules.order" "${wrkdir}/${modker}"
-
-    # generate dependencies list of drivers
     depmod -b "$wrkdir" "$kernel"
 }
 
 # TODO make strip optional
-# handle binaries
 install_binary() {
     printf "%s\n" "$@" | while read -r binary; do
         msg info "installing binary $binary"
@@ -256,14 +244,13 @@ install_binary() {
         ldd "$(command -v $binary)" > /dev/null 2>&1 || continue
 
         # install libraries
-        install_library $binary
+        install_library "$binary"
     done
 }
 
 # TODO make strip optional
-# handle libraries
 install_library() {
-    for library in $(ldd "$(command -v $1)" | sed -nre 's,.* (/.*lib.*/.*.so.*) .*,\1,p' -e 's,.*(/lib.*/ld.*.so.*) .*,\1,p'); do
+    ldd "$(command -v $1)" | sed -nre 's,.* (/.*lib.*/.*.so.*) .*,\1,p' -e 's,.*(/lib.*/ld.*.so.*) .*,\1,p' | while read -r library; do
         # check symlink
         if [ -h "$library" ]; then
             # check lib already existence
@@ -286,7 +273,6 @@ install_library() {
     done
 }
 
-# install important files used by init
 install_files() {
     msg info "installing files"
     # FIXME eof broken
@@ -332,18 +318,16 @@ EOF
     install -m755 ./init -t "$wrkdir"
 }
 
-# TODO add more compession tools
 # create and compress cpio archive
 create_initramfs() {
     msg info "creating initramfs image"
     {
         (
             cd "$wrkdir"
-            find . \
-                | cpio -oH newc \
-                | ${compress:-gzip -9}
-        ) \
-            | tee "${scriptdir}/${initramfs:-initramfs-${kernel}}"
+            find . | cpio -oH newc | ${compress:-gzip -9}
+
+        ) | tee "${scriptdir}/${initramfs:=initramfs-${kernel}}"
+
     } > /dev/null 2>&1 || msg panic "failed to generate initramfs image"
 }
 
@@ -357,10 +341,8 @@ trap remove_wrkdir EXIT INT
 
 check_currentdir
 
-# source config
 . ./config || msg panic "failed to source config"
 
-# handle debug mode
 [ "$debug" = 1 ] && {
     # debug shell commands
     set -x
@@ -368,7 +350,6 @@ check_currentdir
     trap : EXIT INT
 }
 
-# variables
 kernel="${kernel:-$(uname -r)}"
 moddir="/lib/modules"
 
@@ -386,7 +367,6 @@ fi
 
 generate_depmod
 
-# handle device manager
 case "$devmgr" in
     mdev) install_mdev ;;
     mdevd) install_mdevd ;;
@@ -400,4 +380,4 @@ esac
 install_files
 create_initramfs
 
-msg info "done! check out ${initramfs:-initramfs-${kernel}}"
+msg info "done! check out $initramfs"

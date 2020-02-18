@@ -11,7 +11,6 @@ panic() {
 # TODO parse /proc/cmdline
 #}
 
-# mount pseudofs's
 mnt_pseudofs() {
     mount -t proc none /proc
     mount -t sysfs none /sys
@@ -19,7 +18,6 @@ mnt_pseudofs() {
     mount -t tmpfs none /tmp
 }
 
-# setup mdev
 setup_mdev() {
     # setup hotplugger
     if [ -e /proc/sys/kernel/hotplug ]; then
@@ -41,10 +39,9 @@ setup_mdev() {
     done
 
     # load drivers
-    find /sys -name "modalias" -type f -exec sort -u "{}" "+" | xargs modprobe -qba
+    find /sys -name modalias -type f -exec sort -u "{}" "+" | xargs modprobe -qba
 }
 
-# setup mdevd
 setup_mdevd() {
     # setup daemon
     mdevd &
@@ -52,7 +49,6 @@ setup_mdevd() {
     mdevd-coldplug
 }
 
-# setup udev
 setup_udev() {
     udevd --daemon
     udevadm trigger --action=add --type=subsystems
@@ -60,7 +56,6 @@ setup_udev() {
     udevadm settle
 }
 
-# shell findfs
 findfs_sh() {
     case "${1%%=*}" in
         LABEL)
@@ -86,23 +81,19 @@ findfs_sh() {
     printf "%s\n" "$device"
 }
 
-# unlock LUKS container
 unlock_luks() {
     # TODO improve mapper name ( crypttab or config option )
     cryptsetup $luks_args luksOpen $(findfs_sh "$luks_root") luks_root || panic "failed to unlock luks container"
 }
 
-# trigger LVM
 trigger_lvm() {
     lvm vgchange --quiet --sysinit -a y > /dev/null
 }
 
-# mount rootfs to /mnt/root
 mnt_rootfs() {
     mount ${root_type:+-t $root_type} $root_args $(findfs_sh "$root") /mnt/root || panic "failed to mount rootfs"
 }
 
-# kill and unmount
 cleanup() {
     case "$devmgr" in
         mdev) { printf "" > /proc/sys/kernel/hotplug || killall uevent; } > /dev/null 2>&1 ;;
@@ -118,15 +109,12 @@ cleanup() {
     umount /dev /sys /proc /tmp
 }
 
-# exec /mnt/root/sbin/init
 boot_system() {
     exec switch_root /mnt/root /sbin/init || panic "failed to boot system"
 }
 
-# install busybox
 /sbin/busybox --install -s
 
-# source config
 . /config || panic "failed to source config"
 
 # TODO re-do

@@ -22,9 +22,9 @@ msg() {
 
 create_wrkdir() {
     msg info "creating working directory"
-    if [ -n "$XDG_CACHE_HOME" ]; then
+    if [ "$XDG_CACHE_HOME" ]; then
         wrkdir="${XDG_CACHE_HOME}/initramfs.$$"
-    elif [ -n "$TMPDIR" ]; then
+    elif [ "$TMPDIR" ]; then
         wrkdir="${TMPDIR}/initramfs.$$"
     else
         wrkdir="/tmp/initramfs.$$"
@@ -51,7 +51,7 @@ install_requirements() {
     msg info "installing requirements"
 
     # install user specified binaries
-    [ -n "$binaries" ] && install_binary "$binaries"
+    [ "$binaries" ] && install_binary "$binaries"
 
     # install util-linux binaries
     [ "$util_linux" = 1 ] && install_binary mount blkid
@@ -188,7 +188,7 @@ install_driver() {
 
 install_hostonly_drivers() {
     msg info "installing hostonly drivers"
-    [ -n "$root_type" ] || msg panic "hostonly mode required root_type option to be configured"
+    [ "$root_type" ] || msg panic "hostonly mode required root_type option to be configured"
 
     # perform autodetection of drivers via /sys
     install_driver "$(find /sys -name modalias -exec sort -u "{}" "+")"
@@ -199,7 +199,7 @@ install_hostonly_drivers() {
     install_driver "$root_type"
 
     # install user specified drivers
-    [ -n "$drivers" ] && install_driver "$drivers"
+    [ "$drivers" ] && install_driver "$drivers"
 }
 
 install_all_drivers() {

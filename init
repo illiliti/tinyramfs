@@ -66,7 +66,12 @@ findfs_sh() {
     esac
 
     # avoid race condition
-    until [ -e "$device" ]; do sleep 0.5; done
+    while [ ! -e "$device" ]; do
+        sleep 0.5
+        [ "$increment" ] || increment=0
+        increment=$(( increment + 1 ))
+        [ "$increment" = 10 ] && panic "failed to lookup rootfs"
+    done
 
     printf "%s\n" "$device"
 }

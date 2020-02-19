@@ -62,6 +62,9 @@ luks=1
 # LUKS encrypted root ( device,partuuid,uuid,label )
 luks_root="PARTUUID=b04395be-f467-458b-8630-9a429b487600"
 
+# luks mapper name ( /dev/mapper/<name>)
+#luks_name=""
+
 # LUKS detached header
 #luks_header="/path/to/header"
 

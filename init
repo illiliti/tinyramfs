@@ -82,8 +82,7 @@ findfs_sh() {
 }
 
 unlock_luks() {
-    # TODO improve mapper name ( crypttab or config option )
-    cryptsetup $luks_args luksOpen $(findfs_sh "$luks_root") luks_root || panic "failed to unlock luks container"
+    cryptsetup $luks_args luksOpen $(findfs_sh "$luks_root") ${luks_name:-luks_root} || panic "failed to unlock luks container"
 }
 
 trigger_lvm() {

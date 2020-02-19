@@ -100,10 +100,6 @@ cleanup() {
         udev) udevadm control --exit ;;
     esac
 
-    # TODO re-do
-    # if debug mode off then restore kernel logging
-    [ "$debug" = 0 ] && printf 1 > /proc/sys/kernel/printk
-
     # unmount pseudofs's
     umount /dev /sys /proc /tmp
 }
@@ -116,14 +112,8 @@ boot_system() {
 
 . /config || panic "failed to source config"
 
-# TODO re-do
-if [ "$debug" = 1 ]; then
-    # debug shell commands
-    set -x
-else
-    # silence is golden
-    printf 0 > /proc/sys/kernel/printk
-fi
+# debug shell commands
+[ "$debug" = 1 ] && set -x
 
 #parse_cmdline
 mnt_pseudofs

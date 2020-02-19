@@ -174,7 +174,7 @@ install_driver() {
     # check monolithic kernel(builtin drivers)
     [ -d "${moddir}/${kernel}" ] || return 0
 
-    printf "%s\n" "$@" | while read -r driver; do
+    for driver in $@; do
         # strip path and extension
         driver="${driver##*/}"
         driver="${driver%%.*}"
@@ -232,7 +232,7 @@ generate_depmod() {
 
 # TODO make strip optional
 install_binary() {
-    printf "%s\n" "$@" | while read -r binary; do
+    for binary in $@; do
         msg info "installing binary $binary"
         # check binary existence
         command -v "$binary" > /dev/null 2>&1 || msg panic "$binary doesn't exists"

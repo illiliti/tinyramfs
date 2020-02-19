@@ -58,21 +58,11 @@ setup_udev() {
 
 findfs_sh() {
     case "${1%%=*}" in
-        LABEL)
-            device="/dev/disk/by-label/${1##*=}"
-            ;;
-        UUID)
-            device="/dev/disk/by-uuid/${1##*=}"
-            ;;
-        PARTUUID)
-            device="/dev/disk/by-partuuid/${1##*=}"
-            ;;
-        /dev/*)
-            device="$1"
-            ;;
-        *)
-            panic "findfs option broken"
-            ;;
+        LABEL)    device="/dev/disk/by-label/${1##*=}" ;;
+        UUID)     device="/dev/disk/by-uuid/${1##*=}" ;;
+        PARTUUID) device="/dev/disk/by-partuuid/${1##*=}" ;;
+        /dev/*)   device="$1" ;;
+        *)        panic "findfs option broken" ;;
     esac
 
     # avoid race condition
@@ -95,9 +85,9 @@ mnt_rootfs() {
 
 cleanup() {
     case "$devmgr" in
-        mdev) { printf "" > /proc/sys/kernel/hotplug || killall uevent; } > /dev/null 2>&1 ;;
+        mdev)  { printf "" > /proc/sys/kernel/hotplug || killall uevent; } > /dev/null 2>&1 ;;
         mdevd) killall mdevd ;;
-        udev) udevadm control --exit ;;
+        udev)  udevadm control --exit ;;
     esac
 
     # unmount pseudofs's
@@ -119,10 +109,10 @@ boot_system() {
 mnt_pseudofs
 
 case "$devmgr" in
-    mdev) setup_mdev ;;
+    mdev)  setup_mdev ;;
     mdevd) setup_mdevd ;;
-    udev) setup_udev ;;
-    *) panic "devmgr option broken" ;;
+    udev)  setup_udev ;;
+    *)     panic "devmgr option broken" ;;
 esac
 
 # TODO handle situations when LUKS on LVM

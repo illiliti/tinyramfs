@@ -368,10 +368,10 @@ fi
 generate_depmod
 
 case "$devmgr" in
-    mdev) install_mdev ;;
+    mdev)  install_mdev ;;
     mdevd) install_mdevd ;;
-    udev) install_udev ;;
-    *) msg panic "devmgr option broken" ;;
+    udev)  install_udev ;;
+    *)     msg panic "devmgr option broken" ;;
 esac
 
 [ "$luks" = 1 ] && install_luks

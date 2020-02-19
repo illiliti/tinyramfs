@@ -85,10 +85,20 @@ create_symlinks() {
     } )
 }
 
-#parse_fstab() {
-# TODO parse fstab
-#while [ "$fstab" -eq 1 ] && read fs dir type opts; do thing; done < /etc/fstab
-#}
+parse_fstab() {
+    msg info "parsing fstab"
+
+    while read -r fs dir type opts dump pass; do
+        # ignore comments
+        if [ ! "${fs##"#"*}" ]; then
+            continue
+        elif [ "$dir" = / ]; then
+            root="${root:-$fs}"
+            root_type="${root_type:-$type}"
+            root_args="${root_args:-$opts}"
+        fi
+    done < /etc/fstab
+}
 
 #parse_crypttab() {
 # TODO parse crypttab
@@ -355,7 +365,7 @@ moddir="/lib/modules"
 
 create_structure
 create_symlinks
-#parse_fstab
+[ "$fstab" = 1 ] && parse_fstab
 #parse_crypttab
 install_requirements
 

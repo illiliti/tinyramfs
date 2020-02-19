@@ -85,7 +85,7 @@ trigger_lvm() {
 }
 
 mnt_rootfs() {
-    mount ${root_type:+-t $root_type} $root_args $(findfs_sh "$root") /mnt/root || panic "failed to mount rootfs"
+    mount ${root_type:+-t $root_type} ${root_args:+-o $root_args} $(findfs_sh "$root") /mnt/root || panic "failed to mount rootfs"
 }
 
 cleanup() {

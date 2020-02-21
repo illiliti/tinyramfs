@@ -3,7 +3,13 @@
 #
 
 # debug mode
-#debug=1
+shell_debug=1
+
+# drop into shell after mnt_rootfs
+#shell_break=0
+
+# custom init
+#init=""
 
 # custom output name
 #initramfs=""
@@ -24,8 +30,8 @@ root="UUID=07729c48-25d8-4096-acaf-ce5322915680"
 # change this if you using busybox util-linux
 root_type="ext4"
 
-# root mount options
-#root_args=""
+# root options
+#root_opts=""
 
 # disable this if you want to get rid of util-linux
 # NOTE busybox util-linux implemetation doesn't have
@@ -47,11 +53,20 @@ hostonly=1
 # LVM support
 lvm=1
 
+# LVM logical volume name
+#lvm_name=""
+
+# LVM volume group name
+#lvm_group=""
+
 # LVM include config
 #lvm_conf=1
 
 # LVM issue_discards
 lvm_discard=1
+
+# LVM parameters
+#lvm_args=""
 
 # LUKS support
 luks=1
@@ -62,7 +77,7 @@ luks=1
 # LUKS encrypted root ( device,partuuid,uuid,label )
 luks_root="PARTUUID=b04395be-f467-458b-8630-9a429b487600"
 
-# luks mapper name ( /dev/mapper/<name>)
+# luks mapper name ( /dev/mapper/<name> )
 #luks_name=""
 
 # LUKS detached header
@@ -74,5 +89,5 @@ luks_root="PARTUUID=b04395be-f467-458b-8630-9a429b487600"
 # LUKS allow_discards
 luks_discard=1
 
-# LUKS unlock options
+# LUKS parameters
 #luks_args=""

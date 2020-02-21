@@ -4,12 +4,43 @@
 
 panic() {
     printf "panic >> %s\n" "$1"
+    # TODO fix job control
     sh -l
 }
 
-# parse_cmdline() {
-# TODO parse /proc/cmdline
-#}
+parse_cmdline() {
+    # store cmdline in variable
+    read -r cmdline < /proc/cmdline || panic "failed to parse cmdline"
+    # turn variable into list
+    set -- $cmdline
+
+    # parse line by line
+    for line in "$@"; do
+        # parse options
+        case "${line%%=*}" in
+            init)         init="${line##*=}" ;;
+            root)         root="${line##*=}" ;;
+            root.type)    root_type="${line##*=}" ;;
+            root.opts)    root_opts="${line##*=}" ;;
+            lvm)          lvm="${line##*=}" ;;
+            lvm.name)     lvm_name="${line##*=}" ;;
+            lvm.group)    lvm_group="${line##*=}" ;;
+            lvm.args)     lvm_args="${line##*=}" ;;
+            luks)         luks="${line##*=}" ;;
+            luks.root)    luks_root="${line##*=}" ;;
+            luks.name)    luks_name="${line##*=}" ;;
+            luks.discard) luks_discard="${line##*=}" ;;
+            luks.args)    luks_args="${line##*=}" ;;
+            shell.debug)  shell_debug="${line##*=}" ;;
+            shell.break)  shell_break="${line##*=}" ;;
+            # TODO implement
+            #lvm.discard) ;;
+            #lvm.conf) ;;
+            #luks_header) ;;
+            #luks_keyfile) ;;
+        esac
+    done
+}
 
 mnt_pseudofs() {
     mount -t proc none /proc
@@ -31,10 +62,8 @@ setup_mdev() {
 
     # trigger uevent for usb devices
     for device in /sys/bus/usb/devices/*; do
-        case ${device##*/} in
-            [0-9]*-[0-9]*)
-                printf add > "${device}/uevent"
-                ;;
+        case "${device##*/}" in
+            [0-9]*-[0-9]*) printf add > "${device}/uevent" ;;
         esac
     done
 
@@ -70,22 +99,29 @@ findfs_sh() {
         sleep 0.5
         [ "$increment" ] || increment=0
         increment=$(( increment + 1 ))
-        [ "$increment" = 10 ] && panic "failed to lookup rootfs"
+        [ "$increment" = 10 ] && panic "failed to lookup partition"
     done
 
     printf "%s\n" "$device"
 }
 
 unlock_luks() {
+    [ "$luks_discard" = 1 ] && luks_args="--allow-discards $luks_args"
     cryptsetup $luks_args luksOpen $(findfs_sh "$luks_root") ${luks_name:-luks_root} || panic "failed to unlock luks container"
 }
 
 trigger_lvm() {
-    lvm vgchange --quiet --sysinit -a y > /dev/null
+    if [ "$lvm_group" ] && [ "$lvm_name" ]; then
+        lvm lvchange $lvm_args --quiet --sysinit -a y "${lvm_group}/${lvm_name}" > /dev/null
+    elif [ "$lvm_group" ]; then
+        lvm vgchange $lvm_args --quiet --sysinit -a y "$lvm_group" > /dev/null
+    else
+        lvm vgchange $lvm_args --quiet --sysinit -a y > /dev/null
+    fi
 }
 
 mnt_rootfs() {
-    mount ${root_type:+-t $root_type} ${root_args:+-o $root_args} $(findfs_sh "$root") /mnt/root || panic "failed to mount rootfs"
+    mount ${root_type:+-t $root_type} ${root_opts:+-o $root_opts} $(findfs_sh "$root") /mnt/root || panic "failed to mount rootfs"
 }
 
 cleanup() {
@@ -100,18 +136,18 @@ cleanup() {
 }
 
 boot_system() {
-    exec switch_root /mnt/root /sbin/init || panic "failed to boot system"
+    exec switch_root /mnt/root ${init:-/sbin/init} || panic "failed to boot system"
 }
 
 /sbin/busybox --install -s
 
 . /config || panic "failed to source config"
 
-# debug shell commands
-[ "$debug" = 1 ] && set -x
-
-#parse_cmdline
 mnt_pseudofs
+parse_cmdline
+
+# debug mode
+[ "$shell_debug" = 1 ] && set -x
 
 case "$devmgr" in
     mdev)  setup_mdev ;;
@@ -121,8 +157,9 @@ case "$devmgr" in
 esac
 
 # TODO handle situations when LUKS on LVM
-[ "$luks" = 1 ] && unlock_luks
-[ "$lvm" = 1 ] && trigger_lvm
+[ "$luks" = 1 ] && [ -x "$(command -v cryptsetup)" ] && unlock_luks
+[ "$lvm" = 1 ] && [ -x "$(command -v lvm)" ] && trigger_lvm
 mnt_rootfs
+[ "$shell_break" = 1 ] && panic "dropping to shell"
 cleanup
 boot_system

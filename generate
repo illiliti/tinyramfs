@@ -95,7 +95,7 @@ parse_fstab() {
         elif [ "$dir" = / ]; then
             root="${root:-$fs}"
             root_type="${root_type:-$type}"
-            root_args="${root_args:-$opts}"
+            root_opts="${root_opts:-$opts}"
         fi
     done < /etc/fstab
 }
@@ -163,9 +163,6 @@ install_luks() {
     # TODO get rid of this workaround
     # workaround for luks2
     install -s -m755 /usr/lib/libgcc_s.so.1 -t "${wrkdir}/usr/lib" || msg panic "failed to install LUKS libraries"
-
-    # block discard support
-    [ "$luks_discard" = 1 ] && luks_args="--allow-discards $luks_args"
 
     # copy luks header
     [ -f "$luks_header" ] && {
@@ -285,20 +282,9 @@ install_library() {
 
 install_files() {
     msg info "installing files"
-    # FIXME eof broken
+
     # initialize config
-    cat << EOF > "${wrkdir}/config"
-debug="$debug"
-root="$root"
-root_type="$root_type"
-root_args="$root_args"
-devmgr="$devmgr"
-#drivers="$drivers"
-lvm="$lvm"
-luks="$luks"
-luks_root="$luks_root"
-luks_args="$luks_args"
-EOF
+    sed -e "/^#/d" -e "/^$/d" ./config > "${wrkdir}/config"
 
     # needed for devmgr
     cat << EOF > "${wrkdir}/etc/group"
@@ -353,7 +339,7 @@ check_currentdir
 
 . ./config || msg panic "failed to source config"
 
-[ "$debug" = 1 ] && {
+[ "$shell_debug" = 1 ] && {
     # debug shell commands
     set -x
     # don't remove anything
@@ -365,7 +351,7 @@ moddir="/lib/modules"
 
 create_structure
 create_symlinks
-[ "$fstab" = 1 ] && parse_fstab
+[ "$fstab" = 1 ] && [ -f /etc/fstab ] && parse_fstab
 #parse_crypttab
 install_requirements
 
@@ -384,8 +370,8 @@ case "$devmgr" in
     *)     msg panic "devmgr option broken" ;;
 esac
 
-[ "$luks" = 1 ] && install_luks
-[ "$lvm" = 1 ] && install_lvm
+[ "$luks" = 1 ] && [ -x "$(command -v cryptsetup)" ] && install_luks
+[ "$lvm" = 1 ] && [ -x "$(command -v lvm)" ] && install_lvm
 
 install_files
 create_initramfs

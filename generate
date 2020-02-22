@@ -117,8 +117,8 @@ create_symlinks() {
 install_mdev() {
     msg info "installing mdev"
 
-    install -m644  mdev.conf      -t "${wrkdir}/etc"
-    install -Dm755 storage-device -t "${wrkdir}/lib/mdev"
+    install -m644  "${filesdir}/mdev.conf"      -t "${wrkdir}/etc"
+    install -Dm755 "${filesdir}/storage-device" -t "${wrkdir}/lib/mdev"
 }
 
 install_mdevd() {
@@ -126,8 +126,8 @@ install_mdevd() {
 
     install_binary mdevd mdevd-coldplug
 
-    install -m644  mdev.conf      -t "${wrkdir}/etc"
-    install -Dm755 storage-device -t "${wrkdir}/lib/mdev"
+    install -m644  "${filesdir}/mdev.conf"      -t "${wrkdir}/etc"
+    install -Dm755 "${filesdir}/storage-device" -t "${wrkdir}/lib/mdev"
 }
 
 install_udev() {

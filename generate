@@ -2,8 +2,8 @@
 #
 # tiny initramfs generation tool
 
-# print message
 msg() {
+    # print message
     case "$1" in
         info)
             printf "info >> %s\n" "$2" >&2
@@ -20,8 +20,42 @@ msg() {
     esac
 }
 
+usage() {
+    cat << EOF
+usage: $0 [options]
+    -o, --output <file>     output file. default is $(readlink -f $(dirname "$0"))/initramfs-$(uname -r)
+    -f, --files <dir>       files directory. default is $(readlink -f $(dirname "$0"))
+
+EOF
+}
+
+parse_args() {
+    while [ "$1" ]; do
+        case "$1" in
+            -o | --output)
+                initramfs="$2"
+                shift 2
+                ;;
+            -f | --files)
+                filesdir="$2"
+                shift 2
+                ;;
+            -h | --help)
+                usage
+                exit 0
+                ;;
+            *)
+                printf "%s\n\n" "invalid option: '$1'"
+                usage
+                exit 1
+                ;;
+        esac
+    done
+}
+
 create_wrkdir() {
     msg info "creating working directory"
+
     if [ "$XDG_CACHE_HOME" ]; then
         wrkdir="${XDG_CACHE_HOME}/initramfs.$$"
     elif [ "$TMPDIR" ]; then
@@ -35,23 +69,15 @@ create_wrkdir() {
 
 remove_wrkdir() {
     msg info "removing working directory"
-    rm -rf "$wrkdir"
-}
 
-# change current directory to script directory if user haven't do it
-check_currentdir() {
-    scriptdir=$(readlink -f $(dirname "$0"))
-    [ "$PWD" = "$scriptdir" ] || {
-        msg info "changing current directory to script directory"
-        cd "$scriptdir" || msg panic "failed to change directory"
-    }
+    rm -rf "$wrkdir"
 }
 
 install_requirements() {
     msg info "installing requirements"
 
     # install user specified binaries
-    [ "$binaries" ] && install_binary "$binaries"
+    [ "$binaries"       ] && install_binary "$binaries"
 
     # install util-linux binaries
     [ "$util_linux" = 1 ] && install_binary mount blkid
@@ -62,17 +88,20 @@ install_requirements() {
 
 create_structure() {
     msg info "creating directory structure"
+
     for dir in dev tmp var run etc usr/lib usr/bin mnt/root proc root sys; do
         mkdir -p "${wrkdir}/${dir}"
     done
 }
 
-# some dynamically linked libraries and binaries compiled with hardcoded
-# dependencies path. to make it worked we need create symlinks for them.
-# also POSIX ln doesn't have --relative flag like in GNU ln. as workaround
-# we change directory to wrkdir and make needed symlinks.
 create_symlinks() {
+    # some dynamically linked libraries and binaries compiled with hardcoded
+    # dependencies path. to make it worked we need create symlinks for them.
+    # also POSIX ln doesn't have --relative flag like in GNU ln. as workaround
+    # we change directory to wrkdir and make needed symlinks.
+
     msg info "creating symlinks"
+
     ( cd "$wrkdir" && {
         ln -s usr/lib lib
         ln -s usr/lib lib64
@@ -85,40 +114,25 @@ create_symlinks() {
     } )
 }
 
-parse_fstab() {
-    msg info "parsing fstab"
-
-    while read -r fs dir type opts dump pass; do
-        # ignore comments
-        if [ ! "${fs##"#"*}" ]; then
-            continue
-        elif [ "$dir" = / ]; then
-            root="${root:-$fs}"
-            root_type="${root_type:-$type}"
-            root_opts="${root_opts:-$opts}"
-        fi
-    done < /etc/fstab
-}
-
-#parse_crypttab() {
-# TODO parse crypttab
-#}
-
 install_mdev() {
     msg info "installing mdev"
-    install -m644 mdev.conf -t "${wrkdir}/etc"
+
+    install -m644  mdev.conf      -t "${wrkdir}/etc"
     install -Dm755 storage-device -t "${wrkdir}/lib/mdev"
 }
 
 install_mdevd() {
     msg info "installing mdevd"
+
     install_binary mdevd mdevd-coldplug
-    install -m644 mdev.conf -t "${wrkdir}/etc"
+
+    install -m644  mdev.conf      -t "${wrkdir}/etc"
     install -Dm755 storage-device -t "${wrkdir}/lib/mdev"
 }
 
 install_udev() {
     msg info "installing udev"
+
     install_binary udevd udevadm dmsetup
     # FIXME rewrite this piece of crap
     find /usr/lib/udev -type f | grep -v "rc_keymaps\|hwdb.d" | cpio -pd "$wrkdir" > /dev/null 2>&1
@@ -126,6 +140,7 @@ install_udev() {
 
 install_lvm() {
     msg info "installing LVM"
+
     install_binary lvm
 
     lvm_drivers="dm-thin-pool dm-multipath dm-snapshot dm-cache dm-log dm-mirror"
@@ -152,6 +167,7 @@ EOF
 
 install_luks() {
     msg info "installing LUKS"
+
     install_binary cryptsetup
 
     luks_drivers="aes dm-crypt sha256 sha512 wp512 ecb lrw xts twofish serpent"
@@ -161,6 +177,7 @@ install_luks() {
     mkdir "${wrkdir}/run/cryptsetup"
 
     # TODO get rid of this workaround
+    # TODO fix static binary
     # workaround for luks2
     install -s -m755 /usr/lib/libgcc_s.so.1 -t "${wrkdir}/usr/lib" || msg panic "failed to install LUKS libraries"
 
@@ -179,15 +196,22 @@ install_luks() {
 
 install_driver() {
     # check monolithic kernel(builtin drivers)
-    [ -d "${moddir}/${kernel}" ] || return 0
+    [ -d "${moddir}/${kernel}" ] || return
 
+    # we need splitting
+    # shellcheck disable=SC2068
     for driver in $@; do
+
         # strip path and extension
         driver="${driver##*/}"
         driver="${driver%%.*}"
 
         # TODO busybox modprobe doesn't support -S option
-        modprobe -S "$kernel" -D "$driver" 2> /dev/null | grep -v builtin | cut -d " " -f 2 | while read -r driver_dep; do
+        modprobe -S "$kernel" -D "$driver" 2> /dev/null |
+        grep -v "builtin\|net" |
+        cut -d " " -f 2 |
+
+        while read -r driver_dep; do
             install -Dm644 "$driver_dep" "${wrkdir}${driver_dep}"
         done
     done
@@ -195,6 +219,7 @@ install_driver() {
 
 install_hostonly_drivers() {
     msg info "installing hostonly drivers"
+
     [ "$root_type" ] || msg panic "hostonly mode required root_type option to be configured"
 
     # perform autodetection of drivers via /sys
@@ -211,6 +236,7 @@ install_hostonly_drivers() {
 
 install_all_drivers() {
     msg info "installing all drivers"
+
     modker="${moddir}/${kernel}/kernel"
 
     install_driver \
@@ -231,51 +257,74 @@ install_all_drivers() {
 
 generate_depmod() {
     msg info "running depmod"
+
     modker="${moddir}/${kernel}"
 
     cp "${modker}/modules.builtin" "${modker}/modules.order" "${wrkdir}/${modker}"
     depmod -b "$wrkdir" "$kernel"
 }
 
-# TODO make strip optional
 install_binary() {
+    # TODO make strip optional
+
+    # we need splitting
+    # shellcheck disable=SC2068
     for binary in $@; do
         msg info "installing binary $binary"
+
+        fullbin=$(command -v "$binary")
+
         # check binary existence
-        command -v "$binary" > /dev/null 2>&1 || msg panic "$binary doesn't exists"
+        [ "$fullbin" ] || msg panic "$binary doesn't exists"
 
         # install and strip binary
-        install -s -m755 "$(command -v $binary)" -t "${wrkdir}/usr/bin"
+        install -s -m755 "$fullbin" -t "${wrkdir}/usr/bin"
 
-        # check statically linking
-        ldd "$(command -v $binary)" > /dev/null 2>&1 || continue
+        # check static
+        ldd "$fullbin" > /dev/null 2>&1 || continue
 
         # install libraries
         install_library "$binary"
     done
 }
 
-# TODO make strip optional
 install_library() {
-    ldd "$(command -v $1)" | sed -nre 's,.* (/.*lib.*/.*.so.*) .*,\1,p' -e 's,.*(/lib.*/ld.*.so.*) .*,\1,p' | while read -r library; do
+    # TODO make strip optional
+
+    wrkdirlib="${wrkdir}/usr/lib/"
+
+    # extract paths to libraries from ldd output
+    ldd $(command -v "$1") |
+    sed -nr \
+    -e 's,.* (/.*lib.*/.*.so.*) .*,\1,p' \
+    -e 's,.*(/lib.*/ld.*.so.*) .*,\1,p' |
+
+    while read -r library; do
+        namelib="${library##*/}"
+        reallib=$(readlink "$library")
+        fulllib=$(readlink -f "$library")
+
         # check symlink
         if [ -h "$library" ]; then
+
             # check lib already existence
-            if [ ! -e "${wrkdir}/usr/lib/${library##*/}" ] && [ ! -e "${wrkdir}/$(readlink -f $library)" ]; then
+            [ -e "${wrkdirlib}${namelib}" ] ||
+            [ -e "${wrkdir}${fulllib}"    ] ||
+            {
                 # regular
-                install -s -m755 "$(readlink -f $library)" -t "${wrkdir}/usr/lib"
+                install -s -m755 "${fulllib}" -t "${wrkdirlib}"
 
                 # FIXME handle all symlinks
                 # symlink may link to symlink
-                [ -h "/usr/lib/$(readlink $library)" ] && cp -a "/usr/lib/$(readlink $library)" "${wrkdir}/usr/lib"
+                [ -h "/usr/lib/${reallib}" ] &&
+                cp -a "/usr/lib/${reallib}" "${wrkdirlib}"
 
                 # symlink
-                cp -a "$library" "${wrkdir}/usr/lib"
-            fi
+                cp -a "$library" "${wrkdirlib}"
+            }
         else
-            if [ ! -e "${wrkdir}/usr/lib/${library##*/}" ]; then
-                install -s -m755 "$library" -t "${wrkdir}/usr/lib"
-            fi
+            [ -e "${wrkdirlib}${namelib}" ] ||
+            install -s -m755 "$library" -t "${wrkdirlib}"
         fi
     done
 }
@@ -283,8 +332,27 @@ install_library() {
 install_files() {
     msg info "installing files"
 
-    # initialize config
-    sed -e "/^#/d" -e "/^$/d" ./config > "${wrkdir}/config"
+    cat << EOF > "${wrkdir}/config"
+debug="$debug"
+init="$init"
+root="$root"
+root_type="$root_type"
+root_opts="$root_opts"
+devmgr="$devmgr"
+#drivers
+lvm="$lvm"
+lvm_name="$lvm_name"
+lvm_group="$lvm_group"
+#lvm_discard
+lvm_args="$lvm_args"
+luks="$luks"
+luks_root="$luks_root"
+luks_name="$luks_name"
+#luks_header
+#luks_keyfile
+luks_discard="$luks_discard"
+luks_args="$luks_args"
+EOF
 
     # needed for devmgr
     cat << EOF > "${wrkdir}/etc/group"
@@ -311,10 +379,9 @@ nobody:x:99:99::/:/bin/false
 EOF
 
     # install init script
-    install -m755 ./init -t "$wrkdir"
+    install -m755 "${filesdir}/init" -t "$wrkdir"
 }
 
-# create and compress cpio archive
 create_initramfs() {
     msg info "creating initramfs image"
     {
@@ -322,7 +389,7 @@ create_initramfs() {
             cd "$wrkdir"
             find . | cpio -oH newc | ${compress:-gzip -9}
 
-        ) | tee "${scriptdir}/${initramfs:=initramfs-${kernel}}"
+        ) | tee "${initramfs:-${filesdir}/initramfs-${kernel}}"
 
     } > /dev/null 2>&1 || msg panic "failed to generate initramfs image"
 }
@@ -330,29 +397,26 @@ create_initramfs() {
 # check root
 [ "$(id -u)" = 0 ] || msg panic "must be run as root"
 
-create_wrkdir
+parse_args "$@"
+
+. "${filesdir:=$(readlink -f $(dirname "$0"))}/config" || msg panic "failed to source config"
 
 # remove wrkdir on exit or unexpected error
 trap remove_wrkdir EXIT INT
 
-check_currentdir
-
-. ./config || msg panic "failed to source config"
-
-[ "$shell_debug" = 1 ] && {
+[ "$debug" = 1 ] && {
     # debug shell commands
     set -x
     # don't remove anything
-    trap : EXIT INT
+    trap - EXIT INT
 }
 
 kernel="${kernel:-$(uname -r)}"
 moddir="/lib/modules"
 
+create_wrkdir
 create_structure
 create_symlinks
-[ "$fstab" = 1 ] && [ -f /etc/fstab ] && parse_fstab
-#parse_crypttab
 install_requirements
 
 if [ "$hostonly" = 1 ]; then
@@ -364,16 +428,15 @@ fi
 generate_depmod
 
 case "$devmgr" in
+    udev)  install_udev ;;
     mdev)  install_mdev ;;
     mdevd) install_mdevd ;;
-    udev)  install_udev ;;
     *)     msg panic "devmgr option broken" ;;
 esac
 
+[ "$lvm"  = 1 ] && [ -x "$(command -v lvm)"        ] && install_lvm
 [ "$luks" = 1 ] && [ -x "$(command -v cryptsetup)" ] && install_luks
-[ "$lvm" = 1 ] && [ -x "$(command -v lvm)" ] && install_lvm
-
 install_files
 create_initramfs
 
-msg info "done! check out $initramfs"
+msg info "done! check out ${initramfs:-${filesdir}/initramfs-${kernel}}"

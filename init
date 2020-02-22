@@ -9,15 +9,14 @@ panic() {
 }
 
 parse_cmdline() {
-    # store cmdline in variable
-    read -r cmdline < /proc/cmdline || panic "failed to parse cmdline"
-    # turn variable into list
-    set -- $cmdline
+    # turn output into list
+    set -- $(cat /proc/cmdline)
 
     # parse line by line
     for line in "$@"; do
         # parse options
         case "${line%%=*}" in
+            debug)        debug="${line##*=}" ;;
             init)         init="${line##*=}" ;;
             root)         root="${line##*=}" ;;
             root.type)    root_type="${line##*=}" ;;
@@ -31,8 +30,6 @@ parse_cmdline() {
             luks.name)    luks_name="${line##*=}" ;;
             luks.discard) luks_discard="${line##*=}" ;;
             luks.args)    luks_args="${line##*=}" ;;
-            shell.debug)  shell_debug="${line##*=}" ;;
-            shell.break)  shell_break="${line##*=}" ;;
             # TODO implement
             #lvm.discard) ;;
             #lvm.conf) ;;
@@ -147,7 +144,7 @@ mnt_pseudofs
 parse_cmdline
 
 # debug mode
-[ "$shell_debug" = 1 ] && set -x
+[ "$debug" = 1 ] && set -x
 
 case "$devmgr" in
     mdev)  setup_mdev ;;
@@ -157,9 +154,9 @@ case "$devmgr" in
 esac
 
 # TODO handle situations when LUKS on LVM
-[ "$luks" = 1 ] && [ -x "$(command -v cryptsetup)" ] && unlock_luks
-[ "$lvm" = 1 ] && [ -x "$(command -v lvm)" ] && trigger_lvm
+[ "$luks" =  1 ] && [ -x "$(command -v cryptsetup)" ] && unlock_luks
+[ "$lvm"  =  1 ] && [ -x "$(command -v lvm)"        ] && trigger_lvm
 mnt_rootfs
-[ "$shell_break" = 1 ] && panic "dropping to shell"
+[ "$debug" = 1 ] && panic "dropping to shell"
 cleanup
 boot_system

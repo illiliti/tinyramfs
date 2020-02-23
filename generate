@@ -173,13 +173,14 @@ install_luks() {
     luks_drivers="aes dm-crypt sha256 sha512 wp512 ecb lrw xts twofish serpent"
     [ "$hostonly" = 1 ] && install_driver "$luks_drivers"
 
-    # avoid "locking directory missing" warning message
+    # avoid "locking directory missing" warning message and libgcc_s.so.1 missing error
+    # see https://bugs.archlinux.org/task/56771
     mkdir "${wrkdir}/run/cryptsetup"
 
-    # TODO get rid of this workaround
-    # TODO fix static binary
-    # workaround for luks2
-    install -s -m755 /usr/lib/libgcc_s.so.1 -t "${wrkdir}/usr/lib" || msg panic "failed to install LUKS libraries"
+    [ -e /usr/lib/libgcc_s.so.1 ] && {
+        install -s -m755 /usr/lib/libgcc_s.so.1 -t "${wrkdir}/usr/lib" ||
+        msg panic "failed to install LUKS libraries"
+    }
 
     # copy luks header
     [ -f "$luks_header" ] && {

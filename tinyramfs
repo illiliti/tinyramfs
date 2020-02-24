@@ -380,32 +380,9 @@ luks_discard="$luks_discard"
 luks_args="$luks_args"
 EOF
 
-    # needed for devmgr
-    cat << EOF > "${wrkdir}/etc/group"
-root:x:0:
-tty:x:5:
-dialout:x:11:
-uucp:x:14:
-kmem:x:3:
-input:x:25:
-video:x:13:
-audio:x:12:
-lp:x:10:
-disk:x:9:
-cdrom:x:16:
-tape:x:6:
-kvm:x:24:
-floppy:x:8:
-EOF
-
-    # needed for devmgr
-    cat << EOF > "${wrkdir}/etc/passwd"
-root:x:0:0::/root:/bin/sh
-nobody:x:99:99::/:/bin/false
-EOF
-
-    # install init script
-    install -m755 "${filesdir}/init" -t "$wrkdir"
+    install -m644 "${filesdir}/passwd" -t "$wrkdir"
+    install -m644 "${filesdir}/group"  -t "$wrkdir"
+    install -m755 "${filesdir}/init"   -t "$wrkdir"
 }
 
 create_initramfs() {

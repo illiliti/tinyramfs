@@ -21,11 +21,14 @@ msg() {
 }
 
 usage() {
+    scriptdir=$(readlink -f $(dirname "$0"))
+
     # TODO more options
     cat << EOF
 usage: $0 [options]
-    -o, --output <file>     output file. default is $(readlink -f $(dirname "$0"))/initramfs-$(uname -r)
-    -f, --files  <dir>      files directory. default is $(readlink -f $(dirname "$0"))
+    -o, --output <file>     output file. default is ${scriptdir}/initramfs-$(uname -r)
+    -c, --config <file>     config file. default is ${scriptdir}/config
+    -f, --files  <dir>      files directory. default is ${scriptdir}/files
 
 EOF
 }
@@ -34,11 +37,15 @@ parse_args() {
     while [ "$1" ]; do
         case "$1" in
             -o | --output)
-                initramfs="$2"
+                initramfs="${2?}"
                 shift 2
                 ;;
             -f | --files)
-                filesdir="$2"
+                filesdir="${2?}"
+                shift 2
+                ;;
+            -c | --config)
+                config="${2?}"
                 shift 2
                 ;;
             -h | --help)
@@ -67,7 +74,7 @@ parse_conf() {
         elif [ ! "$(eval printf "%s" "\"\$${line%%=*}\"")" ]; then
             eval "$line"
         fi
-    done < "${filesdir:-$(readlink -f $(dirname "$0"))}/config" || msg panic "failed to parse config"
+    done < "${config:-$(readlink -f $(dirname "$0"))/config}" || msg panic "failed to parse config"
 }
 
 create_wrkdir() {
@@ -425,8 +432,8 @@ parse_conf
 
 : "${kernel:=$(uname -r)}"
 : "${moddir:=/lib/modules}"
-: "${filesdir:=$(readlink -f $(dirname "$0"))}"
-: "${initramfs:=${filesdir}/initramfs-${kernel}}"
+: "${filesdir:=$(readlink -f $(dirname "$0"))/files}"
+: "${initramfs:=$(readlink -f $(dirname "$0"))/initramfs-${kernel}}"
 
 # remove wrkdir on exit or unexpected error
 trap remove_wrkdir EXIT INT

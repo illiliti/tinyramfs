@@ -442,8 +442,8 @@ case "$devmgr" in
     *)     msg panic "devmgr option broken" ;;
 esac
 
-[ "$lvm"  = 1 ] && [ -x "$(command -v lvm)"        ] && install_lvm
-[ "$luks" = 1 ] && [ -x "$(command -v cryptsetup)" ] && install_luks
+[ "$lvm"  = 1 ] && command -v lvm        2>&1 > /dev/null && install_lvm
+[ "$luks" = 1 ] && command -v cryptsetup 2>&1 > /dev/null && install_luks
 install_files
 create_initramfs
 

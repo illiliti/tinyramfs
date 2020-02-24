@@ -157,8 +157,8 @@ case "$devmgr" in
 esac
 
 # TODO handle situations when LUKS on LVM
-[ "$luks" =  1 ] && [ -x "$(command -v cryptsetup)" ] && unlock_luks
-[ "$lvm"  =  1 ] && [ -x "$(command -v lvm)"        ] && trigger_lvm
+[ "$luks" =  1 ] && command -v cryptsetup 2>&1 > /dev/null && unlock_luks
+[ "$lvm"  =  1 ] && command -v lvm        2>&1 > /dev/null && trigger_lvm
 mnt_rootfs
 [ "$debug" = 1 ] && panic "dropping to shell"
 cleanup

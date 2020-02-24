@@ -139,28 +139,45 @@ create_symlinks() {
     )
 }
 
-install_mdev() {
-    msg info "installing mdev"
+install_devmgr() {
+    case "$devmgr" in
+        udev)
+            msg info "installing udev"
 
-    install -m644  "${filesdir}/mdev.conf"      -t "${workdir}/etc"
-    install -Dm755 "${filesdir}/storage-device" -t "${workdir}/lib/mdev"
-}
+            install_binary udevd udevadm dmsetup
 
-install_mdevd() {
-    msg info "installing mdevd"
+            find /usr/lib/udev \
+                ! -path "*rc_keymaps*" \
+                ! -path "*hwdb.d*" \
+                -type f |
 
-    install_binary mdevd mdevd-coldplug
+                cpio -pd "$workdir" > /dev/null 2>&1 ||
+                msg panic "failed to install udev"
+            ;;
+        mdev)
+            msg info "installing mdev"
 
-    install -m644  "${filesdir}/mdev.conf"      -t "${workdir}/etc"
-    install -Dm755 "${filesdir}/storage-device" -t "${workdir}/lib/mdev"
-}
+            install -m644  "${filesdir}/mdev.conf" \
+                "${workdir}/etc/mdev.conf"
 
-install_udev() {
-    msg info "installing udev"
+            install -Dm755 "${filesdir}/storage-device" \
+                "${workdir}/lib/mdev/storage-device"
+            ;;
+        mdevd)
+            msg info "installing mdevd"
 
-    install_binary udevd udevadm dmsetup
-    # FIXME rewrite this piece of crap
-    find /usr/lib/udev -type f | grep -v "rc_keymaps\|hwdb.d" | cpio -pd "$workdir" > /dev/null 2>&1
+            install_binary mdevd mdevd-coldplug
+
+            install -m644  "${filesdir}/mdev.conf" \
+                "${workdir}/etc/mdev.conf"
+
+            install -Dm755 "${filesdir}/storage-device" \
+                "${workdir}/lib/mdev/storage-device"
+            ;;
+        *)
+            msg panic "devmgr option broken"
+            ;;
+    esac
 }
 
 install_lvm() {
@@ -434,16 +451,9 @@ else
 fi
 
 generate_depmod
-
-case "$devmgr" in
-    udev)  install_udev ;;
-    mdev)  install_mdev ;;
-    mdevd) install_mdevd ;;
-    *)     msg panic "devmgr option broken" ;;
-esac
-
-[ "$lvm"  = 1 ] && command -v lvm        2>&1 > /dev/null && install_lvm
-[ "$luks" = 1 ] && command -v cryptsetup 2>&1 > /dev/null && install_luks
+install_devmgr
+[ "$lvm"  = 1 ] && install_lvm
+[ "$luks" = 1 ] && install_luks
 install_files
 create_initramfs
 

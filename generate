@@ -119,17 +119,17 @@ create_symlinks() {
 
     msg info "creating symlinks"
 
-    # TODO remove grouping
-    ( cd "$wrkdir" && {
+    (
+        cd "$wrkdir"
         ln -s usr/lib lib
         ln -s usr/lib lib64
         ln -s usr/bin bin
         ln -s usr/bin sbin
         ln -s ../run var/run
-        cd "${wrkdir}/usr"
+        cd usr
         ln -s bin sbin
         ln -s lib lib64
-    } )
+    )
 }
 
 install_mdev() {
@@ -221,7 +221,7 @@ install_driver() {
     # shellcheck disable=SC2068
     for driver in $@; do
 
-        # strip path and extension
+        # strip path and extension if any
         driver="${driver##*/}"
         driver="${driver%%.*}"
 
@@ -428,15 +428,15 @@ parse_conf
 : "${filesdir:=$(readlink -f $(dirname "$0"))}"
 : "${initramfs:=${filesdir}/initramfs-${kernel}}"
 
+# remove wrkdir on exit or unexpected error
+trap remove_wrkdir EXIT INT
+
 [ "$debug" = 1 ] && {
     # debug shell commands
     set -x
     # don't remove anything
     trap - EXIT INT
 }
-
-# remove wrkdir on exit or unexpected error
-trap remove_wrkdir EXIT INT
 
 create_wrkdir
 create_structure

@@ -81,7 +81,8 @@ create_workdir() {
     msg info "creating working directory"
 
     workdir="${XDG_CACHE_HOME:-${TMPDIR:-/tmp}}/initramfs.$$"
-    mkdir "$workdir" || msg panic "failed to create working directory"
+    mkdir -p "$workdir" ||
+        msg panic "failed to create working directory"
 }
 
 remove_workdir() {
@@ -94,10 +95,12 @@ install_requirements() {
     msg info "installing requirements"
 
     # install user specified binaries
-    [ "$binaries"       ] && install_binary "$binaries"
+    [ "$binaries"       ] &&
+        install_binary "$binaries"
 
     # install util-linux binaries
-    [ "$util_linux" = 1 ] && install_binary mount blkid
+    [ "$util_linux" = 1 ] &&
+        install_binary mount blkid
 
     # install mandatory binaries
     install_binary busybox modprobe
@@ -145,7 +148,7 @@ install_devmgr() {
                 -type f |
 
                 cpio -pd "$workdir" > /dev/null 2>&1 ||
-                msg panic "failed to install udev"
+                    msg panic "failed to install udev"
             ;;
         mdev)
             msg info "installing mdev"
@@ -179,13 +182,16 @@ install_lvm() {
     install_binary lvm
 
     lvm_drivers="dm-thin-pool dm-multipath dm-snapshot dm-cache dm-log dm-mirror"
-    [ "$hostonly" = 1 ] && install_driver "$lvm_drivers"
+    [ "$hostonly" = 1 ] &&
+        install_driver "$lvm_drivers"
 
     # install lvm config
     if [ "$lvm_conf" = 1 ]; then
-        install -Dm644 /etc/lvm/*.conf -t "${workdir}/etc/lvm" || msg panic "failed to install LVM config"
+        mkdir -p "${workdir}/etc/lvm"
+        cp /etc/lvm/*.conf "${workdir}/etc/lvm" ||
+            msg panic "failed to install LVM config"
     else
-        mkdir "${workdir}/etc/lvm"
+        mkdir -p "${workdir}/etc/lvm"
         cat << EOF > "${workdir}/etc/lvm/lvm.conf"
 devices {
     # block discard support
@@ -206,26 +212,35 @@ install_luks() {
     install_binary cryptsetup
 
     luks_drivers="aes dm-crypt sha256 sha512 wp512 ecb lrw xts twofish serpent"
-    [ "$hostonly" = 1 ] && install_driver "$luks_drivers"
+    [ "$hostonly" = 1 ] &&
+        install_driver "$luks_drivers"
 
-    # avoid "locking directory missing" warning message and libgcc_s.so.1 missing error
+    # avoid "locking directory missing" warning
+    # message and libgcc_s.so.1 missing error
     # see https://bugs.archlinux.org/task/56771
-    mkdir "${workdir}/run/cryptsetup"
+    mkdir -p "${workdir}/run/cryptsetup"
 
     [ -e /usr/lib/libgcc_s.so.1 ] && {
-        install -s -m755 /usr/lib/libgcc_s.so.1 -t "${workdir}/usr/lib" ||
-        msg panic "failed to install LUKS libraries"
+        install -s -m755 /usr/lib/libgcc_s.so.1 \
+            "${workdir}/usr/lib/libgcc_s.so.1" ||
+                msg panic "failed to install LUKS libraries"
     }
 
     # copy luks header
     [ -f "$luks_header" ] && {
-        install -m400 "$luks_header" "${workdir}/root/luks_header" || msg panic "failed to copy LUKS header"
+        install -m400 "$luks_header" \
+            "${workdir}/root/luks_header" ||
+                msg panic "failed to copy LUKS header"
+
         luks_args="--header=/root/luks_header $luks_args"
     }
 
     # copy luks keyfile
     [ -f "$luks_keyfile" ] && {
-        install -m400 "$luks_keyfile" "${workdir}/root/luks_keyfile" || msg panic "failed to copy LUKS keyfile"
+        install -m400 "$luks_keyfile" \
+            "${workdir}/root/luks_keyfile" ||
+                msg panic "failed to copy LUKS keyfile"
+
         luks_args="--key-file=/root/luks_keyfile $luks_args"
     }
 }
@@ -248,7 +263,8 @@ install_driver() {
         cut -d " " -f 2 |
 
         while read -r driver_dep; do
-            install -Dm644 "$driver_dep" "${workdir}${driver_dep}"
+            install -Dm644 "$driver_dep" \
+                "${workdir}${driver_dep}"
         done
     done
 }
@@ -256,7 +272,8 @@ install_driver() {
 install_hostonly_drivers() {
     msg info "installing hostonly drivers"
 
-    [ "$root_type" ] || msg panic "hostonly mode required root_type option to be configured"
+    [ "$root_type" ] ||
+        msg panic "hostonly mode required root_type option to be configured"
 
     # perform autodetection of drivers via /sys
     install_driver "$(find /sys -name modalias -exec sort -u "{}" "+")"
@@ -267,7 +284,8 @@ install_hostonly_drivers() {
     install_driver "$root_type"
 
     # install user specified drivers
-    [ "$drivers" ] && install_driver "$drivers"
+    [ "$drivers" ] &&
+        install_driver "$drivers"
 }
 
 install_all_drivers() {
@@ -296,12 +314,17 @@ generate_depmod() {
 
     modker="${moddir}/${kernel}"
 
-    cp "${modker}/modules.builtin" "${modker}/modules.order" "${workdir}${modker}"
+    cp "${modker}/modules.builtin" \
+        "${modker}/modules.order" \
+        "${workdir}${modker}"
+
     depmod -b "$workdir" "$kernel"
 }
 
 install_binary() {
     # TODO make strip optional
+
+    workdirbin="${workdir}/usr/bin/"
 
     # we need splitting
     # shellcheck disable=SC2068
@@ -311,13 +334,16 @@ install_binary() {
         fullbin=$(command -v "$binary")
 
         # check if binary exists
-        [ "$fullbin" ] || msg panic "$binary doesn't exists"
+        [ "$fullbin" ] ||
+            msg panic "$binary doesn't exists"
 
         # install and strip binary
-        install -s -m755 "$fullbin" -t "${workdir}/usr/bin"
+        install -s -m755 "$fullbin" \
+            "${workdirbin}${fullbin##*/}"
 
         # check static
-        ldd "$fullbin" > /dev/null 2>&1 || continue
+        ldd "$fullbin" > /dev/null 2>&1 ||
+            continue
 
         # install libraries
         install_library "$binary"
@@ -348,19 +374,22 @@ install_library() {
             [ -e "${workdirlib}${namelib}"     ] ||
             {
                 # regular
-                install -s -m755 "${fulllib}" -t "${workdirlib}"
+                install -s -m755 "${fulllib}" \
+                    "${workdirlib}${fulllib##*/}"
 
                 # FIXME handle all symlinks
                 # symlink may link to symlink
                 [ -h "/usr/lib/${reallib}" ] &&
-                cp -a "/usr/lib/${reallib}" "${workdirlib}"
+                    cp -a "/usr/lib/${reallib}" \
+                        "${workdirlib}"
 
                 # symlink
                 cp -a "$library" "${workdirlib}"
             }
         else
             [ -e "${workdirlib}${namelib}" ] ||
-            install -s -m755 "$library" -t "${workdirlib}"
+                install -s -m755 "$library" \
+                    "${workdirlib}${namelib}"
         fi
     done
 }
@@ -390,9 +419,14 @@ luks_discard="$luks_discard"
 luks_args="$luks_args"
 EOF
 
-    install -m644 "${filesdir}/passwd" -t "$workdir"
-    install -m644 "${filesdir}/group"  -t "$workdir"
-    install -m755 "${filesdir}/init"   -t "$workdir"
+    install -m644 "${filesdir}/passwd" \
+        "$workdir/etc/passwd"
+
+    install -m644 "${filesdir}/group" \
+        "$workdir/etc/group"
+
+    install -m755 "${filesdir}/init" \
+        "$workdir/init"
 }
 
 create_initramfs() {
@@ -408,7 +442,8 @@ create_initramfs() {
 
         ) | tee "$initramfs"
 
-    } > /dev/null 2>&1 || msg panic "failed to generate initramfs image"
+    } > /dev/null 2>&1 ||
+        msg panic "failed to generate initramfs image"
 }
 
 # check root

@@ -13,7 +13,6 @@ parse_cmdline() {
     # turn output into list
     set -- $(cat /proc/cmdline)
 
-    # parse line by line
     for line in "$@"; do
 
         # parse options
@@ -42,10 +41,10 @@ parse_cmdline() {
 }
 
 mnt_pseudofs() {
-    mount -t proc none /proc
-    mount -t sysfs none /sys
+    mount -t proc     none /proc
+    mount -t sysfs    none /sys
     mount -t devtmpfs none /dev
-    mount -t tmpfs none /tmp
+    mount -t tmpfs    none /tmp
 }
 
 setup_mdev() {
@@ -67,7 +66,8 @@ setup_mdev() {
     done
 
     # load drivers
-    find /sys -name modalias -type f -exec sort -u "{}" "+" | xargs modprobe -qba
+    find /sys -name modalias -type f -exec sort -u "{}" "+" |
+    xargs modprobe -qba
 }
 
 setup_mdevd() {
@@ -99,15 +99,19 @@ findfs_sh() {
         sleep 0.5
         [ "$increment" ] || increment=0
         increment=$(( increment + 1 ))
-        [ "$increment" = 10 ] && panic "failed to lookup partition"
+        [ "$increment" = 10 ] &&
+            panic "failed to lookup partition"
     done
 
     printf "%s\n" "$device"
 }
 
 unlock_luks() {
-    [ "$luks_discard" = 1 ] && luks_args="--allow-discards $luks_args"
-    cryptsetup $luks_args luksOpen $(findfs_sh "$luks_root") ${luks_name:-luks_root} || panic "failed to unlock luks container"
+    [ "$luks_discard" = 1 ] &&
+        luks_args="--allow-discards $luks_args"
+
+    cryptsetup $luks_args luksOpen $(findfs_sh "$luks_root") ${luks_name:-luks_root} ||
+        panic "failed to unlock luks container"
 }
 
 trigger_lvm() {
@@ -121,7 +125,8 @@ trigger_lvm() {
 }
 
 mnt_rootfs() {
-    mount ${root_type:+-t $root_type} ${root_opts:+-o $root_opts} $(findfs_sh "$root") /mnt/root || panic "failed to mount rootfs"
+    mount ${root_type:+-t $root_type} ${root_opts:+-o $root_opts} $(findfs_sh "$root") /mnt/root ||
+        panic "failed to mount rootfs"
 }
 
 cleanup() {
@@ -136,12 +141,14 @@ cleanup() {
 }
 
 boot_system() {
-    exec switch_root /mnt/root ${init:-/sbin/init} || panic "failed to boot system"
+    exec switch_root /mnt/root ${init:-/sbin/init} ||
+        panic "failed to boot system"
 }
 
 /sbin/busybox --install -s
 
-. /config || panic "failed to source config"
+. /config ||
+    panic "failed to source config"
 
 mnt_pseudofs
 parse_cmdline
@@ -157,8 +164,14 @@ case "$devmgr" in
 esac
 
 # TODO handle situations when LUKS on LVM
-[ "$luks" =  1 ] && command -v cryptsetup 2>&1 > /dev/null && unlock_luks
-[ "$lvm"  =  1 ] && command -v lvm        2>&1 > /dev/null && trigger_lvm
+[ "$luks" =  1 ] &&
+    command -v cryptsetup > /dev/null 2>&1 &&
+        unlock_luks
+
+[ "$lvm"  =  1 ] &&
+    command -v lvm        > /dev/null 2>&1 &&
+        trigger_lvm
+
 mnt_rootfs
 [ "$debug" = 1 ] && panic "dropping to shell"
 cleanup

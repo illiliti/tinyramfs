@@ -77,24 +77,24 @@ parse_conf() {
     done < "${config:-$(readlink -f $(dirname "$0"))/config}" || msg panic "failed to parse config"
 }
 
-create_wrkdir() {
+create_workdir() {
     msg info "creating working directory"
 
     if [ "$XDG_CACHE_HOME" ]; then
-        wrkdir="${XDG_CACHE_HOME}/initramfs.$$"
+        workdir="${XDG_CACHE_HOME}/initramfs.$$"
     elif [ "$TMPDIR" ]; then
-        wrkdir="${TMPDIR}/initramfs.$$"
+        workdir="${TMPDIR}/initramfs.$$"
     else
-        wrkdir="/tmp/initramfs.$$"
+        workdir="/tmp/initramfs.$$"
     fi
 
-    mkdir "$wrkdir" || msg panic "failed to create working directory"
+    mkdir "$workdir" || msg panic "failed to create working directory"
 }
 
-remove_wrkdir() {
+remove_workdir() {
     msg info "removing working directory"
 
-    rm -rf "$wrkdir"
+    rm -rf "$workdir"
 }
 
 install_requirements() {
@@ -114,7 +114,7 @@ create_structure() {
     msg info "creating directory structure"
 
     for dir in dev tmp var run etc usr/lib usr/bin mnt/root proc root sys; do
-        mkdir -p "${wrkdir}/${dir}"
+        mkdir -p "${workdir}/${dir}"
     done
 }
 
@@ -122,12 +122,12 @@ create_symlinks() {
     # some dynamically linked libraries and binaries compiled with hardcoded
     # dependencies path. to make it worked we need create symlinks for them.
     # also POSIX ln doesn't have --relative flag like in GNU ln. as workaround
-    # we change directory to wrkdir and make needed symlinks.
+    # we change directory to workdir and make needed symlinks.
 
     msg info "creating symlinks"
 
     (
-        cd "$wrkdir"
+        cd "$workdir"
         ln -s usr/lib lib
         ln -s usr/lib lib64
         ln -s usr/bin bin
@@ -142,8 +142,8 @@ create_symlinks() {
 install_mdev() {
     msg info "installing mdev"
 
-    install -m644  "${filesdir}/mdev.conf"      -t "${wrkdir}/etc"
-    install -Dm755 "${filesdir}/storage-device" -t "${wrkdir}/lib/mdev"
+    install -m644  "${filesdir}/mdev.conf"      -t "${workdir}/etc"
+    install -Dm755 "${filesdir}/storage-device" -t "${workdir}/lib/mdev"
 }
 
 install_mdevd() {
@@ -151,8 +151,8 @@ install_mdevd() {
 
     install_binary mdevd mdevd-coldplug
 
-    install -m644  "${filesdir}/mdev.conf"      -t "${wrkdir}/etc"
-    install -Dm755 "${filesdir}/storage-device" -t "${wrkdir}/lib/mdev"
+    install -m644  "${filesdir}/mdev.conf"      -t "${workdir}/etc"
+    install -Dm755 "${filesdir}/storage-device" -t "${workdir}/lib/mdev"
 }
 
 install_udev() {
@@ -160,7 +160,7 @@ install_udev() {
 
     install_binary udevd udevadm dmsetup
     # FIXME rewrite this piece of crap
-    find /usr/lib/udev -type f | grep -v "rc_keymaps\|hwdb.d" | cpio -pd "$wrkdir" > /dev/null 2>&1
+    find /usr/lib/udev -type f | grep -v "rc_keymaps\|hwdb.d" | cpio -pd "$workdir" > /dev/null 2>&1
 }
 
 install_lvm() {
@@ -173,10 +173,10 @@ install_lvm() {
 
     # install lvm config
     if [ "$lvm_conf" = 1 ]; then
-        install -Dm644 /etc/lvm/*.conf -t "${wrkdir}/etc/lvm" || msg panic "failed to install LVM config"
+        install -Dm644 /etc/lvm/*.conf -t "${workdir}/etc/lvm" || msg panic "failed to install LVM config"
     else
-        mkdir "${wrkdir}/etc/lvm"
-        cat << EOF > "${wrkdir}/etc/lvm/lvm.conf"
+        mkdir "${workdir}/etc/lvm"
+        cat << EOF > "${workdir}/etc/lvm/lvm.conf"
 devices {
     # block discard support
     issue_discards = ${lvm_discard:-0}
@@ -200,22 +200,22 @@ install_luks() {
 
     # avoid "locking directory missing" warning message and libgcc_s.so.1 missing error
     # see https://bugs.archlinux.org/task/56771
-    mkdir "${wrkdir}/run/cryptsetup"
+    mkdir "${workdir}/run/cryptsetup"
 
     [ -e /usr/lib/libgcc_s.so.1 ] && {
-        install -s -m755 /usr/lib/libgcc_s.so.1 -t "${wrkdir}/usr/lib" ||
+        install -s -m755 /usr/lib/libgcc_s.so.1 -t "${workdir}/usr/lib" ||
         msg panic "failed to install LUKS libraries"
     }
 
     # copy luks header
     [ -f "$luks_header" ] && {
-        install -m400 "$luks_header" "${wrkdir}/root/luks_header" || msg panic "failed to copy LUKS header"
+        install -m400 "$luks_header" "${workdir}/root/luks_header" || msg panic "failed to copy LUKS header"
         luks_args="--header=/root/luks_header $luks_args"
     }
 
     # copy luks keyfile
     [ -f "$luks_keyfile" ] && {
-        install -m400 "$luks_keyfile" "${wrkdir}/root/luks_keyfile" || msg panic "failed to copy LUKS keyfile"
+        install -m400 "$luks_keyfile" "${workdir}/root/luks_keyfile" || msg panic "failed to copy LUKS keyfile"
         luks_args="--key-file=/root/luks_keyfile $luks_args"
     }
 }
@@ -238,7 +238,7 @@ install_driver() {
         cut -d " " -f 2 |
 
         while read -r driver_dep; do
-            install -Dm644 "$driver_dep" "${wrkdir}${driver_dep}"
+            install -Dm644 "$driver_dep" "${workdir}${driver_dep}"
         done
     done
 }
@@ -286,8 +286,8 @@ generate_depmod() {
 
     modker="${moddir}/${kernel}"
 
-    cp "${modker}/modules.builtin" "${modker}/modules.order" "${wrkdir}${modker}"
-    depmod -b "$wrkdir" "$kernel"
+    cp "${modker}/modules.builtin" "${modker}/modules.order" "${workdir}${modker}"
+    depmod -b "$workdir" "$kernel"
 }
 
 install_binary() {
@@ -304,7 +304,7 @@ install_binary() {
         [ "$fullbin" ] || msg panic "$binary doesn't exists"
 
         # install and strip binary
-        install -s -m755 "$fullbin" -t "${wrkdir}/usr/bin"
+        install -s -m755 "$fullbin" -t "${workdir}/usr/bin"
 
         # check static
         ldd "$fullbin" > /dev/null 2>&1 || continue
@@ -317,7 +317,7 @@ install_binary() {
 install_library() {
     # TODO make strip optional
 
-    wrkdirlib="${wrkdir}/usr/lib/"
+    workdirlib="${workdir}/usr/lib/"
 
     # extract paths to libraries from ldd output
     ldd $(command -v "$1") |
@@ -334,23 +334,23 @@ install_library() {
         if [ -h "$library" ]; then
 
             # check if library already exists
-            [ -e "${wrkdirlib}${fulllib##*/}" ] ||
-            [ -e "${wrkdirlib}${namelib}"     ] ||
+            [ -e "${workdirlib}${fulllib##*/}" ] ||
+            [ -e "${workdirlib}${namelib}"     ] ||
             {
                 # regular
-                install -s -m755 "${fulllib}" -t "${wrkdirlib}"
+                install -s -m755 "${fulllib}" -t "${workdirlib}"
 
                 # FIXME handle all symlinks
                 # symlink may link to symlink
                 [ -h "/usr/lib/${reallib}" ] &&
-                cp -a "/usr/lib/${reallib}" "${wrkdirlib}"
+                cp -a "/usr/lib/${reallib}" "${workdirlib}"
 
                 # symlink
-                cp -a "$library" "${wrkdirlib}"
+                cp -a "$library" "${workdirlib}"
             }
         else
-            [ -e "${wrkdirlib}${namelib}" ] ||
-            install -s -m755 "$library" -t "${wrkdirlib}"
+            [ -e "${workdirlib}${namelib}" ] ||
+            install -s -m755 "$library" -t "${workdirlib}"
         fi
     done
 }
@@ -358,7 +358,7 @@ install_library() {
 install_files() {
     msg info "installing files"
 
-    cat << EOF > "${wrkdir}/config"
+    cat << EOF > "${workdir}/config"
 debug="$debug"
 init="$init"
 root="$root"
@@ -380,9 +380,9 @@ luks_discard="$luks_discard"
 luks_args="$luks_args"
 EOF
 
-    install -m644 "${filesdir}/passwd" -t "$wrkdir"
-    install -m644 "${filesdir}/group"  -t "$wrkdir"
-    install -m755 "${filesdir}/init"   -t "$wrkdir"
+    install -m644 "${filesdir}/passwd" -t "$workdir"
+    install -m644 "${filesdir}/group"  -t "$workdir"
+    install -m755 "${filesdir}/init"   -t "$workdir"
 }
 
 create_initramfs() {
@@ -393,7 +393,7 @@ create_initramfs() {
 
     {
         (
-            cd "$wrkdir"
+            cd "$workdir"
             find . | cpio -oH newc | ${compress:-gzip -9}
 
         ) | tee "$initramfs"
@@ -412,8 +412,8 @@ parse_conf
 : "${filesdir:=$(readlink -f $(dirname "$0"))/files}"
 : "${initramfs:=$(readlink -f $(dirname "$0"))/initramfs-${kernel}}"
 
-# remove wrkdir on exit or unexpected error
-trap remove_wrkdir EXIT INT
+# remove workdir on exit or unexpected error
+trap remove_workdir EXIT INT
 
 [ "$debug" = 1 ] && {
     # debug shell commands
@@ -422,7 +422,7 @@ trap remove_wrkdir EXIT INT
     trap - EXIT INT
 }
 
-create_wrkdir
+create_workdir
 create_structure
 create_symlinks
 install_requirements

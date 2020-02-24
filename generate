@@ -21,10 +21,11 @@ msg() {
 }
 
 usage() {
+    # TODO more options
     cat << EOF
 usage: $0 [options]
     -o, --output <file>     output file. default is $(readlink -f $(dirname "$0"))/initramfs-$(uname -r)
-    -f, --files <dir>       files directory. default is $(readlink -f $(dirname "$0"))
+    -f, --files  <dir>      files directory. default is $(readlink -f $(dirname "$0"))
 
 EOF
 }
@@ -51,6 +52,22 @@ parse_args() {
                 ;;
         esac
     done
+}
+
+parse_conf() {
+    while read -r line; do
+
+        # ignore comments
+        if [ ! "${line##\#*}" ]; then
+            continue
+
+        # check if variable already exists via 'variable indirection' method
+        # if no exists then 'source' variable
+        # see https://stackoverflow.com/q/36235612
+        elif [ ! "$(eval printf "%s" "\"\$${line%%=*}\"")" ]; then
+            eval "$line"
+        fi
+    done < "${filesdir:-$(readlink -f $(dirname "$0"))}/config" || msg panic "failed to parse config"
 }
 
 create_wrkdir() {
@@ -102,6 +119,7 @@ create_symlinks() {
 
     msg info "creating symlinks"
 
+    # TODO remove grouping
     ( cd "$wrkdir" && {
         ln -s usr/lib lib
         ln -s usr/lib lib64
@@ -261,7 +279,7 @@ generate_depmod() {
 
     modker="${moddir}/${kernel}"
 
-    cp "${modker}/modules.builtin" "${modker}/modules.order" "${wrkdir}/${modker}"
+    cp "${modker}/modules.builtin" "${modker}/modules.order" "${wrkdir}${modker}"
     depmod -b "$wrkdir" "$kernel"
 }
 
@@ -275,7 +293,7 @@ install_binary() {
 
         fullbin=$(command -v "$binary")
 
-        # check binary existence
+        # check if binary exists
         [ "$fullbin" ] || msg panic "$binary doesn't exists"
 
         # install and strip binary
@@ -308,9 +326,9 @@ install_library() {
         # check symlink
         if [ -h "$library" ]; then
 
-            # check lib already existence
-            [ -e "${wrkdirlib}${namelib}" ] ||
-            [ -e "${wrkdir}${fulllib}"    ] ||
+            # check if library already exists
+            [ -e "${wrkdirlib}${fulllib##*/}" ] ||
+            [ -e "${wrkdirlib}${namelib}"     ] ||
             {
                 # regular
                 install -s -m755 "${fulllib}" -t "${wrkdirlib}"
@@ -385,12 +403,16 @@ EOF
 
 create_initramfs() {
     msg info "creating initramfs image"
+
+    # TODO add uncompressed option
+    # TODO remove grouping
+
     {
         (
             cd "$wrkdir"
             find . | cpio -oH newc | ${compress:-gzip -9}
 
-        ) | tee "${initramfs:-${filesdir}/initramfs-${kernel}}"
+        ) | tee "$initramfs"
 
     } > /dev/null 2>&1 || msg panic "failed to generate initramfs image"
 }
@@ -399,11 +421,12 @@ create_initramfs() {
 [ "$(id -u)" = 0 ] || msg panic "must be run as root"
 
 parse_args "$@"
+parse_conf
 
-. "${filesdir:=$(readlink -f $(dirname "$0"))}/config" || msg panic "failed to source config"
-
-# remove wrkdir on exit or unexpected error
-trap remove_wrkdir EXIT INT
+: "${kernel:=$(uname -r)}"
+: "${moddir:=/lib/modules}"
+: "${filesdir:=$(readlink -f $(dirname "$0"))}"
+: "${initramfs:=${filesdir}/initramfs-${kernel}}"
 
 [ "$debug" = 1 ] && {
     # debug shell commands
@@ -412,8 +435,8 @@ trap remove_wrkdir EXIT INT
     trap - EXIT INT
 }
 
-kernel="${kernel:-$(uname -r)}"
-moddir="/lib/modules"
+# remove wrkdir on exit or unexpected error
+trap remove_wrkdir EXIT INT
 
 create_wrkdir
 create_structure
@@ -440,4 +463,4 @@ esac
 install_files
 create_initramfs
 
-msg info "done! check out ${initramfs:-${filesdir}/initramfs-${kernel}}"
+msg info "done! check out $initramfs"

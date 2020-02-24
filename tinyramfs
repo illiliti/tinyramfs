@@ -80,14 +80,7 @@ parse_conf() {
 create_workdir() {
     msg info "creating working directory"
 
-    if [ "$XDG_CACHE_HOME" ]; then
-        workdir="${XDG_CACHE_HOME}/initramfs.$$"
-    elif [ "$TMPDIR" ]; then
-        workdir="${TMPDIR}/initramfs.$$"
-    else
-        workdir="/tmp/initramfs.$$"
-    fi
-
+    workdir="${XDG_CACHE_HOME:-${TMPDIR:-/tmp}}/initramfs.$$"
     mkdir "$workdir" || msg panic "failed to create working directory"
 }
 

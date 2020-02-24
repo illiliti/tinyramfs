@@ -4,6 +4,7 @@
 
 panic() {
     printf "panic >> %s\n" "$1"
+
     # TODO fix job control
     sh -l
 }
@@ -14,6 +15,7 @@ parse_cmdline() {
 
     # parse line by line
     for line in "$@"; do
+
         # parse options
         case "${line%%=*}" in
             debug)        debug="${line##*=}" ;;
@@ -71,6 +73,7 @@ setup_mdev() {
 setup_mdevd() {
     # setup daemon
     mdevd &
+
     # trigger uevents
     mdevd-coldplug
 }

@@ -3,7 +3,7 @@
 #
 
 # debug mode
-debug=1
+#debug=0
 
 # custom init
 #init=""
@@ -18,11 +18,11 @@ debug=1
 #compress=""
 
 # root fs ( device,partuuid,uuid,label )
-root="UUID=07729c48-25d8-4096-acaf-ce5322915680"
+#root=""
 
 # root type
 # change this if you using busybox util-linux
-root_type="ext4"
+#root_type=""
 
 # root options
 #root_opts=""
@@ -30,13 +30,13 @@ root_type="ext4"
 # disable this if you want to get rid of util-linux
 # NOTE busybox util-linux implemetation doesn't have
 # PARTUUID support and proper filesystem type autodetection
-util_linux=1
+#util_linux=0
 
 # device manager ( mdev,mdevd,udev )
-devmgr="mdev"
+#devmgr=""
 
 # hostonly mode
-hostonly=0
+#hostonly=0
 
 # custom drivers
 #drivers=""
@@ -45,7 +45,7 @@ hostonly=0
 #binaries=""
 
 # LVM support
-lvm=1
+#lvm=0
 
 # LVM logical volume name
 #lvm_name=""
@@ -54,19 +54,19 @@ lvm=1
 #lvm_group=""
 
 # LVM include config
-#lvm_conf=1
+#lvm_conf=0
 
 # LVM issue_discards
-lvm_discard=1
+#lvm_discard=0
 
 # LVM options
 #lvm_args=""
 
 # LUKS support
-luks=1
+#luks=0
 
 # LUKS encrypted root ( device,partuuid,uuid,label )
-luks_root="PARTUUID=b04395be-f467-458b-8630-9a429b487600"
+#luks_root=""
 
 # luks mapper name ( /dev/mapper/<name> )
 #luks_name=""
@@ -78,7 +78,7 @@ luks_root="PARTUUID=b04395be-f467-458b-8630-9a429b487600"
 #luks_keyfile="/path/to/keyfile"
 
 # LUKS allow_discards
-luks_discard=1
+#luks_discard=0
 
 # LUKS options
 #luks_args=""

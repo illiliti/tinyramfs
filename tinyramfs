@@ -26,7 +26,10 @@ usage() {
 usage: $0 [options]
     -o, --output <file>     output file
     -c, --config <file>     config file
+    -m, --moddir <dir>      drivers directory
+    -k, --kernel <ver>      kernel version
     -f, --files  <dir>      files directory
+    -d, --debug   0|1       debug mode
 
 EOF
 }
@@ -38,12 +41,24 @@ parse_args() {
                 _initramfs="${2:?}"
                 shift 2
                 ;;
+            -c | --config)
+                _config="${2:?}"
+                shift 2
+                ;;
+            -m | --moddir)
+                _moddir="${2:?}"
+                shift 2
+                ;;
+            -k | --kernel)
+                _kernel="${2:?}"
+                shift 2
+                ;;
             -f | --files)
                 _filesdir="${2:?}"
                 shift 2
                 ;;
-            -c | --config)
-                _config="${2:?}"
+            -d | --debug)
+                _debug="${2:?}"
                 shift 2
                 ;;
             -h | --help)
@@ -63,9 +78,10 @@ parse_conf() {
     . "${_config:-./config}" ||
         msg panic "failed to parse config"
 
-    kernel="${kernel:-$(uname -r)}"
-    moddir="${moddir:-/lib/modules}"
+    kernel="${_kernel:-${kernel:-$(uname -r)}}"
+    moddir="${_moddir:-${moddir:-/lib/modules}}"
     filesdir="${_filesdir:-./files}"
+    debug="${_debug:-${debug:-0}}"
     initramfs="${_initramfs:-${initramfs:-./initramfs-${kernel}}}"
 }
 

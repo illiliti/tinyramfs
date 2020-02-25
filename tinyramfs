@@ -272,6 +272,7 @@ install_driver() {
             cut -d " " -f 2 |
 
     while read -r full_driver; do
+
         # check if driver already installed
         [ -e "${workdir}${full_driver}" ] &&
             continue

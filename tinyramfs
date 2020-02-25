@@ -96,14 +96,20 @@ install_requirements() {
 
     # install user specified binaries
     [ "$binaries"       ] &&
-        install_binary "$binaries"
+        for custom_binary in $binaries; do
+            install_binary "$custom_binary"
+        done
 
     # install util-linux binaries
     [ "$util_linux" = 1 ] &&
-        install_binary mount blkid
+        for util_linux_binary in mount blkid; do
+            install_binary "$util_linux_binary"
+        done
 
     # install mandatory binaries
-    install_binary busybox modprobe
+    for main_binary in busybox modprobe; do
+        install_binary "$main_binary"
+    done
 }
 
 create_structure() {
@@ -136,11 +142,13 @@ create_symlinks() {
 }
 
 install_devmgr() {
+    msg info "installing device manager"
+
     case "$devmgr" in
         udev)
-            msg info "installing udev"
-
-            install_binary udevd udevadm dmsetup
+            for udev_binary in udevd udevadm dmsetup; do
+                install_binary "$udev_binary"
+            done
 
             find /usr/lib/udev \
                 ! -path "*rc_keymaps*" \
@@ -151,20 +159,18 @@ install_devmgr() {
                     msg panic "failed to install udev"
             ;;
         mdev)
-            msg info "installing mdev"
-
-            install -m644  "${filesdir}/mdev.conf" \
+            install -m644 "${filesdir}/mdev.conf" \
                 "${workdir}/etc/mdev.conf"
 
             install -Dm755 "${filesdir}/storage-device" \
                 "${workdir}/lib/mdev/storage-device"
             ;;
         mdevd)
-            msg info "installing mdevd"
+            for mdevd_binary in mdevd mdevd-coldplug; do
+                install_binary "$mdevd_binary"
+            done
 
-            install_binary mdevd mdevd-coldplug
-
-            install -m644  "${filesdir}/mdev.conf" \
+            install -m644 "${filesdir}/mdev.conf" \
                 "${workdir}/etc/mdev.conf"
 
             install -Dm755 "${filesdir}/storage-device" \
@@ -181,9 +187,10 @@ install_lvm() {
 
     install_binary lvm
 
-    lvm_drivers="dm-thin-pool dm-multipath dm-snapshot dm-cache dm-log dm-mirror"
     [ "$hostonly" = 1 ] &&
-        install_driver "$lvm_drivers"
+        for lvm_driver in dm-thin-pool dm-multipath dm-snapshot dm-cache dm-log dm-mirror; do
+            install_driver "$lvm_driver"
+        done
 
     # install lvm config
     if [ "$lvm_conf" = 1 ]; then
@@ -211,20 +218,18 @@ install_luks() {
 
     install_binary cryptsetup
 
-    luks_drivers="aes dm-crypt sha256 sha512 wp512 ecb lrw xts twofish serpent"
     [ "$hostonly" = 1 ] &&
-        install_driver "$luks_drivers"
+        for luks_driver in aes dm-crypt sha256 sha512 wp512 ecb lrw xts twofish serpent; do
+            install_driver "$luks_driver"
+        done
 
     # avoid "locking directory missing" warning
     # message and libgcc_s.so.1 missing error
     # see https://bugs.archlinux.org/task/56771
     mkdir -p "${workdir}/run/cryptsetup"
 
-    [ -e /usr/lib/libgcc_s.so.1 ] && {
-        install -s -m755 /usr/lib/libgcc_s.so.1 \
-            "${workdir}/usr/lib/libgcc_s.so.1" ||
-                msg panic "failed to install LUKS libraries"
-    }
+    [ -e /usr/lib/libgcc_s.so.1 ] &&
+        install_library /usr/lib/libgcc_s.so.1
 
     # copy luks header
     [ -f "$luks_header" ] && {
@@ -249,23 +254,22 @@ install_driver() {
     # check monolithic kernel(builtin drivers)
     [ -d "${moddir}/${kernel}" ] || return
 
-    # we need splitting
-    # shellcheck disable=SC2068
-    for driver in $@; do
+    driver="$1"
+    driver="${driver##*/}"
+    driver="${driver%%.*}"
 
-        # strip path and extension if any
-        driver="${driver##*/}"
-        driver="${driver%%.*}"
-
-        # TODO busybox modprobe doesn't support -S option
-        modprobe -S "$kernel" -D "$driver" 2> /dev/null |
+    # TODO busybox modprobe doesn't support -S option
+    modprobe -S "$kernel" -D "$driver" 2> /dev/null |
         grep -v "builtin\|net" |
-        cut -d " " -f 2 |
+            cut -d " " -f 2 |
 
-        while read -r driver_dep; do
-            install -Dm644 "$driver_dep" \
-                "${workdir}${driver_dep}"
-        done
+    while read -r full_driver; do
+        # check if driver already installed
+        [ -e "${workdir}${full_driver}" ] &&
+            continue
+
+        install -Dm644 "$full_driver" \
+            "${workdir}${full_driver}"
     done
 }
 
@@ -276,7 +280,11 @@ install_hostonly_drivers() {
         msg panic "hostonly mode required root_type option to be configured"
 
     # perform autodetection of drivers via /sys
-    install_driver "$(find /sys -name modalias -exec sort -u "{}" "+")"
+    find /sys -name modalias -exec sort -u {} + |
+
+    while read -r alias_driver; do
+        install_driver "$alias_driver"
+    done
 
     # TODO autodetect root fs driver
     # TODO separate root type option
@@ -285,7 +293,9 @@ install_hostonly_drivers() {
 
     # install user specified drivers
     [ "$drivers" ] &&
-        install_driver "$drivers"
+        for custom_driver in $drivers; do
+            install_driver "$custom_driver"
+        done
 }
 
 install_all_drivers() {
@@ -293,20 +303,23 @@ install_all_drivers() {
 
     modker="${moddir}/${kernel}/kernel"
 
-    install_driver \
-        "$(find \
-            "${modker}/arch" \
-            "${modker}/crypto" \
-            "${modker}/fs" \
-            "${modker}/lib" \
-            "${modker}/drivers/block" \
-            "${modker}/drivers/ata" \
-            "${modker}/drivers/md" \
-            "${modker}/drivers/scsi" \
-            "${modker}/drivers/usb/storage" \
-            "${modker}/drivers/usb/host" \
-            "${modker}/drivers/virtio" \
-            -type f 2> /dev/null)"
+    find \
+        "${modker}/arch" \
+        "${modker}/crypto" \
+        "${modker}/fs" \
+        "${modker}/lib" \
+        "${modker}/drivers/block" \
+        "${modker}/drivers/ata" \
+        "${modker}/drivers/md" \
+        "${modker}/drivers/scsi" \
+        "${modker}/drivers/usb/storage" \
+        "${modker}/drivers/usb/host" \
+        "${modker}/drivers/virtio" \
+        -type f 2> /dev/null |
+
+        while read -r path_driver; do
+            install_driver "$path_driver"
+        done
 }
 
 generate_depmod() {
@@ -315,8 +328,8 @@ generate_depmod() {
     modker="${moddir}/${kernel}"
 
     cp "${modker}/modules.builtin" \
-        "${modker}/modules.order" \
-        "${workdir}${modker}"
+       "${modker}/modules.order" \
+       "${workdir}${modker}"
 
     depmod -b "$workdir" "$kernel"
 }
@@ -324,74 +337,71 @@ generate_depmod() {
 install_binary() {
     # TODO make strip optional
 
+    binary="$1"
+    fullbin=$(command -v "$binary")
     workdirbin="${workdir}/usr/bin/"
 
-    # we need splitting
-    # shellcheck disable=SC2068
-    for binary in $@; do
-        msg info "installing binary $binary"
+    # check if binary exists
+    [ "$fullbin" ] ||
+        msg panic "$binary doesn't exists"
 
-        fullbin=$(command -v "$binary")
+    # check if binary already installed
+    [ -e "${workdirbin}${fullbin##*/}" ] &&
+        return
 
-        # check if binary exists
-        [ "$fullbin" ] ||
-            msg panic "$binary doesn't exists"
+    # install and strip binary
+    install -s -m755 "$fullbin" \
+        "${workdirbin}${fullbin##*/}"
 
-        # install and strip binary
-        install -s -m755 "$fullbin" \
-            "${workdirbin}${fullbin##*/}"
+    # check static
+    ldd "$fullbin" > /dev/null 2>&1 ||
+        return
 
-        # check static
-        ldd "$fullbin" > /dev/null 2>&1 ||
-            continue
+    # exract paths to libraries
+    ldd $(command -v "$binary") |
+        sed -nr \
+        -e 's,.* (/.*lib.*/.*.so.*) .*,\1,p' \
+        -e 's,.*(/lib.*/ld.*.so.*) .*,\1,p' |
 
-        # install libraries
-        install_library "$binary"
+    while read -r library; do
+        install_library "$library"
     done
 }
 
 install_library() {
     # TODO make strip optional
 
+    library="$1"
+    namelib="${library##*/}"
+    reallib=$(readlink "$library")
+    fulllib=$(readlink -f "$library")
     workdirlib="${workdir}/usr/lib/"
 
-    # extract paths to libraries from ldd output
-    ldd $(command -v "$1") |
-    sed -nr \
-    -e 's,.* (/.*lib.*/.*.so.*) .*,\1,p' \
-    -e 's,.*(/lib.*/ld.*.so.*) .*,\1,p' |
+    # check symlink
+    if [ -h "$library" ]; then
 
-    while read -r library; do
-        namelib="${library##*/}"
-        reallib=$(readlink "$library")
-        fulllib=$(readlink -f "$library")
+        # check if library already exists
+        [ -e "${workdirlib}${fulllib##*/}" ] ||
+        [ -e "${workdirlib}${namelib}"     ] ||
+        {
+            # regular
+            install -s -m755 "${fulllib}" \
+                "${workdirlib}${fulllib##*/}"
 
-        # check symlink
-        if [ -h "$library" ]; then
+            # FIXME handle all symlinks
+            # symlink may link to symlink
+            [ -h "/usr/lib/${reallib}" ] &&
+                cp -a "/usr/lib/${reallib}" \
+                    "${workdirlib}"
 
-            # check if library already exists
-            [ -e "${workdirlib}${fulllib##*/}" ] ||
-            [ -e "${workdirlib}${namelib}"     ] ||
-            {
-                # regular
-                install -s -m755 "${fulllib}" \
-                    "${workdirlib}${fulllib##*/}"
-
-                # FIXME handle all symlinks
-                # symlink may link to symlink
-                [ -h "/usr/lib/${reallib}" ] &&
-                    cp -a "/usr/lib/${reallib}" \
-                        "${workdirlib}"
-
-                # symlink
-                cp -a "$library" "${workdirlib}"
-            }
-        else
-            [ -e "${workdirlib}${namelib}" ] ||
-                install -s -m755 "$library" \
-                    "${workdirlib}${namelib}"
+            # symlink
+            cp -a "$library" "${workdirlib}"
+        }
+    else
+        [ -e "${workdirlib}${namelib}" ] ||
+            install -s -m755 "$library" \
+                "${workdirlib}${namelib}"
         fi
-    done
 }
 
 install_files() {

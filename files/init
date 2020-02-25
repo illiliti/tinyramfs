@@ -66,7 +66,7 @@ setup_mdev() {
     done
 
     # load drivers
-    find /sys -name modalias -type f -exec sort -u "{}" "+" |
+    find /sys -name modalias -type f -exec sort -u {} + |
     xargs modprobe -qba
 }
 

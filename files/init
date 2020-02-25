@@ -14,23 +14,23 @@ parse_cmdline() {
     set -- $(cat /proc/cmdline)
 
     for line in "$@"; do
+        value="${line##*=}"
 
-        # parse options
         case "${line%%=*}" in
-            debug)        debug="${line##*=}" ;;
-            init)         init="${line##*=}" ;;
-            root)         root="${line##*=}" ;;
-            root.type)    root_type="${line##*=}" ;;
-            root.opts)    root_opts="${line##*=}" ;;
-            lvm)          lvm="${line##*=}" ;;
-            lvm.name)     lvm_name="${line##*=}" ;;
-            lvm.group)    lvm_group="${line##*=}" ;;
-            lvm.args)     lvm_args="${line##*=}" ;;
-            luks)         luks="${line##*=}" ;;
-            luks.root)    luks_root="${line##*=}" ;;
-            luks.name)    luks_name="${line##*=}" ;;
-            luks.discard) luks_discard="${line##*=}" ;;
-            luks.args)    luks_args="${line##*=}" ;;
+            debug)        debug="$value"        ;;
+            init)         init="$value"         ;;
+            root)         root="$value"         ;;
+            root.type)    root_type="$value"    ;;
+            root.opts)    root_opts="$value"    ;;
+            lvm)          lvm="$value"          ;;
+            lvm.name)     lvm_name="$value"     ;;
+            lvm.group)    lvm_group="$value"    ;;
+            lvm.args)     lvm_args="$value"     ;;
+            luks)         luks="$value"         ;;
+            luks.root)    luks_root="$value"    ;;
+            luks.name)    luks_name="$value"    ;;
+            luks.discard) luks_discard="$value" ;;
+            luks.args)    luks_args="$value"    ;;
             # TODO implement
             #lvm.discard) ;;
             #lvm.conf) ;;
@@ -40,58 +40,52 @@ parse_cmdline() {
     done
 }
 
-mnt_pseudofs() {
+mount_pseudofs() {
     mount -t proc     none /proc
     mount -t sysfs    none /sys
     mount -t devtmpfs none /dev
-    mount -t tmpfs    none /tmp
 }
 
-setup_mdev() {
-    # setup hotplugger
-    if [ -e /proc/sys/kernel/hotplug ]; then
-        printf /sbin/mdev > /proc/sys/kernel/hotplug
-    else
-        uevent mdev &
-    fi
+setup_devmgr() {
+    case "$devmgr" in
+        udev)
+            udevd -d
+            udevadm trigger -c add -t subsystems
+            udevadm trigger -c add -t devices
+            udevadm settle
+            ;;
+        mdev)
+            uevent mdev &
+            mdev -s
 
-    # trigger mdev
-    mdev -s
+            for device in /sys/bus/usb/devices/*; do
+                case "${device##*/}" in [0-9]*-[0-9]*)
+                    printf add > "${device}/uevent" ;;
+                esac
+            done
 
-    # trigger uevent for usb devices
-    for device in /sys/bus/usb/devices/*; do
-        case "${device##*/}" in
-            [0-9]*-[0-9]*) printf add > "${device}/uevent" ;;
-        esac
-    done
-
-    # load drivers
-    find /sys -name modalias -type f -exec sort -u {} + |
-    xargs modprobe -qba
-}
-
-setup_mdevd() {
-    # setup daemon
-    mdevd &
-
-    # trigger uevents
-    mdevd-coldplug
-}
-
-setup_udev() {
-    udevd --daemon
-    udevadm trigger --action=add --type=subsystems
-    udevadm trigger --action=add --type=devices
-    udevadm settle
+            find /sys -name modalias -type f -exec sort -u {} + |
+                xargs modprobe -b > /dev/null 2>&1
+            ;;
+        mdevd)
+            mdevd &
+            mdevd-coldplug
+            ;;
+        *)
+            panic "devmgr option broken"
+            ;;
+    esac
 }
 
 findfs_sh() {
+    value="${1##*=}"
+
     case "${1%%=*}" in
-        LABEL)    device="/dev/disk/by-label/${1##*=}" ;;
-        UUID)     device="/dev/disk/by-uuid/${1##*=}" ;;
-        PARTUUID) device="/dev/disk/by-partuuid/${1##*=}" ;;
-        /dev/*)   device="$1" ;;
-        *)        panic "findfs option broken" ;;
+        LABEL)    device="/dev/disk/by-label/${value}"    ;;
+        UUID)     device="/dev/disk/by-uuid/${value}"     ;;
+        PARTUUID) device="/dev/disk/by-partuuid/${value}" ;;
+        /dev/*)   device="$1"                             ;;
+        *)        panic "findfs option broken"            ;;
     esac
 
     # avoid race condition
@@ -116,28 +110,28 @@ unlock_luks() {
 
 trigger_lvm() {
     if [ "$lvm_group" ] && [ "$lvm_name" ]; then
-        lvm lvchange $lvm_args --quiet --sysinit -a y "${lvm_group}/${lvm_name}" > /dev/null
+        lvm lvchange $lvm_args --sysinit -q -a y "${lvm_group}/${lvm_name}" > /dev/null
     elif [ "$lvm_group" ]; then
-        lvm vgchange $lvm_args --quiet --sysinit -a y "$lvm_group" > /dev/null
+        lvm vgchange $lvm_args --sysinit -q -a y "$lvm_group" > /dev/null
     else
-        lvm vgchange $lvm_args --quiet --sysinit -a y > /dev/null
+        lvm vgchange $lvm_args --sysinit -q -a y > /dev/null
     fi
 }
 
-mnt_rootfs() {
+mount_rootfs() {
     mount ${root_type:+-t $root_type} ${root_opts:+-o $root_opts} $(findfs_sh "$root") /mnt/root ||
         panic "failed to mount rootfs"
 }
 
 cleanup() {
     case "$devmgr" in
-        mdev)  { printf "" > /proc/sys/kernel/hotplug || killall uevent; } > /dev/null 2>&1 ;;
-        mdevd) killall mdevd ;;
-        udev)  udevadm control --exit ;;
+        udev)  udevadm control -e ;;
+        mdev)  killall uevent     ;;
+        mdevd) killall mdevd      ;;
     esac
 
     # unmount pseudofs's
-    umount /dev /sys /proc /tmp
+    umount /dev /sys /proc
 }
 
 boot_system() {
@@ -150,29 +144,24 @@ boot_system() {
 . /config ||
     panic "failed to source config"
 
-mnt_pseudofs
+mount_pseudofs
 parse_cmdline
 
-# debug mode
 [ "$debug" = 1 ] && set -x
 
-case "$devmgr" in
-    mdev)  setup_mdev ;;
-    mdevd) setup_mdevd ;;
-    udev)  setup_udev ;;
-    *)     panic "devmgr option broken" ;;
-esac
+setup_devmgr
 
 # TODO handle situations when LUKS on LVM
-[ "$luks" =  1 ] &&
-    command -v cryptsetup > /dev/null 2>&1 &&
-        unlock_luks
+[ "$luks" =  1 ] && command -v cryptsetup > /dev/null 2>&1 &&
+    unlock_luks
 
-[ "$lvm"  =  1 ] &&
-    command -v lvm        > /dev/null 2>&1 &&
-        trigger_lvm
+[ "$lvm"  =  1 ] && command -v lvm        > /dev/null 2>&1 &&
+    trigger_lvm
 
-mnt_rootfs
-[ "$debug" = 1 ] && panic "dropping to shell"
+mount_rootfs
+
+[ "$debug" = 1 ] &&
+    panic "dropping to shell"
+
 cleanup
 boot_system

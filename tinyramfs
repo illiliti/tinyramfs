@@ -21,14 +21,12 @@ msg() {
 }
 
 usage() {
-    scriptdir=$(readlink -f $(dirname "$0"))
-
     # TODO more options
     cat << EOF
 usage: $0 [options]
-    -o, --output <file>     output file. default is ${scriptdir}/initramfs-$(uname -r)
-    -c, --config <file>     config file. default is ${scriptdir}/config
-    -f, --files  <dir>      files directory. default is ${scriptdir}/files
+    -o, --output <file>     output file
+    -c, --config <file>     config file
+    -f, --files  <dir>      files directory
 
 EOF
 }
@@ -37,15 +35,15 @@ parse_args() {
     while [ "$1" ]; do
         case "$1" in
             -o | --output)
-                initramfs="${2?}"
+                _initramfs="${2:?}"
                 shift 2
                 ;;
             -f | --files)
-                filesdir="${2?}"
+                _filesdir="${2:?}"
                 shift 2
                 ;;
             -c | --config)
-                config="${2?}"
+                _config="${2:?}"
                 shift 2
                 ;;
             -h | --help)
@@ -62,19 +60,13 @@ parse_args() {
 }
 
 parse_conf() {
-    while read -r line; do
+    . "${_config:-./config}" ||
+        msg panic "failed to parse config"
 
-        # ignore comments
-        if [ ! "${line##\#*}" ]; then
-            continue
-
-        # check if variable already exists via 'variable indirection' method
-        # if no exists then 'source' variable
-        # see https://stackoverflow.com/q/36235612
-        elif [ ! "$(eval printf "%s" "\"\$${line%%=*}\"")" ]; then
-            eval "$line"
-        fi
-    done < "${config:-$(readlink -f $(dirname "$0"))/config}" || msg panic "failed to parse config"
+    kernel="${kernel:-$(uname -r)}"
+    moddir="${moddir:-/lib/modules}"
+    filesdir="${_filesdir:-./files}"
+    initramfs="${_initramfs:-${initramfs:-./initramfs-${kernel}}}"
 }
 
 create_workdir() {
@@ -461,11 +453,6 @@ create_initramfs() {
 
 parse_args "$@"
 parse_conf
-
-: "${kernel:=$(uname -r)}"
-: "${moddir:=/lib/modules}"
-: "${filesdir:=$(readlink -f $(dirname "$0"))/files}"
-: "${initramfs:=$(readlink -f $(dirname "$0"))/initramfs-${kernel}}"
 
 # remove workdir on exit or unexpected error
 trap remove_workdir EXIT INT

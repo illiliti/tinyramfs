@@ -268,8 +268,7 @@ install_driver() {
 
     # TODO busybox modprobe doesn't support -S option
     modprobe -S "$kernel" -D "$driver" 2> /dev/null |
-        grep -v "builtin\|net" |
-            cut -d " " -f 2 |
+        sed "/builtin\|net/d;s/insmod //" |
 
     while read -r full_driver; do
 

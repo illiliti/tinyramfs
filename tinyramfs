@@ -363,7 +363,7 @@ install_binary() {
         return
 
     # exract paths to libraries
-    ldd $(command -v "$binary") |
+    ldd "$fullbin" |
         sed -nr \
         -e 's,.* (/.*lib.*/.*.so.*) .*,\1,p' \
         -e 's,.*(/lib.*/ld.*.so.*) .*,\1,p' |

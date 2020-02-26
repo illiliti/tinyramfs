@@ -259,9 +259,6 @@ install_luks() {
 }
 
 install_driver() {
-    # check monolithic kernel(builtin drivers)
-    [ -d "${moddir}/${kernel}" ] || return
-
     driver="$1"
     driver="${driver##*/}"
     driver="${driver%%.*}"
@@ -485,9 +482,9 @@ create_structure
 create_symlinks
 install_requirements
 
-if [ "$hostonly" = 1 ]; then
+if   [ -d "$moddir" ] && [ "$hostonly" = 1 ]; then
     install_hostonly_drivers
-else
+elif [ -d "$moddir" ]; then
     install_all_drivers
 fi
 

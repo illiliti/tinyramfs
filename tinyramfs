@@ -143,7 +143,7 @@ create_symlinks() {
         ln -s usr/lib lib64
         ln -s usr/bin bin
         ln -s usr/bin sbin
-        ln -s ../run var/run
+        ln -s ../run  var/run
         cd usr
         ln -s bin sbin
         ln -s lib lib64
@@ -164,26 +164,19 @@ install_devmgr() {
                 ! -path "*hwdb.d*" \
                 -type f |
 
-                cpio -pd "$workdir" > /dev/null 2>&1 ||
-                    msg panic "failed to install udev"
+                cpio -pd "$workdir" > /dev/null 2>&1 || msg panic "failed to install udev"
             ;;
         mdev)
-            install -m644 "${filesdir}/mdev.conf" \
-                "${workdir}/etc/mdev.conf"
-
-            install -Dm755 "${filesdir}/storage-device" \
-                "${workdir}/lib/mdev/storage-device"
+            install -m644  "${filesdir}/mdev.conf"      "${workdir}/etc/mdev.conf"
+            install -Dm755 "${filesdir}/storage-device" "${workdir}/lib/mdev/storage-device"
             ;;
         mdevd)
             for mdevd_binary in mdevd mdevd-coldplug; do
                 install_binary "$mdevd_binary"
             done
 
-            install -m644 "${filesdir}/mdev.conf" \
-                "${workdir}/etc/mdev.conf"
-
-            install -Dm755 "${filesdir}/storage-device" \
-                "${workdir}/lib/mdev/storage-device"
+            install -m644  "${filesdir}/mdev.conf"      "${workdir}/etc/mdev.conf"
+            install -Dm755 "${filesdir}/storage-device" "${workdir}/lib/mdev/storage-device"
             ;;
         *)
             msg panic "devmgr option broken"
@@ -204,10 +197,12 @@ install_lvm() {
     # install lvm config
     if [ "$lvm_conf" = 1 ]; then
         mkdir -p "${workdir}/etc/lvm"
+
         cp /etc/lvm/*.conf "${workdir}/etc/lvm" ||
             msg panic "failed to install LVM config"
     else
         mkdir -p "${workdir}/etc/lvm"
+
         cat << EOF > "${workdir}/etc/lvm/lvm.conf"
 devices {
     # block discard support
@@ -242,18 +237,16 @@ install_luks() {
 
     # copy luks header
     [ -f "$luks_header" ] && {
-        install -m400 "$luks_header" \
-            "${workdir}/root/luks_header" ||
-                msg panic "failed to copy LUKS header"
+        install -m400 "$luks_header" "${workdir}/root/luks_header" ||
+            msg panic "failed to copy LUKS header"
 
         luks_args="--header=/root/luks_header $luks_args"
     }
 
     # copy luks keyfile
     [ -f "$luks_keyfile" ] && {
-        install -m400 "$luks_keyfile" \
-            "${workdir}/root/luks_keyfile" ||
-                msg panic "failed to copy LUKS keyfile"
+        install -m400 "$luks_keyfile" "${workdir}/root/luks_keyfile" ||
+            msg panic "failed to copy LUKS keyfile"
 
         luks_args="--key-file=/root/luks_keyfile $luks_args"
     }
@@ -261,21 +254,19 @@ install_luks() {
 
 install_driver() {
     driver="$1"
-    driver="${driver##*/}"
-    driver="${driver%%.*}"
 
-    # TODO busybox modprobe doesn't support -S option
     modprobe -S "$kernel" -D "$driver" 2> /dev/null |
-        sed "/builtin\|net/d;s/insmod //" |
 
     while read -r full_driver; do
 
-        # check if driver already installed
-        [ -e "${workdir}${full_driver}" ] &&
-            continue
+        # strip uneeded stuff
+        full_driver="${full_driver##*builtin*}"
+        full_driver="${full_driver##*net*}"
+        full_driver="${full_driver#insmod }"
 
-        install -Dm644 "$full_driver" \
-            "${workdir}${full_driver}"
+        # check if already installed
+        [ -e "${workdir}${full_driver}" ] ||
+            install -Dm644 "$full_driver" "${workdir}${full_driver}"
     done
 }
 
@@ -292,8 +283,6 @@ install_hostonly_drivers() {
         install_driver "$alias_driver"
     done
 
-    # TODO autodetect root fs driver
-    # TODO separate root type option
     # install root fs driver
     install_driver "$root_type"
 
@@ -321,13 +310,18 @@ install_all_drivers() {
         "${modker}/kernel/drivers/virtio" \
         -type f 2> /dev/null |
 
-        while read -r path_driver; do
-            install_driver "$path_driver"
-        done
+    while read -r path_driver; do
+
+        # strip path and extension
+        path_driver="${path_driver##*/}"
+        path_driver="${path_driver%%.*}"
+
+        install_driver "$path_driver"
+    done
 }
 
 generate_depmod() {
-    msg info "running depmod"
+    msg info "generating drivers list"
 
     cp "${modker}/modules.builtin" \
        "${modker}/modules.order" \
@@ -337,33 +331,24 @@ generate_depmod() {
 }
 
 install_binary() {
-    # TODO make strip optional
-
     binary="$1"
     fullbin=$(command -v "$binary")
     workdirbin="${workdir}/usr/bin/"
 
     # check if binary exists
-    [ "$fullbin" ] ||
-        msg panic "$binary doesn't exists"
+    [ "$fullbin" ] || msg panic "$binary doesn't exists"
 
     # check if binary already installed
-    [ -e "${workdirbin}${fullbin##*/}" ] &&
-        return
+    [ -e "${workdirbin}${fullbin##*/}" ] && return
 
     # install and strip binary
-    install -s -m755 "$fullbin" \
-        "${workdirbin}${fullbin##*/}"
+    install -s -m755 "$fullbin" "${workdirbin}${fullbin##*/}"
 
     # check static
-    ldd "$fullbin" > /dev/null 2>&1 ||
-        return
+    ldd "$fullbin" > /dev/null 2>&1 || return
 
     # exract paths to libraries
-    ldd "$fullbin" |
-        sed -nr \
-        -e 's,.* (/.*lib.*/.*.so.*) .*,\1,p' \
-        -e 's,.*(/lib.*/ld.*.so.*) .*,\1,p' |
+    ldd "$fullbin" | sed -nr 's,.* (/.*lib.*/.*.so.*) .*,\1,p' |
 
     while read -r library; do
         install_library "$library"
@@ -371,39 +356,29 @@ install_binary() {
 }
 
 install_library() {
-    # TODO make strip optional
-
     library="$1"
     namelib="${library##*/}"
-    reallib=$(readlink "$library")
+    reallib="/usr/lib/$(readlink "$library")"
     fulllib=$(readlink -f "$library")
     workdirlib="${workdir}/usr/lib/"
 
-    # check symlink
-    if [ -h "$library" ]; then
+    # check if library already installed
+    [ -e "${workdirlib}${fulllib##*/}" ] &&
+    [ -e "${workdirlib}${namelib}"     ] &&
+        return
 
-        # check if library already exists
-        [ -e "${workdirlib}${fulllib##*/}" ] ||
-        [ -e "${workdirlib}${namelib}"     ] ||
-        {
-            # regular
-            install -s -m755 "${fulllib}" \
-                "${workdirlib}${fulllib##*/}"
+    # install symlinks if any
+    [ -h "$library" ] && {
 
-            # FIXME handle all symlinks
-            # symlink may link to symlink
-            [ -h "/usr/lib/${reallib}" ] &&
-                cp -a "/usr/lib/${reallib}" \
-                    "${workdirlib}"
+        # symlink may link to symlink
+        [ -h "$reallib" ] &&
+            cp -a "$reallib" "$workdirlib"
 
-            # symlink
-            cp -a "$library" "${workdirlib}"
-        }
-    else
-        [ -e "${workdirlib}${namelib}" ] ||
-            install -s -m755 "$library" \
-                "${workdirlib}${namelib}"
-        fi
+        cp -a "$library" "$workdirlib"
+    }
+
+    # install library
+    install -s -m755 "$fulllib" "${workdirlib}${fulllib##*/}"
 }
 
 install_files() {
@@ -431,14 +406,9 @@ luks_discard="$luks_discard"
 luks_args="$luks_args"
 EOF
 
-    install -m644 "${filesdir}/passwd" \
-        "$workdir/etc/passwd"
-
-    install -m644 "${filesdir}/group" \
-        "$workdir/etc/group"
-
-    install -m755 "${filesdir}/init" \
-        "$workdir/init"
+    install -m644 "${filesdir}/passwd" "${workdir}/etc/passwd"
+    install -m644 "${filesdir}/group"  "${workdir}/etc/group"
+    install -m755 "${filesdir}/init"   "${workdir}/init"
 }
 
 create_initramfs() {

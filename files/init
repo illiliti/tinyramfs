@@ -10,8 +10,11 @@ panic() {
 }
 
 parse_cmdline() {
+    # store output in variable
+    read -r cmdline < /proc/cmdline
+
     # turn output into list
-    set -- $(cat /proc/cmdline)
+    set -f && set +f -- $cmdline
 
     for line in "$@"; do
         value="${line##*=}"
@@ -93,19 +96,20 @@ findfs_sh() {
         sleep 0.5
         [ "$increment" ] || increment=0
         increment=$(( increment + 1 ))
-        [ "$increment" = 10 ] &&
-            panic "failed to lookup partition"
+        [ "$increment" = 10 ] && panic "failed to lookup partition"
     done
 
     printf "%s\n" "$device"
 }
 
 unlock_luks() {
-    [ "$luks_discard" = 1 ] &&
-        luks_args="--allow-discards $luks_args"
+    [ "$luks_discard" = 1 ] && luks_args="--allow-discards $luks_args"
 
-    cryptsetup $luks_args luksOpen $(findfs_sh "$luks_root") ${luks_name:-luks_root} ||
-        panic "failed to unlock luks container"
+    cryptsetup $luks_args \
+               luksOpen \
+               $(findfs_sh "$luks_root") \
+               ${luks_name:-luks_root} ||
+               panic "failed to unlock luks container"
 }
 
 trigger_lvm() {
@@ -119,8 +123,11 @@ trigger_lvm() {
 }
 
 mount_rootfs() {
-    mount ${root_type:+-t $root_type} ${root_opts:+-o $root_opts} $(findfs_sh "$root") /mnt/root ||
-        panic "failed to mount rootfs"
+    mount ${root_type:+-t $root_type} \
+          ${root_opts:+-o $root_opts} \
+          $(findfs_sh "$root") \
+          /mnt/root ||
+          panic "failed to mount rootfs"
 }
 
 cleanup() {
@@ -135,33 +142,28 @@ cleanup() {
 }
 
 boot_system() {
-    exec switch_root /mnt/root ${init:-/sbin/init} ||
-        panic "failed to boot system"
+    exec switch_root /mnt/root \
+                    ${init:-/sbin/init} ||
+                    panic "failed to boot system"
 }
 
 /sbin/busybox --install -s
 
-. /config ||
-    panic "failed to source config"
+. /config || panic "failed to source config"
 
 mount_pseudofs
 parse_cmdline
-
 [ "$debug" = 1 ] && set -x
-
 setup_devmgr
 
 # TODO handle situations when LUKS on LVM
-[ "$luks" =  1 ] && command -v cryptsetup > /dev/null 2>&1 &&
-    unlock_luks
+[ "$luks" =  1 ] &&
+    command -v cryptsetup > /dev/null 2>&1 && unlock_luks
 
-[ "$lvm"  =  1 ] && command -v lvm        > /dev/null 2>&1 &&
-    trigger_lvm
+[ "$lvm"  =  1 ] &&
+    command -v lvm        > /dev/null 2>&1 && trigger_lvm
 
 mount_rootfs
-
-[ "$debug" = 1 ] &&
-    panic "dropping to shell"
-
+[ "$debug" = 1 ] && panic "dropping to shell"
 cleanup
 boot_system

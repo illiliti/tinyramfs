@@ -83,6 +83,7 @@ parse_conf() {
     filesdir="${_filesdir:-./files}"
     debug="${_debug:-${debug:-0}}"
     initramfs="${_initramfs:-${initramfs:-./initramfs-${kernel}}}"
+    modker="${moddir}/${kernel}"
 }
 
 create_workdir() {
@@ -306,20 +307,18 @@ install_hostonly_drivers() {
 install_all_drivers() {
     msg info "installing all drivers"
 
-    modker="${moddir}/${kernel}/kernel"
-
     find \
-        "${modker}/arch" \
-        "${modker}/crypto" \
-        "${modker}/fs" \
-        "${modker}/lib" \
-        "${modker}/drivers/block" \
-        "${modker}/drivers/ata" \
-        "${modker}/drivers/md" \
-        "${modker}/drivers/scsi" \
-        "${modker}/drivers/usb/storage" \
-        "${modker}/drivers/usb/host" \
-        "${modker}/drivers/virtio" \
+        "${modker}/kernel/arch" \
+        "${modker}/kernel/crypto" \
+        "${modker}/kernel/fs" \
+        "${modker}/kernel/lib" \
+        "${modker}/kernel/drivers/block" \
+        "${modker}/kernel/drivers/ata" \
+        "${modker}/kernel/drivers/md" \
+        "${modker}/kernel/drivers/scsi" \
+        "${modker}/kernel/drivers/usb/storage" \
+        "${modker}/kernel/drivers/usb/host" \
+        "${modker}/kernel/drivers/virtio" \
         -type f 2> /dev/null |
 
         while read -r path_driver; do
@@ -329,8 +328,6 @@ install_all_drivers() {
 
 generate_depmod() {
     msg info "running depmod"
-
-    modker="${moddir}/${kernel}"
 
     cp "${modker}/modules.builtin" \
        "${modker}/modules.order" \

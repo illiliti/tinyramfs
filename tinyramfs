@@ -264,6 +264,9 @@ install_driver() {
         full_driver="${full_driver##*net*}"
         full_driver="${full_driver#insmod }"
 
+        # check empty
+        [ "$full_driver" ] || continue
+
         # check if already installed
         [ -e "${workdir}${full_driver}" ] ||
             install -Dm644 "$full_driver" "${workdir}${full_driver}"
@@ -348,7 +351,8 @@ install_binary() {
     ldd "$fullbin" > /dev/null 2>&1 || return
 
     # exract paths to libraries
-    ldd "$fullbin" | sed -nr 's,.* (/.*lib.*/.*.so.*) .*,\1,p' |
+    ldd "$fullbin" |
+        sed -nr 's,.* (/.*lib.*/.*.so.*) .*,\1,p;s,.*(/lib.*/ld.*.so.*) .*,\1,p' |
 
     while read -r library; do
         install_library "$library"

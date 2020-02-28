@@ -130,24 +130,15 @@ create_structure() {
 }
 
 create_symlinks() {
-    # some dynamically linked libraries and binaries compiled with hardcoded
-    # dependencies path. to make it worked we need create symlinks for them.
-    # also POSIX ln doesn't have --relative flag like in GNU ln. as workaround
-    # we change directory to workdir and make needed symlinks.
-
     msg info "creating symlinks"
 
-    (
-        cd "$workdir"
-        ln -s usr/lib lib
-        ln -s usr/lib lib64
-        ln -s usr/bin bin
-        ln -s usr/bin sbin
-        ln -s ../run  var/run
-        cd usr
-        ln -s bin sbin
-        ln -s lib lib64
-    )
+    ln -s usr/lib "${workdir}/lib"
+    ln -s usr/lib "${workdir}/lib64"
+    ln -s usr/bin "${workdir}/bin"
+    ln -s usr/bin "${workdir}/sbin"
+    ln -s ../run  "${workdir}/var/run"
+    ln -s bin     "${workdir}/usr/sbin"
+    ln -s lib     "${workdir}/usr/lib64"
 }
 
 install_devmgr() {

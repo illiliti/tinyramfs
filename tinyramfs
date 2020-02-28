@@ -443,18 +443,27 @@ create_workdir
 create_structure
 create_symlinks
 install_requirements
-
-if   [ -d "$moddir" ] && [ "$hostonly" = 1 ]; then
-    install_hostonly_drivers
-elif [ -d "$moddir" ]; then
-    install_all_drivers
-fi
-
-generate_depmod
 install_devmgr
+install_files
+
 [ "$lvm"  = 1 ] && install_lvm
 [ "$luks" = 1 ] && install_luks
-install_files
+
+# check if moddir exists
+if [ -d "$moddir" ]; then
+
+    # check hostonly mode
+    if [ "$hostonly" = 1 ]; then
+        install_hostonly_drivers
+    else
+        install_all_drivers
+    fi
+
+    generate_depmod
+else
+    msg warn "looks like you have monolithic kernel"
+fi
+
 create_initramfs
 
 msg info "done! check out $initramfs"

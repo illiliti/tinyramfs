@@ -250,7 +250,7 @@ install_driver() {
 
     while read -r full_driver; do
 
-        # strip uneeded stuff
+        # strip unneeded stuff
         full_driver="${full_driver##*builtin*}"
         full_driver="${full_driver##*net*}"
         full_driver="${full_driver#insmod }"
@@ -343,9 +343,17 @@ install_binary() {
 
     # exract paths to libraries
     ldd "$fullbin" |
-        sed -nr 's,.* (/.*lib.*/.*.so.*) .*,\1,p;s,.*(/lib.*/ld.*.so.*) .*,\1,p' |
 
     while read -r library; do
+
+        # strip unneeded stuff
+        library="${library##*vdso*}"
+        library="${library#* => }"
+        library="${library% *}"
+
+        # check empty
+        [ "$library" ] || continue
+
         install_library "$library"
     done
 }

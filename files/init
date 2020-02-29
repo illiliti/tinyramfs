@@ -10,6 +10,7 @@ panic() {
 }
 
 parse_cmdline() {
+
     # store output in variable
     read -r cmdline < /proc/cmdline
 
@@ -143,8 +144,8 @@ cleanup() {
 
 boot_system() {
     exec switch_root /mnt/root \
-                    ${init:-/sbin/init} ||
-                    panic "failed to boot system"
+                     ${init:-/sbin/init} ||
+                     panic "failed to boot system"
 }
 
 /sbin/busybox --install -s

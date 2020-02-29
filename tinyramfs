@@ -4,6 +4,7 @@
 
 msg() {
     # print message
+
     case "$1" in
         info)
             printf "info >> %s\n" "$2" >&2
@@ -22,6 +23,7 @@ msg() {
 
 usage() {
     # TODO more options
+
     cat << EOF
 usage: $0 [options]
     -o, --output <file>     output file
@@ -105,19 +107,19 @@ install_requirements() {
 
     # install user specified binaries
     [ "$binaries"       ] &&
-        for custom_binary in $binaries; do
-            install_binary "$custom_binary"
+        for _binary in $binaries; do
+            install_binary "$_binary"
         done
 
     # install util-linux binaries
     [ "$util_linux" = 1 ] &&
-        for util_linux_binary in mount blkid; do
-            install_binary "$util_linux_binary"
+        for _binary in mount blkid; do
+            install_binary "$_binary"
         done
 
     # install mandatory binaries
-    for main_binary in busybox modprobe; do
-        install_binary "$main_binary"
+    for _binary in busybox modprobe; do
+        install_binary "$_binary"
     done
 }
 
@@ -146,8 +148,8 @@ install_devmgr() {
 
     case "$devmgr" in
         udev)
-            for udev_binary in udevd udevadm dmsetup; do
-                install_binary "$udev_binary"
+            for _binary in udevd udevadm dmsetup; do
+                install_binary "$_binary"
             done
 
             find /usr/lib/udev \
@@ -162,8 +164,8 @@ install_devmgr() {
             install -Dm755 "${filesdir}/storage-device" "${workdir}/lib/mdev/storage-device"
             ;;
         mdevd)
-            for mdevd_binary in mdevd mdevd-coldplug; do
-                install_binary "$mdevd_binary"
+            for _binary in mdevd mdevd-coldplug; do
+                install_binary "$_binary"
             done
 
             install -m644  "${filesdir}/mdev.conf"      "${workdir}/etc/mdev.conf"
@@ -181,8 +183,8 @@ install_lvm() {
     install_binary lvm
 
     [ "$hostonly" = 1 ] &&
-        for lvm_driver in dm-thin-pool dm-multipath dm-snapshot dm-cache dm-log dm-mirror; do
-            install_driver "$lvm_driver"
+        for _driver in dm-thin-pool dm-multipath dm-snapshot dm-cache dm-log dm-mirror; do
+            install_driver "$_driver"
         done
 
     # install lvm config
@@ -214,8 +216,8 @@ install_luks() {
     install_binary cryptsetup
 
     [ "$hostonly" = 1 ] &&
-        for luks_driver in aes dm-crypt sha256 sha512 wp512 ecb lrw xts twofish serpent; do
-            install_driver "$luks_driver"
+        for _driver in aes dm-crypt sha256 sha512 wp512 ecb lrw xts twofish serpent; do
+            install_driver "$_driver"
         done
 
     # avoid "locking directory missing" warning
@@ -248,19 +250,19 @@ install_driver() {
 
     modprobe -S "$kernel" -D "$driver" 2> /dev/null |
 
-    while read -r full_driver; do
+    while read -r driver; do
 
         # strip unneeded stuff
-        full_driver="${full_driver##*builtin*}"
-        full_driver="${full_driver##*net*}"
-        full_driver="${full_driver#insmod }"
+        driver="${driver##*builtin*}"
+        driver="${driver##*net*}"
+        driver="${driver#insmod }"
 
         # check empty
-        [ "$full_driver" ] || continue
+        [ "$driver" ] || continue
 
-        # check if already installed
-        [ -e "${workdir}${full_driver}" ] ||
-            install -Dm644 "$full_driver" "${workdir}${full_driver}"
+        # check if driver already installed
+        [ -e "${workdir}${driver}" ] ||
+            install -Dm644 "$driver" "${workdir}${driver}"
     done
 }
 
@@ -273,8 +275,8 @@ install_hostonly_drivers() {
     # perform autodetection of drivers via /sys
     find /sys -name modalias -exec sort -u {} + |
 
-    while read -r alias_driver; do
-        install_driver "$alias_driver"
+    while read -r _driver; do
+        install_driver "$_driver"
     done
 
     # install root fs driver
@@ -282,8 +284,8 @@ install_hostonly_drivers() {
 
     # install user specified drivers
     [ "$drivers" ] &&
-        for custom_driver in $drivers; do
-            install_driver "$custom_driver"
+        for _driver in $drivers; do
+            install_driver "$_driver"
         done
 }
 
@@ -304,13 +306,13 @@ install_all_drivers() {
         "${modker}/kernel/drivers/virtio" \
         -type f 2> /dev/null |
 
-    while read -r path_driver; do
+    while read -r _driver; do
 
         # strip path and extension
-        path_driver="${path_driver##*/}"
-        path_driver="${path_driver%%.*}"
+        _driver="${_driver##*/}"
+        _driver="${_driver%%.*}"
 
-        install_driver "$path_driver"
+        install_driver "$_driver"
     done
 }
 
@@ -325,49 +327,47 @@ generate_depmod() {
 }
 
 install_binary() {
-    binary="$1"
-    fullbin=$(command -v "$binary")
+    binary=$(command -v "$1")
     workdirbin="${workdir}/usr/bin/"
 
     # check if binary exists
-    [ "$fullbin" ] || msg panic "$binary doesn't exists"
+    [ "$binary" ] || msg panic "$binary doesn't exists"
 
     # check if binary already installed
-    [ -e "${workdirbin}${fullbin##*/}" ] && return
+    [ -e "${workdirbin}${binary##*/}" ] && return
 
     # install and strip binary
-    install -s -m755 "$fullbin" "${workdirbin}${fullbin##*/}"
+    install -s -m755 "$binary" "${workdirbin}${binary##*/}"
 
     # check static
-    ldd "$fullbin" > /dev/null 2>&1 || return
+    ldd "$binary" > /dev/null 2>&1 || return
 
     # exract paths to libraries
-    ldd "$fullbin" |
+    ldd "$binary" |
 
-    while read -r library; do
+    while read -r _library; do
 
         # strip unneeded stuff
-        library="${library##*vdso*}"
-        library="${library#* => }"
-        library="${library% *}"
+        _library="${_library##*vdso*}"
+        _library="${_library#* => }"
+        _library="${_library% *}"
 
         # check empty
-        [ "$library" ] || continue
+        [ "$_library" ] || continue
 
-        install_library "$library"
+        install_library "$_library"
     done
 }
 
 install_library() {
     library="$1"
-    namelib="${library##*/}"
     reallib="/usr/lib/$(readlink "$library")"
     fulllib=$(readlink -f "$library")
     workdirlib="${workdir}/usr/lib/"
 
     # check if library already installed
     [ -e "${workdirlib}${fulllib##*/}" ] &&
-    [ -e "${workdirlib}${namelib}"     ] &&
+    [ -e "${workdirlib}${library##*/}" ] &&
         return
 
     # install symlinks if any

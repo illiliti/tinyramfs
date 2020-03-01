@@ -10,8 +10,10 @@ msg() {
             printf "info >> %s\n" "$2" >&2
             ;;
         warn)
-            printf "warning >> %s\n" "$2" >&2
-            printf "do you want to continue? press enter or ctrl+c to exit\n"
+            printf "warning >> %s\n" "$2" \
+                   "are you sure you want to continue?" \
+                   "press enter to continue or ctrl+c to exit" >&2
+
             read -r _
             ;;
         panic)
@@ -157,7 +159,7 @@ install_devmgr() {
                 ! -path "*hwdb.d*" \
                 -type f |
 
-                cpio -pd "$workdir" > /dev/null 2>&1 || msg panic "failed to install udev"
+            cpio -pd "$workdir" > /dev/null 2>&1 || msg panic "failed to install udev"
             ;;
         mdev)
             install -m644  "${filesdir}/mdev.conf"      "${workdir}/etc/mdev.conf"
@@ -418,16 +420,16 @@ create_initramfs() {
     msg info "creating initramfs image"
 
     # TODO add uncompressed option
-    # TODO remove grouping
 
-    {
-        (
-            cd "$workdir"
-            find . | cpio -oH newc | ${compress:-gzip -9}
+    # check if image already exist
+    [ -e "$initramfs" ] &&
+        msg warn "looks like you already have initramfs image"
 
-        ) | tee "$initramfs"
+    (
+        cd "$workdir"
+        find . | cpio -oH newc | ${compress:-gzip -9}
 
-    } > /dev/null 2>&1 ||
+    ) > "$initramfs" 2> /dev/null ||
         msg panic "failed to generate initramfs image"
 }
 
@@ -437,14 +439,14 @@ create_initramfs() {
 parse_args "$@"
 parse_conf
 
-# remove workdir on exit or unexpected error
-trap remove_workdir EXIT INT
+# remove workdir on exit
+trap remove_workdir EXIT
 
 [ "$debug" = 1 ] && {
     # debug shell commands
     set -x
     # don't remove anything
-    trap - EXIT INT
+    trap - EXIT
 }
 
 create_workdir

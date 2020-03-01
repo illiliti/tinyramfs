@@ -439,14 +439,20 @@ create_initramfs() {
 parse_args "$@"
 parse_conf
 
-# remove workdir on exit
-trap remove_workdir EXIT
+# remove workdir on signals
+# we are doing unset EXIT signal to avoid endless loop
+# because afterwards we execute 'exit' command.
+# also some shells (dash,mksh,etc) doesn't exit on INT
+# signal. as workaround we manually execute exit command.
+# tested bash,dash,mksh,busybox sh
+# TODO fix zsh, ref https://www.zsh.org/mla/users/2015/msg00436.html
+trap "remove_workdir && trap - EXIT && exit" EXIT INT TERM HUP
 
 [ "$debug" = 1 ] && {
     # debug shell commands
     set -x
     # don't remove anything
-    trap - EXIT
+    trap - EXIT INT TERM HUP
 }
 
 create_workdir

@@ -34,6 +34,7 @@ usage: $0 [options]
     -k, --kernel <ver>      kernel version
     -f, --files  <dir>      files directory
     -d, --debug   0|1       debug mode
+    -f, --force   0|1       overwrite existing initramfs image
 
 EOF
 }
@@ -65,6 +66,10 @@ parse_args() {
                 _debug="${2:?}"
                 shift 2
                 ;;
+            -f | --force)
+                _force="${2:?}"
+                shift 2
+                ;;
             -h | --help)
                 usage
                 exit 0
@@ -86,6 +91,7 @@ parse_conf() {
     moddir="${_moddir:-${moddir:-/lib/modules}}"
     filesdir="${_filesdir:-./files}"
     debug="${_debug:-${debug:-0}}"
+    force="${_force:-${force:-0}}"
     initramfs="${_initramfs:-${initramfs:-./initramfs-${kernel}}}"
     modker="${moddir}/${kernel}"
 }
@@ -128,8 +134,8 @@ install_requirements() {
 create_structure() {
     msg info "creating directory structure"
 
-    for dir in dev tmp var run etc usr/lib usr/bin mnt/root proc root sys; do
-        mkdir -p "${workdir}/${dir}"
+    for _dir in dev tmp var run etc usr/lib usr/bin mnt/root proc root sys; do
+        mkdir -p "${workdir}/${_dir}"
     done
 }
 
@@ -422,7 +428,7 @@ create_initramfs() {
     # TODO add uncompressed option
 
     # check if image already exist
-    [ -e "$initramfs" ] &&
+    [ ! "$force" = 1 ] && [ -e "$initramfs" ] &&
         msg warn "looks like you already have initramfs image"
 
     (

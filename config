@@ -44,6 +44,9 @@
 # custom drivers
 #drivers=""
 
+# exclude drivers
+#drivers_exclude=""
+
 # custom binaries
 #binaries=""
 

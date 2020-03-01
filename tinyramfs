@@ -32,7 +32,7 @@ usage: $0 [options]
     -c, --config <file>     config file
     -m, --moddir <dir>      drivers directory
     -k, --kernel <ver>      kernel version
-    -f, --files  <dir>      files directory
+    -F, --files  <dir>      files directory
     -d, --debug   0|1       debug mode
     -f, --force   0|1       overwrite existing initramfs image
 
@@ -58,7 +58,7 @@ parse_args() {
                 _kernel="${2:?}"
                 shift 2
                 ;;
-            -f | --files)
+            -F | --files)
                 _filesdir="${2:?}"
                 shift 2
                 ;;
@@ -264,6 +264,12 @@ install_driver() {
         driver="${driver##*builtin*}"
         driver="${driver##*net*}"
         driver="${driver#insmod }"
+
+        # exclude user specified drivers
+        [ "$drivers_exclude" ] &&
+            for _exclude_driver in $drivers_exclude; do
+                driver="${driver##*${_exclude_driver}*}"
+            done
 
         # check empty
         [ "$driver" ] || continue

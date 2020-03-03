@@ -472,7 +472,6 @@ create_structure
 create_symlinks
 install_requirements
 install_devmgr
-install_files
 
 [ "$lvm"  = 1 ] && install_lvm
 [ "$luks" = 1 ] && install_luks
@@ -492,6 +491,7 @@ else
     msg warn "looks like you have monolithic kernel"
 fi
 
+install_files
 create_initramfs
 
 msg info "done! check out $initramfs"

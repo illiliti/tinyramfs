@@ -28,13 +28,13 @@ usage() {
 
     cat << EOF
 usage: $0 [options]
-    -o, --output <file>     output file
-    -c, --config <file>     config file
-    -m, --moddir <dir>      drivers directory
-    -k, --kernel <ver>      kernel version
-    -F, --files  <dir>      files directory
-    -d, --debug   0|1       debug mode
-    -f, --force   0|1       overwrite existing initramfs image
+    -o, --output <file>  set initramfs image path
+    -c, --config <file>  set config file path
+    -m, --moddir <dir>   specify drivers directory
+    -k, --kernel <ver>   set kernel version
+    -F, --files  <dir>   specify files directory
+    -d, --debug          enable debug mode
+    -f, --force          overwrite existing initramfs image
 
 EOF
 }
@@ -63,12 +63,12 @@ parse_args() {
                 shift 2
                 ;;
             -d | --debug)
-                _debug="${2:?}"
-                shift 2
+                _debug=1
+                shift 1
                 ;;
             -f | --force)
-                _force="${2:?}"
-                shift 2
+                _force=1
+                shift 1
                 ;;
             -h | --help)
                 usage
@@ -434,7 +434,7 @@ create_initramfs() {
     # TODO add uncompressed option
 
     # check if image already exist
-    [ ! "$force" = 1 ] && [ -e "$initramfs" ] &&
+    [ "$force" = 0 ] && [ -e "$initramfs" ] &&
         msg warn "looks like you already have initramfs image"
 
     (

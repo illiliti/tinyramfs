@@ -1,5 +1,5 @@
 # initramfs
-Just another one implemetation of initramfs
+Tiny initramfs for suckless systems
 
 Features
 --------
@@ -7,7 +7,7 @@ Features
 - Easy configuration
 - LUKS
 - LVM
-- mdev,mdevd and eudev
+- mdev, mdevd, eudev
 
 Installation
 ------------
@@ -15,15 +15,14 @@ Requirements:
 * busybox
   - --install [-s] [DIR]
   - mdev
-  - uevent
   - switch_root
   - mount
   - umount
   - blkid
 * kmod
-* cryptsetup - LUKS 
+* cryptsetup - LUKS
 * lvm2 - LVM
-* util-linux - PARTUUID 
+* util-linux - PARTUUID
 
 Download & Setup:
 ```

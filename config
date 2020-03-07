@@ -14,6 +14,9 @@
 # custom output name
 #initramfs=""
 
+# custom drivers directory
+#moddir=""
+
 # custom kernel version
 #kernel=""
 
@@ -30,9 +33,7 @@
 # root options
 #root_opts=""
 
-# disable this if you want to get rid of util-linux
-# NOTE busybox util-linux implemetation doesn't have
-# PARTUUID support and proper filesystem type autodetection
+# util-linux binaries
 #util_linux=0
 
 # device manager ( mdev,mdevd,udev )

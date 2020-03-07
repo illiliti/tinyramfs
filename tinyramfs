@@ -28,13 +28,13 @@ usage() {
 
     cat << EOF
 usage: $0 [options]
-    -o, --output <file>  set initramfs image path
-    -c, --config <file>  set config file path
-    -m, --moddir <dir>   specify drivers directory
-    -k, --kernel <ver>   set kernel version
-    -F, --files  <dir>   specify files directory
-    -d, --debug          enable debug mode
-    -f, --force          overwrite existing initramfs image
+       -o, --output <file>  set initramfs image name
+       -c, --config <file>  set config file path
+       -m, --moddir <dir>   set drivers directory
+       -k, --kernel <ver>   set kernel version
+       -F, --files  <dir>   set files directory
+       -d, --debug          enable debug mode
+       -f, --force          overwrite existing initramfs image
 
 EOF
 }
@@ -470,8 +470,6 @@ trap "remove_workdir && trap - EXIT && exit" EXIT INT TERM HUP
 create_workdir
 create_structure
 create_symlinks
-install_requirements
-install_devmgr
 
 [ "$lvm"  = 1 ] && install_lvm
 [ "$luks" = 1 ] && install_luks
@@ -491,7 +489,9 @@ else
     msg warn "looks like you have monolithic kernel"
 fi
 
+install_devmgr
 install_files
+install_requirements
 create_initramfs
 
 msg info "done! check out $initramfs"

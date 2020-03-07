@@ -6,7 +6,7 @@ panic() {
     printf "panic >> %s\n" "$1"
 
     # TODO fix job control
-    sh -l
+    sh
 }
 
 parse_cmdline() {
@@ -36,10 +36,10 @@ parse_cmdline() {
             luks.discard) luks_discard="$value" ;;
             luks.args)    luks_args="$value"    ;;
             # TODO implement
-            #lvm.discard) ;;
-            #lvm.conf) ;;
-            #luks_header) ;;
-            #luks_keyfile) ;;
+            #lvm.discard)  ;;
+            #lvm.config)   ;;
+            #luks.header)  ;;
+            #luks.keyfile) ;;
         esac
     done
 }
@@ -59,17 +59,10 @@ setup_devmgr() {
             udevadm settle
             ;;
         mdev)
-            uevent mdev &
-            mdev -s
-
-            for device in /sys/bus/usb/devices/*; do
-                case "${device##*/}" in [0-9]*-[0-9]*)
-                    printf add > "${device}/uevent" ;;
-                esac
-            done
+            mdev -df &
 
             find /sys -name modalias -type f -exec sort -u {} + |
-                xargs modprobe -b > /dev/null 2>&1
+                xargs modprobe -ba
             ;;
         mdevd)
             mdevd &
@@ -134,7 +127,7 @@ mount_rootfs() {
 cleanup() {
     case "$devmgr" in
         udev)  udevadm control -e ;;
-        mdev)  killall uevent     ;;
+        mdev)  killall mdev       ;;
         mdevd) killall mdevd      ;;
     esac
 

@@ -89,7 +89,7 @@ parse_conf() {
 
     kernel="${_kernel:-${kernel:-$(uname -r)}}"
     moddir="${_moddir:-${moddir:-/lib/modules}}"
-    filesdir="${_filesdir:-./files}"
+    filesdir="${_filesdir:-./usr/share/tinyramfs}"
     debug="${_debug:-${debug:-0}}"
     force="${_force:-${force:-0}}"
     initramfs="${_initramfs:-${initramfs:-./initramfs-${kernel}}}"

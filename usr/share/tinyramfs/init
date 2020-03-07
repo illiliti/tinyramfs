@@ -53,7 +53,7 @@ mount_pseudofs() {
 setup_devmgr() {
     case "$devmgr" in
         udev)
-            udevd -d
+            udevd -d -N never
             udevadm trigger -c add -t subsystems
             udevadm trigger -c add -t devices
             udevadm settle

@@ -23,7 +23,7 @@ msg() {
 
 usage() {
     cat << EOF
-usage: $0 [options]
+usage: $0 [option...]
        -o, --output <file>  set initramfs image name
        -c, --config <file>  set config file path
        -m, --moddir <dir>   set drivers directory
@@ -199,11 +199,6 @@ install_lvm() {
 
     install_binary lvm
 
-    [ "$hostonly" = 1 ] &&
-        for _driver in dm-thin-pool dm-multipath dm-snapshot dm-cache dm-log dm-mirror; do
-            install_driver "$_driver"
-        done
-
     # install lvm config
     if [ "$lvm_config" = 1 ]; then
         mkdir -p "${workdir}/etc/lvm"
@@ -230,11 +225,6 @@ install_luks() {
     msg info "installing LUKS"
 
     install_binary cryptsetup
-
-    [ "$hostonly" = 1 ] &&
-        for _driver in aes dm-crypt sha256 sha512 wp512 ecb lrw xts twofish serpent; do
-            install_driver "$_driver"
-        done
 
     # avoid libgcc_s.so.1 missing error
     # see https://bugs.archlinux.org/task/56771
@@ -467,20 +457,30 @@ create_symlinks
 [ "$lvm"  = 1 ] && install_lvm
 [ "$luks" = 1 ] && install_luks
 
-# check if moddir exists
-if [ -d "$moddir" ]; then
+# check monotihic kernel
+[ "$monolith" != 1 ] && [ -d "$moddir" ] && {
 
     # check hostonly mode
     if [ "$hostonly" = 1 ]; then
         install_hostonly_drivers
+
+        # install lvm drivers
+        [ "$lvm" = 1 ] &&
+            for _driver in dm-thin-pool dm-multipath dm-snapshot dm-cache dm-log dm-mirror; do
+                install_driver "$_driver"
+            done
+
+        # install luks drivers
+        [ "$luks" = 1 ] &&
+            for _driver in aes dm-crypt sha256 sha512 wp512 ecb lrw xts twofish serpent; do
+                install_driver "$_driver"
+            done
     else
         install_all_drivers
     fi
 
     generate_depmod
-else
-    msg warn "looks like you have monolithic kernel"
-fi
+}
 
 install_devmgr
 install_files

@@ -14,6 +14,9 @@
 # initramfs name
 #initramfs=""
 
+# monolithic kernel
+#monolith=""
+
 # drivers directory
 #moddir=""
 

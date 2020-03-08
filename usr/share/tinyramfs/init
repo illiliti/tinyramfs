@@ -89,7 +89,9 @@ findfs_sh() {
 }
 
 unlock_luks() {
-    [ "$luks_discard" = 1 ] && luks_args="--allow-discards $luks_args"
+    [ "$luks_discard" = 1   ] && luks_args="--allow-discards $luks_args"
+    [ -f /root/luks_header  ] && luks_args="--header=/root/luks_header $luks_args"
+    [ -f /root/luks_keyfile ] && luks_args="--key-file=/root/luks_keyfile $luks_args"
 
     cryptsetup $luks_args \
                luksOpen \
@@ -127,9 +129,10 @@ cleanup() {
 }
 
 boot_system() {
-    exec switch_root /mnt/root \
-                     ${init:-/sbin/init} ||
-                     panic "failed to boot system"
+    exec switch_root \
+         /mnt/root \
+         ${init:-/sbin/init} ||
+         panic "failed to boot system"
 }
 
 /sbin/busybox --install -s

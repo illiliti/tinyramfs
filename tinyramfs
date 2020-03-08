@@ -245,16 +245,12 @@ install_luks() {
         install_library /usr/lib/libgcc_s.so.1
 
     # copy luks header
-    [ -f "$luks_header" ] && {
+    [ -f "$luks_header" ] &&
         install -m400 "$luks_header" "${workdir}/root/luks_header"
-        luks_args="--header=/root/luks_header $luks_args"
-    }
 
     # copy luks keyfile
-    [ -f "$luks_keyfile" ] && {
+    [ -f "$luks_keyfile" ] &&
         install -m400 "$luks_keyfile" "${workdir}/root/luks_keyfile"
-        luks_args="--key-file=/root/luks_keyfile $luks_args"
-    }
 }
 
 install_driver() {

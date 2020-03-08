@@ -40,10 +40,25 @@ parse_cmdline() {
     done
 }
 
-mount_pseudofs() {
-    mount -t proc     none /proc
-    mount -t sysfs    none /sys
-    mount -t devtmpfs none /dev
+prepare_environment() {
+    /sbin/busybox --install -s
+
+    . /config || panic "failed to source config"
+
+    mount -t proc     -o nosuid,noexec,nodev     proc /proc
+    mount -t sysfs    -o nosuid,noexec,nodev     sys  /sys
+    mount -t tmpfs    -o mode=0755,nosuid,nodev  run  /run
+    mount -t devtmpfs -o mode=0755,noexec,nosuid dev  /dev
+
+    mkdir -pm 0755 /run/cryptsetup /run/lvm /dev/pts /dev/shm
+
+    mount -t devpts -o gid=5,mode=620,noexec,nosuid  devpts /dev/pts
+    mount -t tmpfs  -o mode=1777,noexec,nosuid,nodev shm    /dev/shm
+
+    ln -s /proc/self/fd   /dev/fd
+    ln -s /proc/self/fd/0 /dev/stdin
+    ln -s /proc/self/fd/1 /dev/stdout
+    ln -s /proc/self/fd/2 /dev/stderr
 }
 
 setup_devmgr() {
@@ -135,11 +150,7 @@ boot_system() {
          panic "failed to boot system"
 }
 
-/sbin/busybox --install -s
-
-. /config || panic "failed to source config"
-
-mount_pseudofs
+prepare_environment
 parse_cmdline
 [ "$debug" = 1 ] && set -x
 setup_devmgr

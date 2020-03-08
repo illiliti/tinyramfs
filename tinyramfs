@@ -95,7 +95,7 @@ prepare_environment() {
     elif [ -d /usr/share/tinyramfs ]; then
         filesdir="/usr/share/tinyramfs"
     elif [ -d ./usr/share/tinyramfs ]; then
-        filesdir="./usr/share/initramfs"
+        filesdir="./usr/share/tinyramfs"
     else
         msg panic "failed to find required files"
     fi
@@ -236,11 +236,8 @@ install_luks() {
             install_driver "$_driver"
         done
 
-    # avoid "locking directory missing" warning
-    # message and libgcc_s.so.1 missing error
+    # avoid libgcc_s.so.1 missing error
     # see https://bugs.archlinux.org/task/56771
-    mkdir -p "${workdir}/run/cryptsetup"
-
     [ -e /usr/lib/libgcc_s.so.1 ] &&
         install_library /usr/lib/libgcc_s.so.1
 

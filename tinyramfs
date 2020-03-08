@@ -165,7 +165,7 @@ install_devmgr() {
                 ! -path "*hwdb.d*" \
                 -type f |
 
-            cpio -pd "$workdir" > /dev/null 2>&1 || msg panic "failed to install udev"
+            cpio -pd "$workdir" > /dev/null 2>&1
             ;;
         mdev)
             install -m644  "${filesdir}/mdev.conf"      "${workdir}/etc/mdev.conf"
@@ -178,9 +178,6 @@ install_devmgr() {
 
             install -m644  "${filesdir}/mdev.conf"      "${workdir}/etc/mdev.conf"
             install -Dm755 "${filesdir}/storage-device" "${workdir}/lib/mdev/storage-device"
-            ;;
-        *)
-            msg panic "devmgr option broken"
             ;;
     esac
 }
@@ -196,11 +193,10 @@ install_lvm() {
         done
 
     # install lvm config
-    if [ "$lvm_conf" = 1 ]; then
+    if [ "$lvm_config" = 1 ]; then
         mkdir -p "${workdir}/etc/lvm"
 
-        cp /etc/lvm/*.conf "${workdir}/etc/lvm" ||
-            msg panic "failed to install LVM config"
+        cp /etc/lvm/*.conf "${workdir}/etc/lvm"
     else
         mkdir -p "${workdir}/etc/lvm"
 
@@ -238,17 +234,13 @@ install_luks() {
 
     # copy luks header
     [ -f "$luks_header" ] && {
-        install -m400 "$luks_header" "${workdir}/root/luks_header" ||
-            msg panic "failed to copy LUKS header"
-
+        install -m400 "$luks_header" "${workdir}/root/luks_header"
         luks_args="--header=/root/luks_header $luks_args"
     }
 
     # copy luks keyfile
     [ -f "$luks_keyfile" ] && {
-        install -m400 "$luks_keyfile" "${workdir}/root/luks_keyfile" ||
-            msg panic "failed to copy LUKS keyfile"
-
+        install -m400 "$luks_keyfile" "${workdir}/root/luks_keyfile"
         luks_args="--key-file=/root/luks_keyfile $luks_args"
     }
 }
@@ -283,18 +275,12 @@ install_driver() {
 install_hostonly_drivers() {
     msg info "installing hostonly drivers"
 
-    [ "$root_type" ] ||
-        msg panic "hostonly mode required root_type option to be configured"
-
     # perform autodetection of drivers via /sys
     find /sys -name modalias -exec sort -u {} + |
 
     while read -r _driver; do
         install_driver "$_driver"
     done
-
-    # install root fs driver
-    install_driver "$root_type"
 
     # install user specified drivers
     [ "$drivers" ] &&

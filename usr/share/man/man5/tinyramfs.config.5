@@ -1,0 +1,172 @@
+.TH tinyramfs 5 "March 2020" tinyramfs
+
+.SH NAME
+tinyramfs \- configuration options
+
+.SH GENERAL
+.TP
+.BR \fBdebug=\fR"\&\fI {0|1} \fR\&"
+Enable shell debugging
+
+This option also drop you to shell after root partition being mounted in initramfs
+.TP
+
+.TP
+.BR \fBforce=\fR"\&\fI {0|1} \fR\&"
+Disable warning about exists initramfs image
+.TP
+
+.TP
+.BR \fBinit=\fR"\&\fI /path/to/file \fR\&"
+Specify init program
+.TP
+
+.TP
+.BR \fBinitramfs=\fR"\&\fI /path/to/file \fR\&"
+Specify initramfs output name
+.TP
+
+.TP
+.BR \fBmoddir=\fR"\&\fI /path/to/dir \fR\&"
+Specify directory of drivers
+.TP
+
+.TP
+.BR \fBkernel=\fR"\&\fI ... \fR\&"
+Specify kernel version
+.TP
+
+.TP
+.BR \fBcompress=\fR"\&\fI ... \fR\&"
+Specify compression program
+.TP
+
+.TP
+.BR \fBroot=\fR"\&\fI ... \fR\&"
+Specify root partition [PARTUUID, UUID, LABEL, DEVICE]
+
+This option is required
+.TP
+
+.TP
+.BR \fBroot_type=\fR"\&\fI ... \fR\&"
+Specify root partition type
+.TP
+
+.TP
+.BR \fBroot_opts=\fR"\&\fI ... \fR\&"
+Specify root partition mount options (comma separated)
+.TP
+
+.TP
+.BR \fButil_linux=\fR"\&\fI {0|1} \fR\&"
+Include util-linux binaries
+
+This option required if you need PARTUUID support
+.TP
+
+.TP
+.BR \fBdevmgr=\fR"\&\fI ... \fR\&"
+Specify device manager [udev, mdev, mdevd]
+
+This option is required
+.TP
+
+.TP
+.BR \fBhostonly=\fR"\&\fI {0|1} \fR\&"
+Enable hostonly mode
+.TP
+
+.TP
+.BR \fBdrivers=\fR"\&\fI ... \fR\&"
+Include additional drivers (space separated)
+
+If host only mode enabled you need to specify your root partition driver
+.TP
+
+.TP
+.BR \fBdrivers_exclude=\fR"\&\fI ... \fR\&"
+Exclude specified drivers (space separated)
+.TP
+
+.TP
+.BR \fBbinaries=\fR"\&\fI ... \fR\&"
+Include additional binaries (space separated)
+.TP
+
+.SH LVM
+
+.TP
+.BR \fBlvm=\fR"\&\fI {0|1} \fR\&"
+Enable LVM support
+
+This option required if you need LVM support
+.TP
+
+.TP
+.BR \fBlvm_name=\fR"\&\fI ... \fR\&"
+Specify logical volume name
+.TP
+
+.TP
+.BR \fBlvm_group=\fR"\&\fI ... \fR\&"
+Specify volume group name
+.TP
+
+.TP
+.BR \fBlvm_config=\fR"\&\fI {0|1} \fR\&"
+Include config from /etc/lvm
+
+This option overwrite lvm_discard option
+.TP
+
+.TP
+.BR \fBlvm_discard=\fR"\&\fI {0|1} \fR\&"
+Enable TRIM requests
+.TP
+
+.TP
+.BR \fBlvm_args=\fR"\&\fI ... \fR\&"
+Pass additional options to lvm
+.TP
+
+.SH LUKS
+
+.TP
+.BR \fBluks=\fR"\&\fI {0|1} \fR\&"
+Enable LUKS support
+
+This option required if you need LUKS support
+.TP
+
+.TP
+.BR \fBluks_root=\fR"\&\fI ... \fR\&"
+Specify encrypted root partition [PARTUUID, UUID, LABEL, DEVICE]
+
+This option required if you need LUKS support
+.TP
+
+.TP
+.BR \fBluks_name=\fR"\&\fI ... \fR\&"
+Specify device mapper name
+.TP
+
+.TP
+.BR \fBluks_header=\fR"\&\fI /path/to/file \fR\&"
+Embed header into initramfs
+.TP
+
+.TP
+.BR \fBluks_keyfile=\fR"\&\fI /path/to/file \fR\&"
+Embed key into initramfs
+.TP
+
+.TP
+.BR \fBluks_discard=\fR"\&\fI {0|1} \fR\&"
+Enable TRIM requests
+.TP
+
+.TP
+.BR \fBluks_args=\fR"\&\fI ... \fR\&"
+Pass additional options to cryptsetup
+.TP

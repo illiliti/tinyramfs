@@ -68,9 +68,6 @@ setup_devmgr() {
             mdevd &
             mdevd-coldplug
             ;;
-        *)
-            panic "devmgr option broken"
-            ;;
     esac
 }
 
@@ -82,7 +79,6 @@ findfs_sh() {
         UUID)     device="/dev/disk/by-uuid/${value}"     ;;
         PARTUUID) device="/dev/disk/by-partuuid/${value}" ;;
         /dev/*)   device="$1"                             ;;
-        *)        panic "findfs option broken"            ;;
     esac
 
     # avoid race condition
@@ -131,7 +127,6 @@ cleanup() {
         mdevd) killall mdevd      ;;
     esac
 
-    # unmount pseudofs's
     umount /dev /sys /proc
 }
 

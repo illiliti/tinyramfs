@@ -1,0 +1,102 @@
+.TH tinyramfs 7 "March 2020" tinyramfs
+
+.SH NAME
+tinyramfs \- kernel command line options
+
+.SH GENERAL
+
+.TP
+.BR \fBdebug=\fR"\&\fI {0|1} \fR\&"
+Enable shell debugging
+
+This option also drop you to shell after root partition being mounted
+.TP
+
+.TP
+.BR \fBinit=\fR"\&\fI /path/to/file \fR\&"
+Specify init program
+.TP
+
+.TP
+.BR \fBroot=\fR"\&\fI ... \fR\&"
+Specify root partition [PARTUUID, UUID, LABEL, DEVICE]
+.TP
+
+.TP
+.BR \fBroot.type=\fR"\&\fI ... \fR\&"
+Specify root partition type
+.TP
+
+.TP
+.BR \fBroot.opts=\fR"\&\fI ... \fR\&"
+Specify root partition mount options (comma separated)
+.TP
+
+.SH LVM
+
+.TP
+.BR \fBlvm=\fR"\&\fI {0|1} \fR\&"
+Enable LVM support
+.TP
+
+.TP
+.BR \fBlvm.name=\fR"\&\fI ... \fR\&"
+Specify logical volume name
+.TP
+
+.TP
+.BR \fBlvm.group=\fR"\&\fI ... \fR\&"
+Specify volume group name
+.TP
+
+.TP
+.BR \fBlvm.config=\fR"\&\fI {0|1} \fR\&"
+Not implemented
+.TP
+
+.TP
+.BR \fBlvm.discard=\fR"\&\fI {0|1} \fR\&"
+Not implemented
+.TP
+
+.TP
+.BR \fBlvm.args=\fR"\&\fI ... \fR\&"
+Pass additional options to lvm
+.TP
+
+.SH LUKS
+
+.TP
+.BR \fBluks=\fR"\&\fI {0|1} \fR\&"
+Enable LUKS support
+.TP
+
+.TP
+.BR \fBluks.root=\fR"\&\fI ... \fR\&"
+Specify encrypted root partition [PARTUUID, UUID, LABEL, DEVICE]
+.TP
+
+.TP
+.BR \fBluks.name=\fR"\&\fI ... \fR\&"
+Specify device mapper name
+.TP
+
+.TP
+.BR \fBluks.header=\fR"\&\fI /path/to/file \fR\&"
+Not implemented
+.TP
+
+.TP
+.BR \fBluks.keyfile=\fR"\&\fI /path/to/file \fR\&"
+Not implemented
+.TP
+
+.TP
+.BR \fBluks.discard=\fR"\&\fI {0|1} \fR\&"
+Enable TRIM requests
+.TP
+
+.TP
+.BR \fBluks.args=\fR"\&\fI ... \fR\&"
+Pass additional options to cryptsetup
+.TP

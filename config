@@ -5,29 +5,28 @@
 # debug mode
 #debug=0
 
-# overwrite existing initramfs image
+# overwrite initramfs
 #force=0
 
-# custom init
+# init
 #init=""
 
-# custom output name
+# initramfs name
 #initramfs=""
 
-# custom drivers directory
+# drivers directory
 #moddir=""
 
-# custom kernel version
+# kernel version
 #kernel=""
 
-# custom compression program
+# compression program
 #compress=""
 
-# root fs ( device,partuuid,uuid,label )
+# root
 #root=""
 
 # root type
-# change this if you using busybox util-linux
 #root_type=""
 
 # root options
@@ -36,19 +35,19 @@
 # util-linux binaries
 #util_linux=0
 
-# device manager ( mdev,mdevd,udev )
+# device manager
 #devmgr=""
 
 # hostonly mode
 #hostonly=0
 
-# custom drivers
+# additional drivers
 #drivers=""
 
 # exclude drivers
 #drivers_exclude=""
 
-# custom binaries
+# additional binaries
 #binaries=""
 
 # LVM support
@@ -60,8 +59,8 @@
 # LVM volume group name
 #lvm_group=""
 
-# LVM include config
-#lvm_conf=0
+# LVM config
+#lvm_config=0
 
 # LVM issue_discards
 #lvm_discard=0
@@ -72,10 +71,10 @@
 # LUKS support
 #luks=0
 
-# LUKS encrypted root ( device,partuuid,uuid,label )
+# LUKS encrypted root
 #luks_root=""
 
-# luks mapper name ( /dev/mapper/<name> )
+# LUKS mapper name
 #luks_name=""
 
 # LUKS detached header

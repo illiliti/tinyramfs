@@ -10,11 +10,7 @@ panic() {
 }
 
 parse_cmdline() {
-
-    # store output in variable
     read -r cmdline < /proc/cmdline
-
-    # turn output into list
     set -f && set +f -- $cmdline
 
     for line in "$@"; do

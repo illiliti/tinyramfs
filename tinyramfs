@@ -3,8 +3,6 @@
 # tiny initramfs generation tool
 
 msg() {
-    # print message
-
     case "$1" in
         info)
             printf "info >> %s\n" "$2" >&2
@@ -24,8 +22,6 @@ msg() {
 }
 
 usage() {
-    # TODO more options
-
     cat << EOF
 usage: $0 [options]
        -o, --output <file>  set initramfs image name
@@ -34,7 +30,7 @@ usage: $0 [options]
        -k, --kernel <ver>   set kernel version
        -F, --files  <dir>   set files directory
        -d, --debug          enable debug mode
-       -f, --force          overwrite existing initramfs image
+       -f, --force          overwrite initramfs image
 
 EOF
 }
@@ -83,16 +79,32 @@ parse_args() {
     done
 }
 
-parse_conf() {
-    . "${_config:-./config}" ||
-        msg panic "failed to parse config"
+prepare_environment() {
+    if [ -f "$_config" ]; then
+        . "$_config"
+    elif [ -f /etc/tinyramfs/config ]; then
+        . /etc/tinyramfs/config
+    elif [ -f ./config ]; then
+        . ./config
+    else
+        msg panic "failed to source config"
+    fi
+
+    if [ -d "$_filesdir" ]; then
+        filesdir="$_filesdir"
+    elif [ -d /usr/share/tinyramfs ]; then
+        filesdir="/usr/share/tinyramfs"
+    elif [ -d ./usr/share/tinyramfs ]; then
+        filesdir="./usr/share/initramfs"
+    else
+        msg panic "failed to find required files"
+    fi
 
     kernel="${_kernel:-${kernel:-$(uname -r)}}"
     moddir="${_moddir:-${moddir:-/lib/modules}}"
-    filesdir="${_filesdir:-./usr/share/tinyramfs}"
     debug="${_debug:-${debug:-0}}"
     force="${_force:-${force:-0}}"
-    initramfs="${_initramfs:-${initramfs:-./initramfs-${kernel}}}"
+    initramfs="${_initramfs:-${initramfs:-/tmp/initramfs-${kernel}}}"
     modker="${moddir}/${kernel}"
 }
 
@@ -125,7 +137,7 @@ install_requirements() {
             install_binary "$_binary"
         done
 
-    # install mandatory binaries
+    # install required binaries
     for _binary in busybox modprobe; do
         install_binary "$_binary"
     done
@@ -387,7 +399,7 @@ install_library() {
 install_files() {
     msg info "installing files"
 
-    cat << EOF > "${workdir}/config"
+    cat > "${workdir}/config" << EOF
 debug="$debug"
 init="$init"
 root="$root"
@@ -435,11 +447,11 @@ create_initramfs() {
 [ "$(id -u)" = 0 ] || msg panic "must be run as root"
 
 parse_args "$@"
-parse_conf
+prepare_environment
 
 # remove workdir on signals
 # we are doing unset EXIT signal to avoid endless loop
-# because afterwards we execute 'exit' command.
+# because afterwards we execute exit command.
 # also some shells (dash,mksh,etc) doesn't exit on INT
 # signal. as workaround we manually execute exit command.
 # tested bash,dash,mksh,busybox sh
@@ -447,8 +459,10 @@ parse_conf
 trap "remove_workdir && trap - EXIT && exit" EXIT INT TERM HUP
 
 [ "$debug" = 1 ] && {
+
     # debug shell commands
     set -x
+
     # don't remove anything
     trap - EXIT INT TERM HUP
 }

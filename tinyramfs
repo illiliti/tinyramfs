@@ -80,25 +80,13 @@ parse_args() {
 }
 
 prepare_environment() {
-    if [ -f "$_config" ]; then
-        . "$_config"
-    elif [ -f /etc/tinyramfs/config ]; then
-        . /etc/tinyramfs/config
-    elif [ -f ./config ]; then
-        . ./config
-    else
-        msg panic "failed to source config"
-    fi
+    for _file in $_config /etc/tinyramfs/config ./config; do
+        [ -f "$_file" ] && . "$_file" && break
+    done || msg panic "failed to source config"
 
-    if [ -d "$_filesdir" ]; then
-        filesdir="$_filesdir"
-    elif [ -d /usr/share/tinyramfs ]; then
-        filesdir="/usr/share/tinyramfs"
-    elif [ -d ./usr/share/tinyramfs ]; then
-        filesdir="./usr/share/tinyramfs"
-    else
-        msg panic "failed to find required files"
-    fi
+    for _dir in $_filesdir /usr/share/tinyramfs ./usr/share/tinyramfs; do
+        [ -d "$_dir" ] && filesdir="$_dir" && break
+    done || msg panic "failed to locate required files"
 
     kernel="${_kernel:-${kernel:-$(uname -r)}}"
     moddir="${_moddir:-${moddir:-/lib/modules}}"

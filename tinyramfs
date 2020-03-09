@@ -311,16 +311,29 @@ generate_depmod() {
 
 install_binary() {
     binary=$(command -v "$1")
+    realbin="$(dirname "$binary")/$(readlink "$binary")"
+    fullbin=$(readlink -f "$binary")
     workdirbin="${workdir}/usr/bin/"
 
     # check if binary exists
     [ "$binary" ] || msg panic "$binary doesn't exists"
 
     # check if binary already installed
-    [ -e "${workdirbin}${binary##*/}" ] && return
+    [ -e "${workdirbin}${fullbin##*/}" ] &&
+        return
+
+    # install symlinks if any
+    [ -h "$binary" ] && {
+
+        # symlink may link to symlink
+        [ -h "$realbin" ] &&
+            cp -a "$realbin" "$workdirbin"
+
+        cp -a "$binary" "$workdirbin"
+    }
 
     # install and strip binary
-    install -s -m755 "$binary" "${workdirbin}${binary##*/}"
+    install -s -m755 "$fullbin" "${workdirbin}${fullbin##*/}"
 
     # check static
     ldd "$binary" > /dev/null 2>&1 || return
@@ -344,13 +357,12 @@ install_binary() {
 
 install_library() {
     library="$1"
-    reallib="/usr/lib/$(readlink "$library")"
+    reallib="$(dirname "$library")/$(readlink "$library")"
     fulllib=$(readlink -f "$library")
     workdirlib="${workdir}/usr/lib/"
 
     # check if library already installed
     [ -e "${workdirlib}${fulllib##*/}" ] &&
-    [ -e "${workdirlib}${library##*/}" ] &&
         return
 
     # install symlinks if any

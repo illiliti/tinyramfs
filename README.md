@@ -1,5 +1,5 @@
 Features
-========
+--------
 
 - No `local`'s, no bashisms, only POSIX shell
 - Easy configuration
@@ -8,7 +8,7 @@ Features
 - mdev, mdevd, eudev
 
 Installation
-============
+------------
 
 Dependencies
 ------------
@@ -38,7 +38,7 @@ usage: ./tinyramfs [option]
 ```
 
 Configuration
-=============
+-------------
 
 ```sh
 # debug mode
@@ -178,6 +178,6 @@ luks_opts=""
 TODO document kernel command-line parameters
 
 License
-=======
+-------
 
 Licensed under GPLv3

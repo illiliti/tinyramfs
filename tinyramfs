@@ -1,32 +1,27 @@
-#!/bin/sh
+#!/bin/sh -ef
 #
-# tiny initramfs generation tool
+# tiny initramfs
 
-msg() {
+msg()
+{
     case "$1" in
         info)
-            printf "info >> %s\n" "$2" >&2
-            ;;
-        warn)
-            printf "warning >> %s\n" "$2" \
-                   "are you sure you want to continue?" \
-                   "press enter to continue or ctrl+c to exit" >&2
-
-            read -r _
-            ;;
+            printf "info >> %s\n" "$2"
+        ;;
         panic)
             printf "panic >> %s\n" "$2" >&2
             exit 1
-            ;;
+        ;;
     esac
 }
 
-usage() {
+usage()
+{
     cat << EOF
-usage: $0 [option...]
+usage: $0 [option]
        -o, --output <file>  set initramfs image name
        -c, --config <file>  set config file path
-       -m, --moddir <dir>   set drivers directory
+       -m, --moddir <dir>   set modules directory
        -k, --kernel <ver>   set kernel version
        -F, --files  <dir>   set files directory
        -d, --debug          enable debug mode
@@ -35,181 +30,227 @@ usage: $0 [option...]
 EOF
 }
 
-parse_args() {
+parse_args()
+{
     while [ "$1" ]; do
         case "$1" in
             -o | --output)
-                _initramfs="${2:?}"
+                _output="${2:?}"
                 shift 2
-                ;;
+            ;;
             -c | --config)
                 _config="${2:?}"
                 shift 2
-                ;;
+            ;;
             -m | --moddir)
                 _moddir="${2:?}"
                 shift 2
-                ;;
+            ;;
             -k | --kernel)
                 _kernel="${2:?}"
                 shift 2
-                ;;
+            ;;
             -F | --files)
                 _filesdir="${2:?}"
                 shift 2
-                ;;
+            ;;
             -d | --debug)
                 _debug=1
                 shift 1
-                ;;
+            ;;
             -f | --force)
                 _force=1
                 shift 1
-                ;;
+            ;;
             -h | --help)
                 usage
                 exit 0
-                ;;
+            ;;
             *)
-                printf "%s\n\n" "invalid option: '$1'"
+                printf "invalid option: %s\n\n" "$1"
                 usage
                 exit 1
-                ;;
+            ;;
         esac
     done
 }
 
-prepare_environment() {
+prepare_environment()
+{
+    msg info "preparing environment"
+
     for _file in $_config /etc/tinyramfs/config ./config; do
-        [ -f "$_file" ] && . "$_file" && break
+        [ -f "$_file" ] &&
+        {
+            . "$_file"
+            break
+        }
     done || msg panic "failed to source config"
 
     for _dir in $_filesdir /usr/share/tinyramfs ./usr/share/tinyramfs; do
-        [ -d "$_dir" ] && filesdir="$_dir" && break
+        [ -d "$_dir" ] &&
+        {
+            filesdir="$_dir"
+            break
+        }
     done || msg panic "failed to locate required files"
 
-    kernel="${_kernel:-${kernel:-$(uname -r)}}"
-    moddir="${_moddir:-${moddir:-/lib/modules}}"
     debug="${_debug:-${debug:-0}}"
     force="${_force:-${force:-0}}"
-    initramfs="${_initramfs:-${initramfs:-/tmp/initramfs-${kernel}}}"
-    modker="${moddir}/${kernel}"
-}
+    moddir="${_moddir:-${moddir:-/lib/modules}}"
+    kernel="${_kernel:-${kernel:-$(uname -r)}}"
+    output="${_output:-${output:-/tmp/initramfs-${kernel}}}"
 
-create_workdir() {
-    msg info "creating working directory"
-
-    workdir="${XDG_CACHE_HOME:-${TMPDIR:-/tmp}}/initramfs.$$"
-    mkdir -p "$workdir" ||
+    mkdir -p "${workdir=${XDG_CACHE_HOME:-${TMPDIR:-/tmp}}/initramfs.$$}" ||
         msg panic "failed to create working directory"
+
+    workdirbin="${workdir}/usr/bin/"
+    workdirlib="${workdir}/usr/lib/"
+    modker="${moddir}/${kernel}"
+    OLD_IFS="$IFS"
 }
 
-remove_workdir() {
+remove_workdir()
+{
     msg info "removing working directory"
 
     rm -rf "$workdir"
 }
 
-install_requirements() {
+install_requirements()
+{
     msg info "installing requirements"
 
-    # install user specified binaries
-    [ "$binaries"       ] &&
-        for _binary in $binaries; do
-            install_binary "$_binary"
-        done
-
-    # install util-linux binaries
-    [ "$util_linux" = 1 ] &&
-        for _binary in mount blkid; do
-            install_binary "$_binary"
-        done
-
-    # install required binaries
-    for _binary in busybox modprobe; do
+    # install user specified binaries if any
+    for _binary in $binaries; do
         install_binary "$_binary"
     done
+
+    # install required binaries
+    for _binary in \[ sh sleep mount printf setsid switch_root; do
+        install_binary "$_binary"
+    done
+
+    # copy init
+    install -m755 "${filesdir}/init" "${workdir}/init"
+
+    # copy config
+    printf "%s\n" \
+        monolith="$monolith" \
+        root="$root" \
+        root_type="$root_type" \
+        root_opts="$root_opts" \
+        devmgr="$devmgr" \
+        lvm="$lvm" \
+        lvm_opts="$lvm_opts" \
+        luks="$luks" \
+        luks_root="$luks_root" \
+        luks_opts="$luks_opts" \
+        > "${workdir}/etc/config"
 }
 
-create_structure() {
+create_structure()
+{
     msg info "creating directory structure"
 
-    for _dir in dev tmp var run etc usr/lib usr/bin mnt/root proc root sys; do
+    for _dir in etc tmp dev sys proc root usr/lib usr/bin mnt/root; do
         mkdir -p "${workdir}/${_dir}"
     done
 }
 
-create_symlinks() {
+create_symlinks()
+{
     msg info "creating symlinks"
 
     ln -s usr/lib "${workdir}/lib"
     ln -s usr/lib "${workdir}/lib64"
     ln -s usr/bin "${workdir}/bin"
     ln -s usr/bin "${workdir}/sbin"
-    ln -s ../run  "${workdir}/var/run"
     ln -s bin     "${workdir}/usr/sbin"
     ln -s lib     "${workdir}/usr/lib64"
 }
 
-install_devmgr() {
+install_devmgr()
+{
     msg info "installing device manager"
 
+    # TODO investigate booting without device manager
     case "$devmgr" in
         udev)
-            for _binary in udevd udevadm dmsetup; do
+            for _binary in udevd udevadm; do
                 install_binary "$_binary"
             done
 
-            find /usr/lib/udev \
-                ! -path "*rc_keymaps*" \
-                ! -path "*hwdb.d*" \
-                -type f |
+            # exclusively handle requirement
+            [ "$luks" = 1 ] || [ "$lvm" = 1 ] &&
+                install_binary dmsetup
 
-            cpio -pd "$workdir" > /dev/null 2>&1
-            ;;
-        mdev)
-            install -m644  "${filesdir}/mdev.conf"      "${workdir}/etc/mdev.conf"
-            install -Dm755 "${filesdir}/storage-device" "${workdir}/lib/mdev/storage-device"
-            ;;
-        mdevd)
-            for _binary in mdevd mdevd-coldplug; do
+            for _binary in /usr/lib/udev/ata_id /usr/lib/udev/scsi_id; do
+                install -Dm755 "$_binary" "${workdir}${_binary}"
+            done
+
+            set +f; for _file in /usr/lib/udev/rules.d/*; do
+                install -Dm644 "$_file" "${workdir}${_file}"
+            done; set -f
+        ;;
+        mdev | mdevd)
+            [ "$devmgr" = mdev  ] && install_binary mdev
+            [ "$devmgr" = mdevd ] &&
+                for _binary in mdevd mdevd-coldplug; do
+                    install_binary "$_binary"
+                done
+
+            for _binary in ln kill mkdir blkid "${filesdir}/device-helper"; do
                 install_binary "$_binary"
             done
 
-            install -m644  "${filesdir}/mdev.conf"      "${workdir}/etc/mdev.conf"
-            install -Dm755 "${filesdir}/storage-device" "${workdir}/lib/mdev/storage-device"
-            ;;
+            printf "%s\n" \
+                'SUBSYSTEM=block;.* 0:0 660 @device-helper' \
+                > "${workdir}/etc/mdev.conf"
+
+            [ "$monolith" != 1 ] && printf "%s\n" \
+                '$MODALIAS=.*       0:0 660 @modprobe "$MODALIAS"' \
+                >> "${workdir}/etc/mdev.conf"
+        ;;
     esac
 }
 
-install_lvm() {
+install_lvm()
+{
     msg info "installing LVM"
 
-    install_binary lvm
+    for _binary in lvchange vgchange; do
+        install_binary "$_binary"
+    done
 
-    # install lvm config
-    if [ "$lvm_config" = 1 ]; then
-        mkdir -p "${workdir}/etc/lvm"
+    { IFS=,; set -- $lvm_opts; IFS="$OLD_IFS"; }
 
-        cp /etc/lvm/*.conf "${workdir}/etc/lvm"
-    else
-        mkdir -p "${workdir}/etc/lvm"
+    for opt; do
+        case "$opt" in
+            config | config=1)
+                install -Dm644 /etc/lvm/lvm.conf "${workdir}/etc/lvm/lvm.conf"
+                return
+            ;;
+        esac
+    done
 
-        cat << EOF > "${workdir}/etc/lvm/lvm.conf"
-devices {
-    # block discard support
-    issue_discards = ${lvm_discard:-0}
+    mkdir -p "${workdir}/etc/lvm"
+    printf "%s\n" \
+        'devices {' \
+            'write_cache_state = 0' \
+        '}' \
+        'backup {' \
+            'backup  = 0' \
+            'archive = 0' \
+        '}' \
+        'global {' \
+            'use_lvmetad = 0' \
+        '}' \
+        > "${workdir}/etc/lvm/lvm.conf"
 }
 
-global {
-    # disable lvmetad
-    use_lvmetad = 0
-}
-EOF
-    fi
-}
-
-install_luks() {
+install_luks()
+{
     msg info "installing LUKS"
 
     install_binary cryptsetup
@@ -219,61 +260,91 @@ install_luks() {
     [ -e /usr/lib/libgcc_s.so.1 ] &&
         install_library /usr/lib/libgcc_s.so.1
 
-    # copy luks header
-    [ -f "$luks_header" ] &&
-        install -m400 "$luks_header" "${workdir}/root/luks_header"
+    { IFS=,; set -- $luks_opts; IFS="$OLD_IFS"; }
 
-    # copy luks keyfile
-    [ -f "$luks_keyfile" ] &&
-        install -m400 "$luks_keyfile" "${workdir}/root/luks_keyfile"
+    for opt; do
+        case "${opt%%=*}" in
+            header)
+                install -m400 "${opt##*=}" "${workdir}/root/header"
+                luks_opts=$(printf "%s" "$luks_opts" | sed "s|${opt##*=}|/root/header|")
+            ;;
+            key)
+                install -m400 "${opt##*=}" "${workdir}/root/key"
+                luks_opts=$(printf "%s" "$luks_opts" | sed "s|${opt##*=}|/root/key|")
+            ;;
+        esac
+    done
 }
 
-install_driver() {
-    driver="$1"
+install_module()
+{
+    module="$1"
 
-    modprobe -S "$kernel" -D "$driver" 2> /dev/null |
+    modprobe -S "$kernel" -D "$module" 2> /dev/null |
 
-    while read -r driver; do
+    while read -r module || [ "$module" ]; do
 
         # strip unneeded stuff
-        driver="${driver##*builtin*}"
-        driver="${driver##*net*}"
-        driver="${driver#insmod }"
+        module="${module##*builtin*}"
+        module="${module##*net*}"
+        module="${module#insmod }"
 
-        # exclude user specified drivers
-        [ "$drivers_exclude" ] &&
-            for _exclude_driver in $drivers_exclude; do
-                driver="${driver##*${_exclude_driver}*}"
-            done
+        # exclude user specified modules if any
+        for _exclude_module in $modules_exclude; do
+            module="${module##*${_exclude_module}*}"
+        done
 
-        # check empty
-        [ "$driver" ] || continue
-
-        # check if driver already installed
-        [ -e "${workdir}${driver}" ] ||
-            install -Dm644 "$driver" "${workdir}${driver}"
-    done
+        # check if module already installed
+        [ -e "$module" ] && [ ! -e "${workdir}${module}" ] &&
+            install -Dm644 "$module" "${workdir}${module}"
+    done ||:
 }
 
-install_hostonly_drivers() {
-    msg info "installing hostonly drivers"
+install_hostonly_modules()
+{
+    msg info "installing hostonly modules"
 
-    # perform autodetection of drivers via /sys
+    # perform autodetection of modules via /sys
     find /sys -name modalias -exec sort -u {} + |
 
-    while read -r _driver; do
-        install_driver "$_driver"
-    done
+    while read -r _module || [ "$_module" ]; do
+        install_module "$_module"
+    done ||:
 
-    # install user specified drivers
-    [ "$drivers" ] &&
-        for _driver in $drivers; do
-            install_driver "$_driver"
+    # install LVM modules
+    [ "$lvm" = 1 ] &&
+        for _module in dm-thin-pool dm-multipath dm-snapshot dm-cache dm-log dm-mirror; do
+            install_module "$_module"
         done
+
+    # install LUKS modules
+    [ "$luks" = 1 ] &&
+        for _module in aes dm-crypt sha256 sha512 wp512 ecb lrw xts twofish serpent; do
+            install_module "$_module"
+        done
+
+    # install root partition module
+    if [ "$root_type" ]; then
+        install_module "$root_type"
+    else
+        while read -r _ _dir _type _ _ _; do
+            [ "$_dir" = / ] &&
+            {
+                install_module "$_type"
+                break
+            }
+        done < /proc/mounts
+    fi
+
+    # install user specified modules if any
+    for _module in $modules; do
+        install_module "$_module"
+    done
 }
 
-install_all_drivers() {
-    msg info "installing all drivers"
+install_all_modules()
+{
+    msg info "installing all modules"
 
     find \
         "${modker}/kernel/arch" \
@@ -289,202 +360,153 @@ install_all_drivers() {
         "${modker}/kernel/drivers/virtio" \
         -type f 2> /dev/null |
 
-    while read -r _driver; do
+    while read -r _module || [ "$_module" ]; do
 
         # strip path and extension
-        _driver="${_driver##*/}"
-        _driver="${_driver%%.*}"
+        _module="${_module##*/}"
+        _module="${_module%%.*}"
 
-        install_driver "$_driver"
-    done
+        install_module "$_module"
+    done ||:
 }
 
-generate_depmod() {
-    msg info "generating drivers list"
-
-    cp "${modker}/modules.builtin" \
-       "${modker}/modules.order" \
-       "${workdir}${modker}"
-
-    depmod -b "$workdir" "$kernel"
-}
-
-install_binary() {
+install_binary()
+{
     binary=$(command -v "$1")
-    realbin="$(dirname "$binary")/$(readlink "$binary")"
-    fullbin=$(readlink -f "$binary")
-    workdirbin="${workdir}/usr/bin/"
 
-    # check if binary exists
-    [ "$binary" ] || msg panic "$binary doesn't exists"
+    # check if binary exist and builtin
+    case "$binary" in
+        */*)
+            : no operation
+        ;;
+        "")
+            msg panic "$1 doesn't exist"
+        ;;
+        *)
+            { IFS=:; set -- $PATH; IFS="$OLD_IFS"; }
+
+            for _dir; do
+                [ -x "${_dir}/${binary}" ] &&
+                {
+                    binary="${_dir}/${binary}"
+                    break
+                }
+            done || msg panic "couldn't find external $1 binary"
+        ;;
+    esac
 
     # check if binary already installed
-    [ -e "${workdirbin}${fullbin##*/}" ] &&
-        return
+    [ -e "${workdirbin}${binary##*/}" ] && return
 
-    # install symlinks if any
-    [ -h "$binary" ] && {
+    # iterate throught symlinks and copy them
+    while [ -h "$binary" ]; do
+        cp -P "$binary" "$workdirbin"
+        binary="${binary%/*}/$(readlink "$binary")"
+    done
 
-        # symlink may link to symlink
-        [ -h "$realbin" ] &&
-            cp -a "$realbin" "$workdirbin"
+    install -m755 "$binary" "${workdirbin}${binary##*/}"
+    strip "${workdirbin}${binary##*/}" > /dev/null 2>&1 ||:
 
-        cp -a "$binary" "$workdirbin"
-    }
-
-    # install and strip binary
-    install -s -m755 "$fullbin" "${workdirbin}${fullbin##*/}"
-
-    # check static
-    ldd "$binary" > /dev/null 2>&1 || return
+    # check if binary statically linked
+    ldd "$binary" > /dev/null 2>&1 || return 0
 
     # exract paths to libraries
     ldd "$binary" |
 
-    while read -r _library; do
+    while read -r _library || [ "$_library" ]; do
 
         # strip unneeded stuff
         _library="${_library##*vdso*}"
         _library="${_library#* => }"
         _library="${_library% *}"
 
-        # check empty
-        [ "$_library" ] || continue
-
-        install_library "$_library"
-    done
+        [ -e "$_library" ] && install_library "$_library"
+    done ||:
 }
 
-install_library() {
+install_library()
+{
     library="$1"
-    reallib="$(dirname "$library")/$(readlink "$library")"
-    fulllib=$(readlink -f "$library")
-    workdirlib="${workdir}/usr/lib/"
 
     # check if library already installed
-    [ -e "${workdirlib}${fulllib##*/}" ] &&
-        return
+    [ -e "${workdirlib}${library##*/}" ] && return
 
-    # install symlinks if any
-    [ -h "$library" ] && {
+    # iterate throught symlinks and copy them
+    while [ -h "$library" ]; do
+        cp -P "$library" "$workdirlib"
+        library="${library%/*}/$(readlink "$library")"
+    done
 
-        # symlink may link to symlink
-        [ -h "$reallib" ] &&
-            cp -a "$reallib" "$workdirlib"
-
-        cp -a "$library" "$workdirlib"
-    }
-
-    # install library
-    install -s -m755 "$fulllib" "${workdirlib}${fulllib##*/}"
+    install -m755 "$library" "${workdirlib}${library##*/}"
+    strip "${workdirlib}${library##*/}" > /dev/null 2>&1 ||:
 }
 
-install_files() {
-    msg info "installing files"
-
-    cat > "${workdir}/config" << EOF
-debug="$debug"
-init="$init"
-root="$root"
-root_type="$root_type"
-root_opts="$root_opts"
-devmgr="$devmgr"
-#drivers
-lvm="$lvm"
-lvm_name="$lvm_name"
-lvm_group="$lvm_group"
-#lvm_discard
-lvm_args="$lvm_args"
-luks="$luks"
-luks_root="$luks_root"
-luks_name="$luks_name"
-#luks_header
-#luks_keyfile
-luks_discard="$luks_discard"
-luks_args="$luks_args"
-EOF
-
-    install -m644 "${filesdir}/passwd" "${workdir}/etc/passwd"
-    install -m644 "${filesdir}/group"  "${workdir}/etc/group"
-    install -m755 "${filesdir}/init"   "${workdir}/init"
-}
-
-create_initramfs() {
+create_initramfs()
+{
     msg info "creating initramfs image"
 
     # TODO add uncompressed option
 
     # check if image already exist
-    [ "$force" = 0 ] && [ -e "$initramfs" ] &&
-        msg warn "looks like you already have initramfs image"
+    [ "$force" != 1 ] && [ -e "$output" ] &&
+        msg panic "initramfs image already exist"
 
     (
         cd "$workdir"
         find . | cpio -oH newc | ${compress:-gzip -9}
 
-    ) > "$initramfs" 2> /dev/null ||
+    ) > "$output" 2> /dev/null ||
         msg panic "failed to generate initramfs image"
 }
 
-# check root
-[ "$(id -u)" = 0 ] || msg panic "must be run as root"
+# int main()
+{
+    # check root
+    [ "$(id -u)" = 0 ] || msg panic "must be run as root"
 
-parse_args "$@"
-prepare_environment
+    parse_args "$@"
+    prepare_environment
 
-# remove workdir on signals
-# we are doing unset EXIT signal to avoid endless loop
-# because afterwards we execute exit command.
-# also some shells (dash,mksh,etc) doesn't exit on INT
-# signal. as workaround we manually execute exit command.
-# tested bash,dash,mksh,busybox sh
-# TODO fix zsh, ref https://www.zsh.org/mla/users/2015/msg00436.html
-trap "remove_workdir && trap - EXIT && exit" EXIT INT TERM HUP
+    [ "$debug" = 1 ] && set -x
 
-[ "$debug" = 1 ] && {
+    # hacky, but compatible with all posix shells
+    trap '
+        ret="$?"
+        trap - EXIT INT
+        [ "$debug" = 1 ] || remove_workdir
+        [ "$ret"   = 0 ] || msg panic "something went wrong"
+        ' EXIT INT
 
-    # debug shell commands
-    set -x
+    create_structure
+    create_symlinks
 
-    # don't remove anything
-    trap - EXIT INT TERM HUP
+    [ "$lvm"  = 1 ] && install_lvm
+    [ "$luks" = 1 ] && install_luks
+
+    # check monolithic kernel
+    [ "$monolith" != 1 ] && [ -d "$moddir" ] &&
+    {
+        # check hostonly mode
+        if [ "$hostonly" = 1 ]; then
+            install_hostonly_modules
+        else
+            install_all_modules
+        fi
+
+        for _binary in find sort modprobe; do
+            install_binary "$_binary"
+        done
+
+        cp "${modker}/modules.builtin" \
+           "${modker}/modules.order" \
+           "${workdir}${modker}"
+
+        depmod -b "$workdir" "$kernel"
+    }
+
+    install_devmgr
+    install_requirements
+    create_initramfs
+
+    msg info "done! check out - $output"
 }
-
-create_workdir
-create_structure
-create_symlinks
-
-[ "$lvm"  = 1 ] && install_lvm
-[ "$luks" = 1 ] && install_luks
-
-# check monotihic kernel
-[ "$monolith" != 1 ] && [ -d "$moddir" ] && {
-
-    # check hostonly mode
-    if [ "$hostonly" = 1 ]; then
-        install_hostonly_drivers
-
-        # install lvm drivers
-        [ "$lvm" = 1 ] &&
-            for _driver in dm-thin-pool dm-multipath dm-snapshot dm-cache dm-log dm-mirror; do
-                install_driver "$_driver"
-            done
-
-        # install luks drivers
-        [ "$luks" = 1 ] &&
-            for _driver in aes dm-crypt sha256 sha512 wp512 ecb lrw xts twofish serpent; do
-                install_driver "$_driver"
-            done
-    else
-        install_all_drivers
-    fi
-
-    generate_depmod
-}
-
-install_devmgr
-install_files
-install_requirements
-create_initramfs
-
-msg info "done! check out $initramfs"

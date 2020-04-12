@@ -189,6 +189,7 @@ install_devmgr()
                 install -Dm755 "$_binary" "${workdir}${_binary}"
             done
 
+            # TODO we really need all rules?
             set +f; for _file in /usr/lib/udev/rules.d/*; do
                 install -Dm644 "$_file" "${workdir}${_file}"
             done; set -f

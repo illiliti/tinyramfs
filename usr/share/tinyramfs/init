@@ -77,6 +77,9 @@ parse_cmdline()
             debug | debug=1)
                 set -x
             ;;
+            ro | rw)
+                rorw="-o $line"
+            ;;
             *.*)
                 # TODO implement backward compatibilty with dracut, mkinitcpio, etc
                 : no operation
@@ -192,7 +195,7 @@ mount_root()
 
     findfs "$root"
 
-    set -- "${root_type:+-t $root_type}" "${root_opts:+-o $root_opts}" "$device" "/mnt/root"
+    set -- "${root_type:+-t $root_type}" "${rorw:-o ro}${root_opts:+,$root_opts}" "$device" "/mnt/root"
     mount $@ || panic "failed to mount root"
 }
 

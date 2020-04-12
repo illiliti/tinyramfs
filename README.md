@@ -28,7 +28,7 @@ Usage
 
 ```
 usage: ./tinyramfs [option]
-       -o, --output <file>  set initramfs image name
+       -o, --output <file>  set initramfs output path
        -c, --config <file>  set config file path
        -m, --moddir <dir>   set modules directory
        -k, --kernel <ver>   set kernel version
@@ -49,7 +49,7 @@ debug=0
 #
 force=0
 
-# initramfs name
+# initramfs output path
 #
 # default - /tmp/initramfs-$kernel
 # example - output="/tmp/myinitramfs.img.gz"

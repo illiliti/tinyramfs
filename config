@@ -10,7 +10,7 @@ debug=0
 #
 force=0
 
-# initramfs name
+# initramfs output path
 #
 # default - /tmp/initramfs-$kernel
 # example - output="/tmp/myinitramfs.img.gz"

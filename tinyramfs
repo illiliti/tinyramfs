@@ -19,7 +19,7 @@ usage()
 {
     cat << EOF
 usage: $0 [option]
-       -o, --output <file>  set initramfs image name
+       -o, --output <file>  set initramfs output path
        -c, --config <file>  set config file path
        -m, --moddir <dir>   set modules directory
        -k, --kernel <ver>   set kernel version
@@ -327,13 +327,13 @@ install_hostonly_modules()
     if [ "$root_type" ]; then
         install_module "$root_type"
     else
-        while read -r _ _dir _type _ _ _; do
+        while read -r _ _dir _type _ _ _ || [ "$root_type" ]; do
             [ "$_dir" = / ] &&
             {
-                install_module "$_type"
+                install_module "${root_type=$_type}"
                 break
             }
-        done < /proc/mounts
+        done < /proc/mounts || msg panic "failed to install root partition module"
     fi
 
     # install user specified modules if any

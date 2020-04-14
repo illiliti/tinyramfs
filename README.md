@@ -83,7 +83,7 @@ compress=""
 
 # root
 #
-# supported - PARTUUID, DEVICE, LABEL, PARTUUID
+# supported - PARTUUID, DEVICE, LABEL, UUID
 # example -
 #   root="/dev/sda1"
 #   root="PARTUUID=35f923c5-083a-4950-a4da-e611d0778121"
@@ -153,7 +153,7 @@ luks=0
 
 # LUKS encrypted root
 #
-# supported - PARTUUID, DEVICE, LABEL, PARTUUID
+# supported - PARTUUID, DEVICE, LABEL, UUID
 # example -
 #   luks_root="/dev/sda1"
 #   luks_root="PARTUUID=35f923c5-083a-4950-a4da-e611d0778121"

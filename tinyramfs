@@ -223,7 +223,17 @@ install_lvm()
         lvm_opts="$lvm_opts" \
     >> "${workdir}/etc/config"
 
-    mkdir -p "${workdir}/etc/lvm"
+    lvm_config="
+        devices {
+            write_cache_state = 0
+        }
+        backup {
+            backup  = 0
+            archive = 0
+        }
+        global {
+            use_lvmetad = 0
+        }"
 
     # word splitting is safe by design
     # shellcheck disable=2086
@@ -231,22 +241,13 @@ install_lvm()
 
     for opt; do case "$opt" in
         config | config=1)
-            lvmconfig > "${workdir}/etc/lvm/lvm.conf"
-            return
+            embed_lvm_config=1
         ;;
     esac; done
 
-    printf "%s\n" \
-        'devices {' \
-            'write_cache_state = 0' \
-        '}' \
-        'backup {' \
-            'backup  = 0' \
-            'archive = 0' \
-        '}' \
-        'global {' \
-            'use_lvmetad = 0' \
-        '}' \
+    mkdir -p "${workdir}/etc/lvm"; lvmconfig \
+        --config "$lvm_config" \
+        ${embed_lvm_config:+--mergedconfig} \
     > "${workdir}/etc/lvm/lvm.conf"
 }
 

@@ -1,11 +1,18 @@
 #!/bin/sh -ef
 #
 # tiny init
+#
+# word splitting is safe by design
+# shellcheck disable=2068,2046,2086
+#
+# false positive
+# shellcheck disable=2154,2163,1091
 
-panic()
+panic() { printf "panic >> %s\n" "$1" >&2; shell; }
+info() { printf "info >> %s\n" "$1"; shell; }
+
+shell()
 {
-    printf "panic >> %s\n" "$1"
-
     # see https://busybox.net/FAQ.html#job_control
     setsid sh -c "exec sh <> /dev/${console:-console} 2>&1" || sh
 }
@@ -31,9 +38,8 @@ findfs()
 
     # avoid race condition
     while [ ! -e "$device" ]; do
-        value=$(( value + 1 ))
         [ "$value" = 15 ] && panic "failed to lookup partition"
-        sleep 1
+        value=$(( value + 1 )); sleep 1
     done
 }
 
@@ -68,35 +74,31 @@ prepare_environment()
 
 parse_cmdline()
 {
-    [ "$break" = cmdline ] && panic "break before parse cmdline"
-
     read -r cmdline < /proc/cmdline
 
-    for line in $cmdline; do
-        case "$line" in
-            debug | debug=1)
-                set -x
-            ;;
-            ro | rw)
-                rorw="-o $line"
-            ;;
-            *.*)
-                # TODO implement backward compatibilty with dracut, mkinitcpio, etc
-                : no operation
-            ;;
-            *=*)
-                export "$line"
-            ;;
-            *)
-                export "${line}=1"
-            ;;
-        esac
-    done
+    for line in $cmdline; do case "$line" in
+        debug | debug=1)
+            set -x
+        ;;
+        ro | rw)
+            rorw="-o $line"
+        ;;
+        *.*)
+            # TODO implement backward compatibilty with dracut, mkinitcpio, etc
+            : no operation
+        ;;
+        *=*)
+            export "$line"
+        ;;
+        *)
+            export "${line}=1"
+        ;;
+    esac; done
 }
 
 setup_devmgr()
 {
-    [ "$break" = devmgr ] && panic "break before setup device manager"
+    [ "$break" = devmgr ] && info "break before setup device manager"
 
     case "$devmgr" in
         udev)
@@ -108,8 +110,7 @@ setup_devmgr()
         mdev)
             mdev -df 2> /dev/null & mdev_pid="$!"
 
-            [ "$monolith" != 1 ] &&
-            {
+            [ "$monolith" != 1 ] && {
                 set -- $(find /sys -name modalias -type f -exec sort -u {} +)
                 modprobe -a "$@" 2> /dev/null
             }
@@ -123,58 +124,61 @@ setup_devmgr()
 
 unlock_luks()
 {
-    [ "$break" = luks ] && panic "break before unlock LUKS"
+    [ "$break" = luks ] && info "break before unlock LUKS"
 
     { IFS=,; set -- $luks_opts; IFS="$OLD_IFS"; }
 
-    for opt; do
-        case "$opt" in
-            discard | discard=1)
-                luks_discard="--allow-discards"
-            ;;
-            header=*)
-                luks_header="--${opt}"
-            ;;
-            name=*)
-                luks_name="${opt##*=}"
-            ;;
-            key=*)
-                luks_key="-d ${opt##*=}"
-            ;;
-        esac
-    done
+    for opt; do case "$opt" in
+        discard | discard=1)
+            luks_discard="--allow-discards"
+        ;;
+        header=*)
+            luks_header="--${opt}"
+        ;;
+        name=*)
+            luks_name="${opt##*=}"
+        ;;
+        key=*)
+            luks_key="-d ${opt##*=}"
+        ;;
+    esac; done
 
     findfs "$luks_root"
 
-    set -- "--disable-locks" "$luks_key" "$luks_header" "$luks_discard" "$device" "${luks_name:-luks-${device##*/}}"
+    set -- \
+        "--disable-locks" \
+        "$luks_key" \
+        "$luks_header" \
+        "$luks_discard" \
+        "$device" \
+        "${luks_name:-luks-${device##*/}}"
+
     cryptsetup open $@ || panic "failed to unlock LUKS"
 }
 
 trigger_lvm()
 {
-    [ "$break" = lvm ] && panic "break before trigger LVM"
+    [ "$break" = lvm ] && info "break before trigger LVM"
 
     { IFS=,; set -- $lvm_opts; IFS="$OLD_IFS"; }
 
-    for opt; do
-        case "$opt" in
-            discard | discard=1)
-                lvm_discard="--config=devices{issue_discards=1}"
-            ;;
-            config=0)
-                :> /etc/lvm/lvm.conf
-            ;;
-            group=*)
-                lvm_group="${opt##*=}"
-            ;;
-            name=*)
-                lvm_name="/${opt##*=}"
-            ;;
-            tag=*)
-                lvm_tag="@${opt##*=}"
-            ;;
-        esac
-    done
+    for opt; do case "$opt" in
+        discard | discard=1)
+            lvm_discard="--config=devices{issue_discards=1}"
+        ;;
+        config=0)
+            :> /etc/lvm/lvm.conf
+        ;;
+        group=*)
+            lvm_group="${opt##*=}"
+        ;;
+        name=*)
+            lvm_name="/${opt##*=}"
+        ;;
+        tag=*)
+            lvm_tag="@${opt##*=}"
+        ;;
+    esac; done
 
     set -- "--sysinit" "-qq" "-ay" "$lvm_discard"
 
@@ -191,17 +195,21 @@ trigger_lvm()
 
 mount_root()
 {
-    [ "$break" = root ] && panic "break before mount root"
+    [ "$break" = root ] && info "break before mount root"
 
     findfs "$root"
 
-    set -- "${root_type:+-t $root_type}" "${rorw:-o ro}${root_opts:+,$root_opts}" "$device" "/mnt/root"
+    set -- \
+        "${root_type:+-t $root_type}" \
+        "${rorw:--o ro}${root_opts:+,$root_opts}" \
+        "$device" "/mnt/root"
+
     mount $@ || panic "failed to mount root"
 }
 
 cleanup()
 {
-    [ "$break" = cleanup ] && panic "break before cleanup"
+    [ "$break" = cleanup ] && info "break before cleanup"
 
     case "$devmgr" in
         udev)  udevadm control -e ;;
@@ -209,7 +217,7 @@ cleanup()
         mdevd) kill "$mdevd_pid"  ;;
     esac
 
-    # temporary workaround until util-linux mount implements 'mount -o move'
+    # temporary workaround until util-linux release a new version
     # see https://github.com/karelzak/util-linux/issues/997
     for dir in dev sys proc; do
         mount -o move "$dir" "/mnt/root/${dir}" || mount --move "$dir" "/mnt/root/${dir}"
@@ -218,7 +226,7 @@ cleanup()
 
 boot_system()
 {
-    [ "$break" = boot ] && panic "break before boot system"
+    [ "$break" = boot ] && info "break before boot system"
 
     set -- "/mnt/root" "${init:-/sbin/init}"
     exec switch_root $@ 2> /dev/null || panic "failed to boot system"
@@ -230,6 +238,8 @@ boot_system()
     parse_cmdline
     setup_devmgr
 
+    # trigger lvm twice to handle both LUKS on LVM and LVM on LUKS
+    [ "$lvm"  = 1 ] && trigger_lvm
     [ "$luks" = 1 ] && unlock_luks
     [ "$lvm"  = 1 ] && trigger_lvm
 

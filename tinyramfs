@@ -1,19 +1,13 @@
 #!/bin/sh -ef
 #
 # tiny initramfs
+#
+# false positive
+# shellcheck disable=2154
 
-msg()
-{
-    case "$1" in
-        info)
-            printf "info >> %s\n" "$2"
-        ;;
-        panic)
-            printf "panic >> %s\n" "$2" >&2
-            exit 1
-        ;;
-    esac
-}
+# TODO add some colors ?
+panic() { printf "panic >> %s\n" "$1" >&2; exit 1; }
+info() { printf "info >> %s\n" "$1"; }
 
 usage()
 {
@@ -32,69 +26,62 @@ EOF
 
 parse_args()
 {
-    while [ "$1" ]; do
-        case "$1" in
-            -o | --output)
-                _output="${2:?}"
-                shift 2
-            ;;
-            -c | --config)
-                _config="${2:?}"
-                shift 2
-            ;;
-            -m | --moddir)
-                _moddir="${2:?}"
-                shift 2
-            ;;
-            -k | --kernel)
-                _kernel="${2:?}"
-                shift 2
-            ;;
-            -F | --files)
-                _filesdir="${2:?}"
-                shift 2
-            ;;
-            -d | --debug)
-                _debug=1
-                shift 1
-            ;;
-            -f | --force)
-                _force=1
-                shift 1
-            ;;
-            -h | --help)
-                usage
-                exit 0
-            ;;
-            *)
-                printf "invalid option: %s\n\n" "$1"
-                usage
-                exit 1
-            ;;
-        esac
-    done
+    while [ "$1" ]; do case "$1" in
+        -o | --output)
+            _output="${2:?}"
+            shift 2
+        ;;
+        -c | --config)
+            _config="${2:?}"
+            shift 2
+        ;;
+        -m | --moddir)
+            _moddir="${2:?}"
+            shift 2
+        ;;
+        -k | --kernel)
+            _kernel="${2:?}"
+            shift 2
+        ;;
+        -F | --files)
+            _filesdir="${2:?}"
+            shift 2
+        ;;
+        -d | --debug)
+            _debug=1
+            shift 1
+        ;;
+        -f | --force)
+            _force=1
+            shift 1
+        ;;
+        -h | --help)
+            usage
+            exit 0
+        ;;
+        *)
+            printf "invalid option: %s\n\n" "$1"
+            usage
+            exit 1
+        ;;
+    esac; done
 }
 
 prepare_environment()
 {
-    msg info "preparing environment"
+    info "preparing environment"
 
     for _file in $_config /etc/tinyramfs/config ./config; do
-        [ -f "$_file" ] &&
-        {
-            . "$_file"
-            break
-        }
-    done || msg panic "failed to source config"
+        # false positive
+        # shellcheck disable=1090
+        [ -f "$_file" ] && { . "$_file"; break; }
+    done || panic "failed to source config"
 
     for _dir in $_filesdir /usr/share/tinyramfs ./usr/share/tinyramfs; do
-        [ -d "$_dir" ] &&
-        {
-            filesdir="$_dir"
-            break
-        }
-    done || msg panic "failed to locate required files"
+        [ -d "$_dir" ] && { filesdir="$_dir"; break; }
+    done || panic "failed to locate required files"
 
+    # general variables
     debug="${_debug:-${debug:-0}}"
     force="${_force:-${force:-0}}"
     moddir="${_moddir:-${moddir:-/lib/modules}}"
@@ -102,8 +89,9 @@ prepare_environment()
     output="${_output:-${output:-/tmp/initramfs-${kernel}}}"
 
     mkdir -p "${workdir=${XDG_CACHE_HOME:-${TMPDIR:-/tmp}}/initramfs.$$}" ||
-        msg panic "failed to create working directory"
+        panic "failed to create working directory"
 
+    # helpers variables
     workdirbin="${workdir}/usr/bin/"
     workdirlib="${workdir}/usr/lib/"
     modker="${moddir}/${kernel}"
@@ -112,22 +100,17 @@ prepare_environment()
 
 remove_workdir()
 {
-    msg info "removing working directory"
+    info "removing working directory"
 
     rm -rf "$workdir"
 }
 
 install_requirements()
 {
-    msg info "installing requirements"
+    info "installing requirements"
 
-    # install user specified binaries if any
-    for _binary in $binaries; do
-        install_binary "$_binary"
-    done
-
-    # install required binaries
-    for _binary in \[ sh sleep mount printf setsid switch_root; do
+    # install user specified and required binaries
+    for _binary in $binaries \[ sh sleep mount printf setsid switch_root; do
         install_binary "$_binary"
     done
 
@@ -136,31 +119,33 @@ install_requirements()
 
     # copy config
     printf "%s\n" \
-        monolith="$monolith" \
         root="$root" \
         root_type="$root_type" \
         root_opts="$root_opts" \
         devmgr="$devmgr" \
-        lvm="$lvm" \
-        lvm_opts="$lvm_opts" \
-        luks="$luks" \
-        luks_root="$luks_root" \
-        luks_opts="$luks_opts" \
-        > "${workdir}/etc/config"
+        monolith="$monolith" \
+    >> "${workdir}/etc/config"
 }
 
 create_structure()
 {
-    msg info "creating directory structure"
+    info "creating directory structure"
 
-    for _dir in etc tmp dev sys proc root usr/lib usr/bin mnt/root; do
-        mkdir -p "${workdir}/${_dir}"
-    done
+    mkdir -p \
+        "${workdir}/etc" \
+        "${workdir}/dev" \
+        "${workdir}/sys" \
+        "${workdir}/tmp" \
+        "${workdir}/proc" \
+        "${workdir}/root" \
+        "${workdir}/usr/lib" \
+        "${workdir}/usr/bin" \
+        "${workdir}/mnt/root"
 }
 
 create_symlinks()
 {
-    msg info "creating symlinks"
+    info "creating symlinks"
 
     ln -s usr/lib "${workdir}/lib"
     ln -s usr/lib "${workdir}/lib64"
@@ -172,7 +157,24 @@ create_symlinks()
 
 install_devmgr()
 {
-    msg info "installing device manager"
+    info "installing device manager"
+
+    install_devmgr_helper()
+    {
+        for _binary in ln kill mkdir blkid "${filesdir}/device-helper"; do
+            install_binary "$_binary"
+        done
+
+        printf "%s\n" \
+            'SUBSYSTEM=block;.* 0:0 660 @device-helper' \
+        > "${workdir}/etc/mdev.conf"
+
+        # false positive
+        # shellcheck disable=2016
+        [ "$monolith" != 1 ] && printf "%s\n" \
+            '$MODALIAS=.*       0:0 660 @modprobe "$MODALIAS"' \
+        >> "${workdir}/etc/mdev.conf"
+    }
 
     # TODO investigate booting without device manager
     case "$devmgr" in
@@ -182,8 +184,7 @@ install_devmgr()
             done
 
             # exclusively handle requirement
-            [ "$luks" = 1 ] || [ "$lvm" = 1 ] &&
-                install_binary dmsetup
+            [ "$luks" = 1 ] || [ "$lvm" = 1 ] && install_binary dmsetup
 
             for _binary in /usr/lib/udev/ata_id /usr/lib/udev/scsi_id; do
                 install -Dm755 "$_binary" "${workdir}${_binary}"
@@ -194,48 +195,47 @@ install_devmgr()
                 install -Dm644 "$_file" "${workdir}${_file}"
             done; set -f
         ;;
-        mdev | mdevd)
-            [ "$devmgr" = mdev  ] && install_binary mdev
-            [ "$devmgr" = mdevd ] &&
-                for _binary in mdevd mdevd-coldplug; do
-                    install_binary "$_binary"
-                done
-
-            for _binary in ln kill mkdir blkid "${filesdir}/device-helper"; do
+        mdev)
+            install_binary mdev
+            install_devmgr_helper
+        ;;
+        mdevd)
+            for _binary in mdevd mdevd-coldplug; do
                 install_binary "$_binary"
             done
 
-            printf "%s\n" \
-                'SUBSYSTEM=block;.* 0:0 660 @device-helper' \
-                > "${workdir}/etc/mdev.conf"
-
-            [ "$monolith" != 1 ] && printf "%s\n" \
-                '$MODALIAS=.*       0:0 660 @modprobe "$MODALIAS"' \
-                >> "${workdir}/etc/mdev.conf"
+            install_devmgr_helper
         ;;
     esac
 }
 
 install_lvm()
 {
-    msg info "installing LVM"
+    info "installing LVM"
 
     for _binary in lvchange vgchange; do
         install_binary "$_binary"
     done
 
-    { IFS=,; set -- $lvm_opts; IFS="$OLD_IFS"; }
-
-    for opt; do
-        case "$opt" in
-            config | config=1)
-                install -Dm644 /etc/lvm/lvm.conf "${workdir}/etc/lvm/lvm.conf"
-                return
-            ;;
-        esac
-    done
+    # copy config
+    printf "%s\n" \
+        lvm="$lvm" \
+        lvm_opts="$lvm_opts" \
+    >> "${workdir}/etc/config"
 
     mkdir -p "${workdir}/etc/lvm"
+
+    # word splitting is safe by design
+    # shellcheck disable=2086
+    { IFS=,; set -- $lvm_opts; IFS="$OLD_IFS"; }
+
+    for opt; do case "$opt" in
+        config | config=1)
+            lvmconfig > "${workdir}/etc/lvm/lvm.conf"
+            return
+        ;;
+    esac; done
+
     printf "%s\n" \
         'devices {' \
             'write_cache_state = 0' \
@@ -247,34 +247,40 @@ install_lvm()
         'global {' \
             'use_lvmetad = 0' \
         '}' \
-        > "${workdir}/etc/lvm/lvm.conf"
+    > "${workdir}/etc/lvm/lvm.conf"
 }
 
 install_luks()
 {
-    msg info "installing LUKS"
+    info "installing LUKS"
 
     install_binary cryptsetup
 
+    # copy config
+    printf "%s\n" \
+        luks="$luks" \
+        luks_root="$luks_root" \
+        luks_opts="$luks_opts" \
+    >> "${workdir}/etc/config"
+
     # avoid libgcc_s.so.1 missing error
     # see https://bugs.archlinux.org/task/56771
-    [ -e /usr/lib/libgcc_s.so.1 ] &&
-        install_library /usr/lib/libgcc_s.so.1
+    [ -e /usr/lib/libgcc_s.so.1 ] && install_library /usr/lib/libgcc_s.so.1
 
+    # word splitting is safe by design
+    # shellcheck disable=2086
     { IFS=,; set -- $luks_opts; IFS="$OLD_IFS"; }
 
-    for opt; do
-        case "${opt%%=*}" in
-            header)
-                install -m400 "${opt##*=}" "${workdir}/root/header"
-                luks_opts=$(printf "%s" "$luks_opts" | sed "s|${opt##*=}|/root/header|")
-            ;;
-            key)
-                install -m400 "${opt##*=}" "${workdir}/root/key"
-                luks_opts=$(printf "%s" "$luks_opts" | sed "s|${opt##*=}|/root/key|")
-            ;;
-        esac
-    done
+    for opt; do case "${opt%%=*}" in
+        header)
+            install -m400 "${opt##*=}" "${workdir}/root/header"
+            luks_opts=$(printf "%s" "$luks_opts" | sed "s|${opt##*=}|/root/header|")
+        ;;
+        key)
+            install -m400 "${opt##*=}" "${workdir}/root/key"
+            luks_opts=$(printf "%s" "$luks_opts" | sed "s|${opt##*=}|/root/key|")
+        ;;
+    esac; done
 }
 
 install_module()
@@ -303,7 +309,7 @@ install_module()
 
 install_hostonly_modules()
 {
-    msg info "installing hostonly modules"
+    info "installing hostonly modules"
 
     # perform autodetection of modules via /sys
     find /sys -name modalias -exec sort -u {} + |
@@ -328,13 +334,12 @@ install_hostonly_modules()
     if [ "$root_type" ]; then
         install_module "$root_type"
     else
-        while read -r _ _dir _type _ _ _ || [ "$root_type" ]; do
-            [ "$_dir" = / ] &&
-            {
+        while read -r _ _dir _type _ _ _ || [ "$_dir" ]; do
+            [ "$_dir" = / ] && {
                 install_module "${root_type=$_type}"
                 break
             }
-        done < /proc/mounts || msg panic "failed to install root partition module"
+        done < /proc/mounts || panic "failed to install root partition module"
     fi
 
     # install user specified modules if any
@@ -345,7 +350,7 @@ install_hostonly_modules()
 
 install_all_modules()
 {
-    msg info "installing all modules"
+    info "installing all modules"
 
     find \
         "${modker}/kernel/arch" \
@@ -381,18 +386,19 @@ install_binary()
             : no operation
         ;;
         "")
-            msg panic "$1 doesn't exist"
+            panic "$1 doesn't exist"
         ;;
         *)
+            # word splitting is safe by design
+            # shellcheck disable=2086
             { IFS=:; set -- $PATH; IFS="$OLD_IFS"; }
 
             for _dir; do
-                [ -x "${_dir}/${binary}" ] &&
-                {
+                [ -x "${_dir}/${binary}" ] && {
                     binary="${_dir}/${binary}"
                     break
                 }
-            done || msg panic "couldn't find external $1 binary"
+            done || panic "couldn't find external $1 binary"
         ;;
     esac
 
@@ -444,26 +450,26 @@ install_library()
 
 create_initramfs()
 {
-    msg info "creating initramfs image"
+    info "creating initramfs image"
 
     # TODO add uncompressed option
 
     # check if image already exist
     [ "$force" != 1 ] && [ -e "$output" ] &&
-        msg panic "initramfs image already exist"
+        panic "initramfs image already exist"
 
     (
         cd "$workdir"
         find . | cpio -oH newc | ${compress:-gzip -9}
 
     ) > "$output" 2> /dev/null ||
-        msg panic "failed to generate initramfs image"
+        panic "failed to generate initramfs image"
 }
 
 # int main()
 {
     # check root
-    [ "$(id -u)" = 0 ] || msg panic "must be run as root"
+    [ "$(id -u)" = 0 ] || panic "must be run as root"
 
     parse_args "$@"
     prepare_environment
@@ -474,8 +480,8 @@ create_initramfs()
     trap '
         ret="$?"
         trap - EXIT INT
-        [ "$debug" = 1 ] || remove_workdir
-        [ "$ret"   = 0 ] || msg panic "something went wrong"
+        [ "$debug" != 1 ] && remove_workdir
+        [ "$ret"   != 0 ] && panic "something went wrong"
         ' EXIT INT
 
     create_structure
@@ -485,8 +491,8 @@ create_initramfs()
     [ "$luks" = 1 ] && install_luks
 
     # check monolithic kernel
-    [ "$monolith" != 1 ] && [ -d "$moddir" ] &&
-    {
+    [ "$monolith" != 1 ] && [ -d "$moddir" ] && {
+
         # check hostonly mode
         if [ "$hostonly" = 1 ]; then
             install_hostonly_modules
@@ -509,5 +515,5 @@ create_initramfs()
     install_requirements
     create_initramfs
 
-    msg info "done! check out - $output"
+    info "done! check out - $output"
 }

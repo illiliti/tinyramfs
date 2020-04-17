@@ -342,11 +342,6 @@ install_hostonly_modules()
             }
         done < /proc/mounts || panic "failed to install root partition module"
     fi
-
-    # install user specified modules if any
-    for _module in $modules; do
-        install_module "$_module"
-    done
 }
 
 install_all_modules()
@@ -500,6 +495,18 @@ create_initramfs()
         else
             install_all_modules
         fi
+
+        # install user specified modules if any
+        [ "$modules" ] && {
+            for _module in $modules; do
+                install_module "$_module"
+            done
+
+            # copy config
+            printf "%s\n" \
+                modules="$modules" \
+            >> "${workdir}/etc/config"
+        }
 
         for _binary in find sort modprobe; do
             install_binary "$_binary"

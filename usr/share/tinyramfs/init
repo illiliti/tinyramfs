@@ -70,6 +70,8 @@ prepare_environment()
     ln -s /proc/self/fd/2 /dev/stderr
 
     trap 'panic "something went wrong"' EXIT
+
+    [ "$modules" ] && modprobe -a "$modules"
 }
 
 parse_cmdline()
@@ -147,10 +149,8 @@ unlock_luks()
 
     set -- \
         "--disable-locks" \
-        "$luks_key" \
-        "$luks_header" \
-        "$luks_discard" \
-        "$device" \
+        "$luks_key" "$luks_header" \
+        "$luks_discard" "$device" \
         "${luks_name:-luks-${device##*/}}"
 
     cryptsetup open $@ || panic "failed to unlock LUKS"

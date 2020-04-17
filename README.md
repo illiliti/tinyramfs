@@ -1,33 +1,67 @@
+Tinyramfs
+=========
+
+**Currently tinyramfs is incomplete, don't expect that everything is working**
+
 Features
 --------
 
 - No `local`'s, no bashisms, only POSIX shell
 - Easy configuration
+- mdev, mdevd, eudev
 - LUKS
 - LVM
-- mdev, mdevd, eudev
-
-Installation
-------------
 
 Dependencies
 ------------
 
 * POSIX shell
-* `toybox` OR `busybox` OR `sbase/ubase` OR `coreutils/util-linux`
+* POSIX utilities
+* `switch_root`
+* `readlink`
+* `install`
+* `setsid`
+* `mount`
+* `cpio`
+* `gzip`
+  - Required by default
+* `strip`
+  - Optional
+* `blkid`
+  - Required for mdev/mdevd
 * `mdev` OR `mdevd` OR `eudev`
-* `kmod`
-  - Not required for monolithic kernel (builtin modules)
-* `cryptsetup`
-  - Required for LUKS support
+  - systemd-udevd not tested
 * `lvm2`
   - Required for LVM support
+* `cryptsetup`
+  - Required for LUKS support
+* `kmod` OR `busybox modutils` with [this patch](https://gist.github.com/illiliti/ef9ee781b5c6bf36d9493d99b4a1ffb6) (already included in KISS Linux)
+  - Not required for monolithic kernel (builtin modules)
+
+Notes
+-----
+
+* busybox and toybox blkid doesn't support PARTUUID
+* zsh (in POSIX mode) showing some errors, but working fine
+* cp -P is broken in toybox, see [here](https://github.com/landley/toybox/issues/174)
+
+Installation
+------------
+```sh
+git clone https://github.com/illiliti/tinyramfs
+cd tinyramfs
+make install
+vi /etc/tinyramfs/config # edit config for your needs
+tinyramfs -o /boot/initramfs
+# update your bootloader
+# reboot...
+```
 
 Usage
 -----
 
 ```
-usage: ./tinyramfs [option]
+usage: tinyramfs [option]
        -o, --output <file>  set initramfs output path
        -c, --config <file>  set config file path
        -m, --moddir <dir>   set modules directory
@@ -40,142 +74,21 @@ usage: ./tinyramfs [option]
 Configuration
 -------------
 
-```sh
-# debug mode
-#
-debug=0
+Static via config
+-----------------
 
-# overwrite initramfs
-#
-force=0
+See [config](config)
 
-# initramfs output path
-#
-# default - /tmp/initramfs-$kernel
-# example - output="/tmp/myinitramfs.img.gz"
-#
-output=""
+Dynamic via kernel parameters
+-----------------------------
 
-# monolithic kernel
-#
-monolith=0
+TODO finalize and document kernel command-line parameters
 
-# modules directory
-#
-# default - /lib/modules
-# example - moddir="/mnt/root/lib/modules"
-#
-moddir=""
+Thanks
+------
 
-# kernel version
-#
-# default - $(uname -r)
-# example - kernel="5.4.18_1"
-#
-kernel=""
-
-# compression program
-#
-# default - gzip -9
-# example - compress="pigz -9"
-#
-compress=""
-
-# root
-#
-# supported - PARTUUID, DEVICE, LABEL, UUID
-# example -
-#   root="/dev/sda1"
-#   root="PARTUUID=35f923c5-083a-4950-a4da-e611d0778121"
-#
-root=""
-
-# root type
-#
-# default - autodetected
-# example - root_type="btrfs"
-#
-root_type=""
-
-# root options
-# example - see fstab(5)
-#
-root_opts=""
-
-# device manager
-# supported - udev, mdev, mdevd
-#
-devmgr=""
-
-# hostonly mode
-#
-hostonly=0
-
-# additional modules
-# example - modules="fat crc32c_generic"
-#
-modules=""
-
-# exclude modules
-# example - modules_exclude="wmi fuse"
-#
-modules_exclude=""
-
-# additional binaries
-# example - binaries="ls cat /path/to/mycustomprog"
-#
-binaries=""
-
-# LVM support
-#
-lvm=0
-
-# LVM options
-#
-# supported - tag, name, group, config, discard
-# description -
-#   tag - trigger lvm by tag
-#   name - trigger lvm by logical volume name
-#   group - trigger lvm by volume group name
-#   config - embed host lvm config
-#   discard - enable issue_discards
-# example -
-#   lvm_opts="tag=lvm-server"
-#   lvm_opts="name=lv1,group=vg1"
-#   lvm_opts="config=1,discard"
-#   lvm_opts="discard=1"
-#
-lvm_opts=""
-
-# LUKS support
-#
-luks=0
-
-# LUKS encrypted root
-#
-# supported - PARTUUID, DEVICE, LABEL, UUID
-# example -
-#   luks_root="/dev/sda1"
-#   luks_root="PARTUUID=35f923c5-083a-4950-a4da-e611d0778121"
-#
-luks_root=""
-
-# LUKS options
-#
-# supported - key, name, header, discard
-# description -
-#   key - embed key
-#   name - device mapper name
-#   header - embed header
-#   discard - enable allow-discards
-# example -
-#   luks_opts="key=/path/to/keyfile,name=myluksroot,header=/path/to/header,discard"
-#   luks_opts="discard=1"
-#
-luks_opts=""
-```
-
-TODO document kernel command-line parameters
+[E5ten](https://github.com/E5ten)
+[dylanaraps](https://github.com/dylanaraps)
 
 License
 -------

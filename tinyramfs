@@ -6,7 +6,7 @@
 # shellcheck disable=2154
 
 # TODO add some colors ?
-panic() { printf "panic >> %s\n" "$1" >&2; exit 1; }
+panic() { printf "panic >> %s\n" "$1" >&2; panic=1; exit 1; }
 info() { printf "info >> %s\n" "$1"; }
 
 usage()
@@ -482,7 +482,7 @@ create_initramfs()
         ret="$?"
         trap - EXIT INT
         [ "$debug" != 1 ] && remove_workdir
-        [ "$ret"   != 0 ] && panic "something went wrong"
+        [ "$ret"   != 0 ] && [ "$panic" != 1 ] && panic "something went wrong"
         ' EXIT INT
 
     create_structure

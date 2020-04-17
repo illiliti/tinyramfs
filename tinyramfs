@@ -71,9 +71,9 @@ prepare_environment()
 {
     info "preparing environment"
 
+    # false positive
+    # shellcheck disable=1090
     for _file in $_config /etc/tinyramfs/config ./config; do
-        # false positive
-        # shellcheck disable=1090
         [ -f "$_file" ] && { . "$_file"; break; }
     done || panic "failed to source config"
 

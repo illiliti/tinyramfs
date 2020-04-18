@@ -296,14 +296,11 @@ install_module()
     while read -r module || [ "$module" ]; do
 
         # strip unneeded stuff
-        module="${module##*builtin*}"
-        module="${module##*net*}"
-        module="${module#insmod }"
-
-        # exclude user specified modules if any
-        for _exclude_module in $modules_exclude; do
-            module="${module##*${_exclude_module}*}"
+        for _exclude_module in wmi gpu net sound builtin $modules_exclude; do
+            case "$module" in *"$_exclude_module"*) continue 2 ;; esac
         done
+
+        module="${module#insmod }"
 
         # check if module already installed
         [ -e "$module" ] && [ ! -e "${workdir}${module}" ] &&
@@ -423,7 +420,10 @@ install_binary()
     while read -r _library || [ "$_library" ]; do
 
         # strip unneeded stuff
-        _library="${_library##*vdso*}"
+        for _exclude_library in vdso gate; do
+            case "$_library" in *"$_exclude_library"*) continue 2 ;; esac
+        done
+
         _library="${_library#* => }"
         _library="${_library% *}"
 

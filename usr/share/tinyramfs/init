@@ -71,6 +71,8 @@ prepare_environment()
 
     trap 'panic "something went wrong"' EXIT
 
+    # false positive
+    # shellcheck disable=2015
     [ "$modules" ] && modprobe -a "$modules" 2> /dev/null ||:
 }
 

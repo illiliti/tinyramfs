@@ -110,7 +110,7 @@ install_requirements()
     info "installing requirements"
 
     # install user specified and required binaries
-    for _binary in $binaries \[ sh sleep mount printf setsid switch_root; do
+    for _binary in $binaries \[ sh ln sleep mount printf setsid switch_root; do
         install_binary "$_binary"
     done
 
@@ -161,7 +161,7 @@ install_devmgr()
 
     install_devmgr_helper()
     {
-        for _binary in ln kill mkdir blkid "${filesdir}/device-helper"; do
+        for _binary in kill mkdir blkid "${filesdir}/device-helper"; do
             install_binary "$_binary"
         done
 
@@ -404,7 +404,8 @@ install_binary()
     # iterate throught symlinks and copy them
     while [ -h "$binary" ]; do
         cp -P "$binary" "$workdirbin"
-        binary="${binary%/*}/$(readlink "$binary")"
+        readlink_binary=$(readlink "$binary")
+        binary="${binary%/*}/${readlink_binary##*/}"
     done
 
     install -m755 "$binary" "${workdirbin}${binary##*/}"
@@ -437,7 +438,8 @@ install_library()
     # iterate throught symlinks and copy them
     while [ -h "$library" ]; do
         cp -P "$library" "$workdirlib"
-        library="${library%/*}/$(readlink "$library")"
+        readlink_library=$(readlink "$library")
+        library="${library%/*}/${readlink_library##*/}"
     done
 
     install -m755 "$library" "${workdirlib}${library##*/}"

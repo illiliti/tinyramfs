@@ -71,7 +71,7 @@ prepare_environment()
 
     trap 'panic "something went wrong"' EXIT
 
-    [ "$modules" ] && modprobe -a "$modules"
+    [ "$modules" ] && modprobe -a "$modules" ||:
 }
 
 parse_cmdline()

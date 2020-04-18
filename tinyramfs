@@ -183,6 +183,9 @@ install_devmgr()
                 install_binary "$_binary"
             done
 
+            # i hate udev
+            mkdir -p "${workdir}/run/udev"
+
             # exclusively handle requirement
             [ "$luks" = 1 ] || [ "$lvm" = 1 ] && install_binary dmsetup
 

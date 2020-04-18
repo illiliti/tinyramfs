@@ -14,7 +14,7 @@ info() { printf "info >> %s\n" "$1"; shell; }
 shell()
 {
     # see https://busybox.net/FAQ.html#job_control
-    setsid sh -c "exec sh <> /dev/${console:-console} 2>&1" || sh
+    setsid sh -c "exec sh <> /dev/${console:-tty1} 2>&1" || sh
 }
 
 findfs()
@@ -71,9 +71,7 @@ prepare_environment()
 
     trap 'panic "something went wrong"' EXIT
 
-    if [ "$modules" ]; then
-        modprobe -a "$modules"
-    fi
+    [ "$modules" ] && modprobe -a "$modules" 2> /dev/null ||:
 }
 
 parse_cmdline()
@@ -116,7 +114,7 @@ setup_devmgr()
 
             [ "$monolith" != 1 ] && {
                 set -- $(find /sys -name modalias -type f -exec sort -u {} +)
-                modprobe -a "$@" 2> /dev/null
+                modprobe -a "$@" 2> /dev/null ||:
             }
         ;;
         mdevd)

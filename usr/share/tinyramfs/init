@@ -38,7 +38,7 @@ findfs()
 
     # avoid race condition
     while [ ! -e "$device" ]; do
-        [ "$value" = 15 ] && panic "failed to lookup partition"
+        [ "$value" = 80 ] && panic "failed to lookup partition"
         value=$(( value + 1 )); sleep 1
     done
 }

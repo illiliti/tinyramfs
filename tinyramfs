@@ -159,7 +159,7 @@ install_devmgr()
 {
     info "installing device manager"
 
-    install_devmgr_helper()
+    install_device_helper()
     {
         for _binary in kill mkdir blkid "${filesdir}/device-helper"; do
             install_binary "$_binary"
@@ -190,24 +190,24 @@ install_devmgr()
             [ "$luks" = 1 ] || [ "$lvm" = 1 ] && install_binary dmsetup
 
             for _binary in /usr/lib/udev/ata_id /usr/lib/udev/scsi_id; do
-                install -Dm755 "$_binary" "${workdir}${_binary}"
+                install -Dm755 "$_binary" "${workdir}${_binary}" || return
             done
 
             # TODO we really need all rules?
             set +f; for _file in /usr/lib/udev/rules.d/*; do
-                install -Dm644 "$_file" "${workdir}${_file}"
+                install -Dm644 "$_file" "${workdir}${_file}" || return
             done; set -f
         ;;
         mdev)
             install_binary mdev
-            install_devmgr_helper
+            install_device_helper
         ;;
         mdevd)
             for _binary in mdevd mdevd-coldplug; do
                 install_binary "$_binary"
             done
 
-            install_devmgr_helper
+            install_device_helper
         ;;
     esac
 }
@@ -270,11 +270,11 @@ install_luks()
 
     for opt; do case "${opt%%=*}" in
         header)
-            install -m400 "${opt##*=}" "${workdir}/root/header"
+            install -m400 "${opt##*=}" "${workdir}/root/header" || return
             luks_opts=$(printf "%s" "$luks_opts" | sed "s|${opt##*=}|/root/header|")
         ;;
         key)
-            install -m400 "${opt##*=}" "${workdir}/root/key"
+            install -m400 "${opt##*=}" "${workdir}/root/key" || return
             luks_opts=$(printf "%s" "$luks_opts" | sed "s|${opt##*=}|/root/key|")
         ;;
     esac; done
@@ -304,7 +304,7 @@ install_module()
 
         # check if module already installed
         [ -e "$module" ] && [ ! -e "${workdir}${module}" ] &&
-            install -Dm644 "$module" "${workdir}${module}"
+            install -Dm644 "$module" "${workdir}${module}" || return
     done ||:
 }
 
@@ -408,7 +408,7 @@ install_binary()
         binary="${binary%/*}/${readlink_binary##*/}"
     done
 
-    install -m755 "$binary" "${workdirbin}${binary##*/}"
+    install -m755 "$binary" "${workdirbin}${binary##*/}" || return
     strip "${workdirbin}${binary##*/}" > /dev/null 2>&1 ||:
 
     # check if binary statically linked
@@ -445,7 +445,7 @@ install_library()
         library="${library%/*}/${readlink_library##*/}"
     done
 
-    install -m755 "$library" "${workdirlib}${library##*/}"
+    install -m755 "$library" "${workdirlib}${library##*/}" || return
     strip "${workdirlib}${library##*/}" > /dev/null 2>&1 ||:
 }
 

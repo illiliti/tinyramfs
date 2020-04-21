@@ -84,7 +84,7 @@ prepare_environment()
         [ -f "$_file" ] && { . "$_file"; break; }
     done || panic "failed to source config"
 
-    for _dir in $_filesdir /usr/share/tinyramfs ./usr/share/tinyramfs; do
+    for _dir in $_filesdir /usr/share/tinyramfs .; do
         [ -d "$_dir" ] && { filesdir="$_dir"; break; }
     done || panic "failed to locate required files"
 

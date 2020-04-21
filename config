@@ -40,7 +40,9 @@
 # compression program
 #
 # default - gzip -9
-# example - compress="pigz -9"
+# example -
+#   compress="pigz -9"
+#   compress="none" # disable compress
 #
 #compress=""
 

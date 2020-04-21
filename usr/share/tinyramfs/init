@@ -8,8 +8,17 @@
 # false positive
 # shellcheck disable=2154,2163,1091
 
-panic() { printf "panic >> %s\n" "$1" >&2; shell; }
-info() { printf "info >> %s\n" "$1"; shell; }
+print()
+{
+    printf "%b %s\n" "${2:-\033[1;37m>>\033[m}" "$1"
+    shell
+}
+
+panic()
+{
+    print "$1" "\033[1;31m!!\033[m" >&2
+    shell
+}
 
 shell()
 {
@@ -38,7 +47,7 @@ findfs()
 
     # avoid race condition
     while [ ! -e "$device" ]; do
-        [ "$value" = 80 ] && panic "failed to lookup partition"
+        [ "$value" = 30 ] && panic "failed to lookup partition"
         value=$(( value + 1 )); sleep 1
     done
 }
@@ -84,6 +93,12 @@ parse_cmdline()
         debug | debug=1)
             set -x
         ;;
+        rootfstype=*)
+            root_type="$line"
+        ;;
+        rootflags=*)
+            root_opts="$line"
+        ;;
         ro | rw)
             rorw="-o $line"
         ;;
@@ -102,7 +117,7 @@ parse_cmdline()
 
 setup_devmgr()
 {
-    [ "$break" = devmgr ] && info "break before setup device manager"
+    [ "$break" = devmgr ] && print "break before setup device manager"
 
     case "$devmgr" in
         udev)
@@ -128,7 +143,7 @@ setup_devmgr()
 
 unlock_luks()
 {
-    [ "$break" = luks ] && info "break before unlock LUKS"
+    [ "$break" = luks ] && print "break before unlock LUKS"
 
     { IFS=,; set -- $luks_opts; IFS="$OLD_IFS"; }
 
@@ -160,7 +175,7 @@ unlock_luks()
 
 trigger_lvm()
 {
-    [ "$break" = lvm ] && info "break before trigger LVM"
+    [ "$break" = lvm ] && print "break before trigger LVM"
 
     { IFS=,; set -- $lvm_opts; IFS="$OLD_IFS"; }
 
@@ -197,7 +212,7 @@ trigger_lvm()
 
 mount_root()
 {
-    [ "$break" = root ] && info "break before mount root"
+    [ "$break" = root ] && print "break before mount root"
 
     findfs "$root"
 
@@ -211,7 +226,7 @@ mount_root()
 
 cleanup()
 {
-    [ "$break" = cleanup ] && info "break before cleanup"
+    [ "$break" = cleanup ] && print "break before cleanup"
 
     case "$devmgr" in
         udev)  udevadm control -e ;;
@@ -228,7 +243,7 @@ cleanup()
 
 boot_system()
 {
-    [ "$break" = boot ] && info "break before boot system"
+    [ "$break" = boot ] && print "break before boot system"
 
     set -- "/mnt/root" "${init:-/sbin/init}"
     exec switch_root $@ 2> /dev/null || panic "failed to boot system"

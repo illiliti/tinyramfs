@@ -5,9 +5,16 @@
 # false positive
 # shellcheck disable=2154
 
-# TODO add some colors ?
-panic() { printf "panic >> %s\n" "$1" >&2; panic=1; exit 1; }
-info() { printf "info >> %s\n" "$1"; }
+print()
+{
+    printf "%b %s\n" "${2:-\033[1;37m>>\033[m}" "$1"
+}
+
+panic()
+{
+    print "$1" "\033[1;31m!!\033[m" >&2
+    exit 1
+}
 
 usage()
 {
@@ -69,7 +76,7 @@ parse_args()
 
 prepare_environment()
 {
-    info "preparing environment"
+    print "preparing environment"
 
     # false positive
     # shellcheck disable=1090
@@ -96,21 +103,35 @@ prepare_environment()
     workdirlib="${workdir}/usr/lib/"
     modker="${moddir}/${kernel}"
     OLD_IFS="$IFS"
+
+    trap trap_helper EXIT INT
+
+    # false positive
+    # shellcheck disable=2015
+    [ "$debug" = 1 ] && set -x ||:
 }
 
-remove_workdir()
+trap_helper()
 {
-    info "removing working directory"
+    # TODO need cleanup
+    ret="$?"
 
-    rm -rf "$workdir"
+    trap - EXIT INT
+
+    [ "$debug" != 1 ] && {
+        print "removing working directory"
+        rm -rf "$workdir"
+    }
+
+    [ "$ret" != 0 ] && panic "something went wrong"
 }
 
 install_requirements()
 {
-    info "installing requirements"
+    print "installing requirements"
 
     # install user specified and required binaries
-    for _binary in $binaries \[ sh ln sleep mount printf setsid switch_root; do
+    for _binary in \[ sh ln sleep mount printf setsid switch_root $binaries; do
         install_binary "$_binary"
     done
 
@@ -129,7 +150,7 @@ install_requirements()
 
 create_structure()
 {
-    info "creating directory structure"
+    print "creating directory structure"
 
     mkdir -p \
         "${workdir}/etc" \
@@ -145,7 +166,7 @@ create_structure()
 
 create_symlinks()
 {
-    info "creating symlinks"
+    print "creating symlinks"
 
     ln -s usr/lib "${workdir}/lib"
     ln -s usr/lib "${workdir}/lib64"
@@ -157,7 +178,7 @@ create_symlinks()
 
 install_devmgr()
 {
-    info "installing device manager"
+    print "installing device manager"
 
     install_device_helper()
     {
@@ -214,7 +235,7 @@ install_devmgr()
 
 install_lvm()
 {
-    info "installing LVM"
+    print "installing LVM"
 
     for _binary in lvchange vgchange; do
         install_binary "$_binary"
@@ -256,7 +277,7 @@ install_lvm()
 
 install_luks()
 {
-    info "installing LUKS"
+    print "installing LUKS"
 
     install_binary cryptsetup
 
@@ -310,7 +331,7 @@ install_module()
 
 install_hostonly_modules()
 {
-    info "installing hostonly modules"
+    print "installing hostonly modules"
 
     # perform autodetection of modules via /sys
     find /sys -name modalias -exec sort -u {} + |
@@ -346,7 +367,7 @@ install_hostonly_modules()
 
 install_all_modules()
 {
-    info "installing all modules"
+    print "installing all modules"
 
     find \
         "${modker}/kernel/arch" \
@@ -420,9 +441,7 @@ install_binary()
     while read -r _library || [ "$_library" ]; do
 
         # strip unneeded stuff
-        for _exclude_library in vdso gate; do
-            case "$_library" in *"$_exclude_library"*) continue 2 ;; esac
-        done
+        [ "${_library##*vdso*}" ] || continue
 
         _library="${_library#* => }"
         _library="${_library% *}"
@@ -451,17 +470,20 @@ install_library()
 
 create_initramfs()
 {
-    info "creating initramfs image"
-
-    # TODO add uncompressed option
+    print "creating initramfs image"
 
     # check if image already exist
     [ "$force" != 1 ] && [ -e "$output" ] &&
         panic "initramfs image already exist"
 
     (
-        cd "$workdir"
-        find . | cpio -oH newc | ${compress:-gzip -9}
+        cd "$workdir"; find . |
+
+        if [ "$compress" = none ]; then
+            cpio -oH newc
+        else
+            cpio -oH newc | ${compress:-gzip -9}
+        fi
 
     ) > "$output" 2> /dev/null ||
         panic "failed to generate initramfs image"
@@ -474,17 +496,6 @@ create_initramfs()
 
     parse_args "$@"
     prepare_environment
-
-    [ "$debug" = 1 ] && set -x
-
-    # hacky, but compatible with all posix shells
-    trap '
-        ret="$?"
-        trap - EXIT INT
-        [ "$debug" != 1 ] && remove_workdir
-        [ "$ret"   != 0 ] && [ "$panic" != 1 ] && panic "something went wrong"
-        ' EXIT INT
-
     create_structure
     create_symlinks
 
@@ -517,9 +528,10 @@ create_initramfs()
             install_binary "$_binary"
         done
 
-        cp "${modker}/modules.builtin" \
-           "${modker}/modules.order" \
-           "${workdir}${modker}"
+        install -m644 \
+            "${modker}/modules.builtin" \
+            "${modker}/modules.order" \
+            "${workdir}${modker}"
 
         depmod -b "$workdir" "$kernel"
     }
@@ -528,5 +540,5 @@ create_initramfs()
     install_requirements
     create_initramfs
 
-    info "done! check out - $output"
+    print "done! check out $output"
 }

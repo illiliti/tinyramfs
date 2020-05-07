@@ -4,12 +4,14 @@
 # uncomment and fill settings which you needed
 
 # debug mode
+# default - 0
 #
-#debug=0
+#debug=0|1
 
 # overwrite initramfs
+# default - 0
 #
-#force=0
+#force=0|1
 
 # initramfs output path
 #
@@ -19,9 +21,11 @@
 #output=""
 
 # monolithic kernel
+#
+# default - 0
 # enable this if you have monolithic kernel (builtin modules)
 #
-#monolith=0
+#monolith=0|1
 
 # modules directory
 #
@@ -51,6 +55,7 @@
 # supported - PARTUUID, DEVICE, LABEL, UUID
 # example -
 #   root="/dev/sda1"
+#   root="/dev/dm-0"
 #   root="PARTUUID=35f923c5-083a-4950-a4da-e611d0778121"
 #
 #root=""
@@ -77,7 +82,7 @@
 # dramatically reduce initramfs size
 # useful only for modular kernels
 #
-#hostonly=0
+#hostonly=0|1
 
 # additional modules
 # example - modules="fat crc32c_generic"
@@ -95,8 +100,9 @@
 #binaries=""
 
 # LVM support
+# default - 0
 #
-#lvm=0
+#lvm=0|1
 
 # LVM options
 #
@@ -116,8 +122,9 @@
 #lvm_opts=""
 
 # LUKS support
+# default - 0
 #
-#luks=0
+#luks=0|1
 
 # LUKS encrypted root
 #

@@ -7,34 +7,39 @@ create_symlink()
     sym="$1"
     sym="${sym%\"}"
     sym="${sym#\"}"
-    sym="${dir}${sym}"
+    sym="${dir}/${sym}"
 
-    mkdir -p "$dir" 2> /dev/null
-    ln    -s "/dev/${MDEV}" "$sym" 2> /dev/null
+    mkdir -p "$dir"
+    ln    -s "/dev/${dev_name}" "$sym"
 }
 
 # int main()
 {
-    [ "$MDEV" ] || exit 1
+    exec > /dev/null 2>&1
 
-    for line in $(blkid "$MDEV"); do case "${line%%=*}" in
+    [ "${dev_name=${DEVPATH##*/}}" ] || exit 1
+
+    # avoid race condition
+    while ! blkid "/dev/${dev_name}"; do sleep 1; done
+
+    for line in $(blkid "/dev/${dev_name}"); do case "${line%%=*}" in
         UUID)
-            dir="/dev/disk/by-uuid/"
+            dir=/dev/disk/by-uuid
             create_symlink "${line##*=}"
         ;;
         LABEL)
-            dir="/dev/disk/by-label/"
+            dir=/dev/disk/by-label
             create_symlink "${line##*=}"
         ;;
         PARTUUID)
-            dir="/dev/disk/by-partuuid/"
+            dir=/dev/disk/by-partuuid
             create_symlink "${line##*=}"
         ;;
     esac; done
 
-    [ -e "/sys/block/${MDEV}/dm/name" ] && {
-        mkdir -p /dev/mapper 2> /dev/null
-        read  -r name < "/sys/block/${MDEV}/dm/name"
-        ln    -s "/dev/${MDEV}" "/dev/mapper/${name}" 2> /dev/null
+    [ -e "/sys/block/${dev_name}/dm/name" ] && {
+        mkdir -p /dev/mapper
+        read  -r dm_name < "/sys/block/${dev_name}/dm/name"
+        ln    -s "/dev/${dev_name}" "/dev/mapper/${dm_name}"
     }
 }

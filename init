@@ -10,13 +10,14 @@
 
 print()
 {
-    printf "%b %s\n" "${2:-\033[1;37m>>\033[m}" "$1"
-    shell
+    printf "%b %s\n" "${2:-"\033[1;37m>>\033[m"}" "$1"
 }
 
 panic()
 {
-    print "$1" "\033[1;31m!!\033[m" >&2
+    print "${1:-unexpected error occurred}" \
+          "\033[1;31m!!\033[m" >&2
+
     shell
 }
 
@@ -28,7 +29,7 @@ shell()
 
 findfs()
 {
-    value=0; device=
+    count=0; device=
 
     case "${1%%=*}" in
         /dev/*)
@@ -47,42 +48,52 @@ findfs()
 
     # avoid race condition
     while [ ! -e "$device" ]; do
-        [ "$value" = 30 ] && panic "failed to lookup partition"
-        value=$(( value + 1 )); sleep 1
-    done
+        sleep 1; : $(( count += 1 ))
+
+        [ "$count" = 30 ] && {
+            panic "failed to lookup partition"
+            break
+        }
+    done || :
 }
 
 prepare_environment()
 {
-    . /etc/config
+    . /etc/tinyramfs/config
 
     export \
-        SHELL=/bin/sh \
-        TERM=linux \
-        HOME=/root \
-        PATH=/bin:/sbin:/usr/bin:/usr/sbin \
+        LANG=C \
         PS1="# " \
         LC_ALL=C \
-        LANG=C \
-        OLD_IFS="$IFS"
+        TERM=linux \
+        HOME=/root \
+        SHELL=/bin/sh \
+        OLD_IFS="$IFS" \
+        PATH=/bin:/sbin:/usr/bin:/usr/sbin
 
     # fix for ubase mount
-    :> /etc/fstab
+    : > /etc/fstab
 
     mount -t proc     -o nosuid,noexec,nodev     proc /proc
     mount -t sysfs    -o nosuid,noexec,nodev     sys  /sys
+    mount -t tmpfs    -o nosuid,nodev,mode=0755  run  /run
     mount -t devtmpfs -o nosuid,noexec,mode=0755 dev  /dev
 
-    ln -s /proc/self/fd   /dev/fd
-    ln -s /proc/self/fd/0 /dev/stdin
-    ln -s /proc/self/fd/1 /dev/stdout
-    ln -s /proc/self/fd/2 /dev/stderr
+    mkdir -p \
+        /run/cryptsetup \
+        /run/lock \
+        /run/lvm
 
-    trap 'panic "something went wrong"' EXIT
+    ln -s /proc/self/fd /dev/fd
+    ln -s fd/0          /dev/stdin
+    ln -s fd/1          /dev/stdout
+    ln -s fd/2          /dev/stderr
 
-    # false positive
-    # shellcheck disable=2015
-    [ "$modules" ] && modprobe -a "$modules" 2> /dev/null ||:
+    trap panic EXIT
+
+    [ "$modules" ] || return 0
+
+    modprobe -a "$modules"
 }
 
 parse_cmdline()
@@ -107,32 +118,35 @@ parse_cmdline()
             : no operation
         ;;
         *=*)
-            export "$line"
+            export "$line" || :
         ;;
         *)
-            export "${line}=1"
+            export "${line}=1" || :
         ;;
     esac; done
 }
 
 setup_devmgr()
 {
-    [ "$break" = devmgr ] && print "break before setup device manager"
+    [ "$break" = devmgr ] && { print "break before setup_devmgr()"; shell; }
 
     case "$devmgr" in
         udev)
-            udevd -d -N never
+            udevd -dN never
             udevadm trigger -c add -t subsystems
             udevadm trigger -c add -t devices
             udevadm settle
         ;;
         mdev)
             mdev -df 2> /dev/null & mdev_pid="$!"
+            mdev -s
 
-            [ "$monolith" != 1 ] && {
-                set -- $(find /sys -name modalias -type f -exec sort -u {} +)
-                modprobe -a "$@" 2> /dev/null ||:
-            }
+            [ "$monolith" = 1 ] && return 0
+
+            # TODO maybe replace sort using while-read loop
+            # while-read can cause slowdown, so why i'm unsure
+            set -- $(find /sys -name modalias -type f -exec sort -u {} +)
+            modprobe -a "$@" 2> /dev/null || :
         ;;
         mdevd)
             mdevd 2> /dev/null & mdevd_pid="$!"
@@ -143,7 +157,7 @@ setup_devmgr()
 
 unlock_luks()
 {
-    [ "$break" = luks ] && print "break before unlock LUKS"
+    [ "$break" = luks ] && { print "break before unlock_luks()"; shell; }
 
     { IFS=,; set -- $luks_opts; IFS="$OLD_IFS"; }
 
@@ -165,7 +179,6 @@ unlock_luks()
     findfs "$luks_root"
 
     set -- \
-        "--disable-locks" \
         "$luks_key" "$luks_header" \
         "$luks_discard" "$device" \
         "${luks_name:-luks-${device##*/}}"
@@ -175,7 +188,7 @@ unlock_luks()
 
 trigger_lvm()
 {
-    [ "$break" = lvm ] && print "break before trigger LVM"
+    [ "$break" = lvm ] && { print "break before trigger_lvm()"; shell; }
 
     { IFS=,; set -- $lvm_opts; IFS="$OLD_IFS"; }
 
@@ -184,7 +197,7 @@ trigger_lvm()
             lvm_discard="--config=devices{issue_discards=1}"
         ;;
         config=0)
-            :> /etc/lvm/lvm.conf
+            : > /etc/lvm/lvm.conf
         ;;
         group=*)
             lvm_group="${opt##*=}"
@@ -197,22 +210,22 @@ trigger_lvm()
         ;;
     esac; done
 
-    set -- "--sysinit" "-qq" "-ay" "$lvm_discard"
+    set -- "--sysinit" "-qq" "-aay" "$lvm_discard"
 
     if [ "$lvm_group" ] && [ "$lvm_name" ]; then
-        lvchange $@ "${lvm_group}${lvm_name}"
+        lvm lvchange $@ "${lvm_group}${lvm_name}"
     elif [ "$lvm_group" ]; then
-        vgchange $@ "$lvm_group"
+        lvm vgchange $@ "$lvm_group"
     elif [ "$lvm_tag" ]; then
-        lvchange $@ "$lvm_tag"
+        lvm lvchange $@ "$lvm_tag"
     else
-        vgchange $@
+        lvm vgchange $@
     fi
 }
 
 mount_root()
 {
-    [ "$break" = root ] && print "break before mount root"
+    [ "$break" = root ] && { print "break before mount_root()"; shell; }
 
     findfs "$root"
 
@@ -226,7 +239,7 @@ mount_root()
 
 cleanup()
 {
-    [ "$break" = cleanup ] && print "break before cleanup"
+    [ "$break" = cleanup ] && { print "break before cleanup()"; shell; }
 
     case "$devmgr" in
         udev)  udevadm control -e ;;
@@ -236,14 +249,15 @@ cleanup()
 
     # temporary workaround until util-linux release a new version
     # see https://github.com/karelzak/util-linux/issues/997
-    for dir in dev sys proc; do
-        mount -o move "$dir" "/mnt/root/${dir}" || mount --move "$dir" "/mnt/root/${dir}"
+    for dir in /run /dev /sys /proc; do
+        mount -o move "$dir" "/mnt/root/${dir}" ||
+        mount  --move "$dir" "/mnt/root/${dir}"
     done
 }
 
 boot_system()
 {
-    [ "$break" = boot ] && print "break before boot system"
+    [ "$break" = boot ] && { print "break before boot_system()"; shell; }
 
     set -- "/mnt/root" "${init:-/sbin/init}"
     exec switch_root $@ 2> /dev/null || panic "failed to boot system"

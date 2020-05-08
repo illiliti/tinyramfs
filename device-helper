@@ -15,12 +15,12 @@ create_symlink()
 
 # int main()
 {
-    exec > /dev/null 2>&1
-
     [ "${dev_name=${DEVPATH##*/}}" ] || exit 1
 
+    exec > /dev/null 2>&1
+
     # avoid race condition
-    while ! blkid "/dev/${dev_name}"; do sleep 1; done
+    while [ ! -e "/dev/${dev_name}" ]; do sleep 1; done
 
     for line in $(blkid "/dev/${dev_name}"); do case "${line%%=*}" in
         UUID)

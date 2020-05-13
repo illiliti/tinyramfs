@@ -20,7 +20,7 @@ create_symlink()
     exec > /dev/null 2>&1
 
     # avoid race condition
-    while [ ! -e "/dev/${dev_name}" ]; do sleep 1; done
+    while ! blkid "/dev/${dev_name}"; do sleep 1; done
 
     for line in $(blkid "/dev/${dev_name}"); do case "${line%%=*}" in
         UUID)
@@ -40,6 +40,6 @@ create_symlink()
     [ -e "/sys/block/${dev_name}/dm/name" ] && {
         mkdir -p /dev/mapper
         read  -r dm_name < "/sys/block/${dev_name}/dm/name"
-        ln    -s "/dev/${dev_name}" "/dev/mapper/${dm_name}"
+        ln    -sf "/dev/${dev_name}" "/dev/mapper/${dm_name}"
     }
 }

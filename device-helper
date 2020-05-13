@@ -4,7 +4,9 @@
 
 create_symlink()
 {
-    sym="$1"
+    dir="$1"; sym="$2"
+
+    # remove double quotes
     sym="${sym%\"}"
     sym="${sym#\"}"
     sym="${dir}/${sym}"
@@ -22,19 +24,10 @@ create_symlink()
     # avoid race condition
     while ! blkid "/dev/${dev_name}"; do sleep 1; done
 
-    for line in $(blkid "/dev/${dev_name}"); do case "${line%%=*}" in
-        UUID)
-            dir=/dev/disk/by-uuid
-            create_symlink "${line##*=}"
-        ;;
-        LABEL)
-            dir=/dev/disk/by-label
-            create_symlink "${line##*=}"
-        ;;
-        PARTUUID)
-            dir=/dev/disk/by-partuuid
-            create_symlink "${line##*=}"
-        ;;
+    for line in $(blkid "/dev/${dev_name}"); do case   "${line%%=*}" in
+        UUID)     create_symlink /dev/disk/by-uuid     "${line##*=}" ;;
+        LABEL)    create_symlink /dev/disk/by-label    "${line##*=}" ;;
+        PARTUUID) create_symlink /dev/disk/by-partuuid "${line##*=}" ;;
     esac; done
 
     [ -e "/sys/block/${dev_name}/dm/name" ] && {

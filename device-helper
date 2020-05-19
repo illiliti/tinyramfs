@@ -12,7 +12,7 @@ create_symlink()
     sym="${dir}/${sym}"
 
     mkdir -p "$dir"
-    ln    -s "/dev/${dev_name}" "$sym"
+    ln    -s "../../${dev_name}" "$sym"
 }
 
 # int main()
@@ -21,7 +21,7 @@ create_symlink()
 
     exec > /dev/null 2>&1
 
-    # avoid race condition
+    # prevent race condition
     while ! blkid "/dev/${dev_name}"; do sleep 1; done
 
     for line in $(blkid "/dev/${dev_name}"); do case   "${line%%=*}" in
@@ -30,9 +30,8 @@ create_symlink()
         PARTUUID) create_symlink /dev/disk/by-partuuid "${line##*=}" ;;
     esac; done
 
-    [ -e "/sys/block/${dev_name}/dm/name" ] && {
+    read -r dm_name < "/sys/block/${dev_name}/dm/name" && {
         mkdir -p /dev/mapper
-        read  -r dm_name < "/sys/block/${dev_name}/dm/name"
-        ln    -sf "/dev/${dev_name}" "/dev/mapper/${dm_name}"
+        ln    -sf "../${dev_name}" "/dev/mapper/${dm_name:?}"
     }
 }

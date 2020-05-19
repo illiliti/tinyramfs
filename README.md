@@ -20,7 +20,6 @@ Dependencies
 * `switch_root`
 * `readlink`
 * `install`
-* `setsid`
 * `mount`
 * `blkid`
 * `cpio`
@@ -63,13 +62,13 @@ Usage
 
 ```
 usage: tinyramfs [option]
-       -o, --output <file>  set initramfs output path
-       -c, --config <file>  set config file path
-       -m, --moddir <dir>   set modules directory
-       -k, --kernel <ver>   set kernel version
-       -F, --files  <dir>   set files directory
-       -d, --debug          enable debug mode
-       -f, --force          overwrite initramfs image
+       -o, --output <file> set initramfs output path
+       -c, --config <file> set config file path
+       -m, --moddir <dir>  set modules directory
+       -k, --kernel <ver>  set kernel version
+       -F, --files  <dir>  set files directory
+       -d, --debug         enable debug mode
+       -f, --force         overwrite initramfs image
 ```
 
 Configuration

@@ -16,15 +16,7 @@ print()
 panic()
 {
     print "${1:-unexpected error occurred}" \
-          "\033[1;31m!!\033[m" >&2
-
-    shell
-}
-
-shell()
-{
-    # see https://busybox.net/FAQ.html#job_control
-    setsid sh -c "exec sh <> /dev/${console:-tty1} 2>&1" || sh
+          "\033[1;31m!!\033[m"      >&2; sh
 }
 
 findfs()
@@ -32,25 +24,15 @@ findfs()
     count=0; device=
 
     case "${1%%=*}" in
-        /dev/*)
-            device="$1"
-        ;;
-        UUID)
-            device="/dev/disk/by-uuid/${1##*=}"
-        ;;
-        LABEL)
-            device="/dev/disk/by-label/${1##*=}"
-        ;;
-        PARTUUID)
-            device="/dev/disk/by-partuuid/${1##*=}"
-        ;;
+        /dev/*)   device="$1"                             ;;
+        UUID)     device="/dev/disk/by-uuid/${1##*=}"     ;;
+        LABEL)    device="/dev/disk/by-label/${1##*=}"    ;;
+        PARTUUID) device="/dev/disk/by-partuuid/${1##*=}" ;;
     esac
 
-    # avoid race condition
-    while [ ! -e "$device" ]; do
-        sleep 1; : $(( count += 1 ))
-
-        [ "$count" = 30 ] && {
+    # prevent race condition
+    while [ ! -e "$device" ]; do sleep 1
+        [ "$(( count += 1 ))" = 30 ] && {
             panic "failed to lookup partition"
             break
         }
@@ -62,17 +44,8 @@ prepare_environment()
     . /etc/tinyramfs/config
 
     export \
-        LANG=C \
-        PS1="# " \
-        LC_ALL=C \
-        TERM=linux \
-        HOME=/root \
-        SHELL=/bin/sh \
-        OLD_IFS="$IFS" \
-        PATH=/bin:/sbin:/usr/bin:/usr/sbin
-
-    # fix for ubase mount
-    : > /etc/fstab
+        PATH=/bin TERM=linux SHELL=/bin/sh \
+        LANG=C LC_ALL=C PS1="# " HOME=/root \
 
     mount -t proc     -o nosuid,noexec,nodev     proc /proc
     mount -t sysfs    -o nosuid,noexec,nodev     sys  /sys
@@ -91,89 +64,62 @@ prepare_environment()
 
     trap panic EXIT
 
-    [ "$modules" ] || return 0
-
-    modprobe -a "$modules"
+    [ ! "$modules" ] || modprobe -a "$modules"
 }
 
 parse_cmdline()
 {
     read -r cmdline < /proc/cmdline
 
-    for line in $cmdline; do case "$line" in
-        debug | debug=1)
-            set -x
-        ;;
-        rootfstype=*)
-            root_type="$line"
-        ;;
-        rootflags=*)
-            root_opts="$line"
-        ;;
-        ro | rw)
-            rorw="-o $line"
-        ;;
-        *.*)
-            # TODO implement backward compatibilty with dracut, mkinitcpio, etc
-            : no operation
-        ;;
-        *=*)
-            export "$line" || :
-        ;;
-        *)
-            export "${line}=1" || :
-        ;;
+    for line in $cmdline; do case  "$line"  in
+        debug | debug=1) set -x             ;;
+        rootfstype=*)    root_type="$line"  ;;
+        rootflags=*)     root_opts="$line"  ;;
+        ro | rw)         rorw="  -o $line"  ;;
+        *.*)             : no operation     ;;
+        *=*)             export "$line"     ;;
+        *)               export "${line}=1" ;;
     esac; done
 }
 
 setup_devmgr()
 {
-    [ "$break" = devmgr ] && { print "break before setup_devmgr()"; shell; }
+    [ "$break" = devmgr ] && { print "break before setup_devmgr()"; sh; }
 
     case "$devmgr" in
         udev)
-            udevd -dN never
+            udevd -N never & devmgr_pid="$!"
             udevadm trigger -c add -t subsystems
             udevadm trigger -c add -t devices
             udevadm settle
         ;;
         mdev)
-            mdev -df 2> /dev/null & mdev_pid="$!"
             mdev -s
+            mdev -df & devmgr_pid="$!"
 
             [ "$monolith" = 1 ] && return 0
 
-            # TODO maybe replace sort using while-read loop
-            # while-read can cause slowdown, so why i'm unsure
-            set -- $(find /sys -name modalias -type f -exec sort -u {} +)
-            modprobe -a "$@" 2> /dev/null || :
+            set -- $(find /sys -name modalias -exec sort -u {} +)
+            modprobe -a "$@" || :
         ;;
         mdevd)
-            mdevd 2> /dev/null & mdevd_pid="$!"
+            mdevd & devmgr_pid="$!"
             mdevd-coldplug
         ;;
-    esac
+    esac 2> /dev/null
 }
 
 unlock_luks()
 {
-    [ "$break" = luks ] && { print "break before unlock_luks()"; shell; }
+    [ "$break" = luks ] && { print "break before unlock_luks()"; sh; }
 
-    { IFS=,; set -- $luks_opts; IFS="$OLD_IFS"; }
+    { IFS=,; set -- $luks_opts; unset IFS; }
 
     for opt; do case "$opt" in
-        discard | discard=1)
-            luks_discard="--allow-discards"
-        ;;
-        header=*)
-            luks_header="--${opt}"
-        ;;
-        name=*)
-            luks_name="${opt##*=}"
-        ;;
-        key=*)
-            luks_key="-d ${opt##*=}"
-        ;;
+        discard | discard=1) luks_discard="--allow-discards" ;;
+        header=*) luks_header="--${opt}"   ;;
+        name=*)   luks_name="${opt##*=}"   ;;
+        key=*)    luks_key="-d ${opt##*=}" ;;
     esac; done
 
     findfs "$luks_root"
@@ -188,26 +134,16 @@ unlock_luks()
 
 trigger_lvm()
 {
-    [ "$break" = lvm ] && { print "break before trigger_lvm()"; shell; }
+    [ "$break" = lvm ] && { print "break before trigger_lvm()"; sh; }
 
-    { IFS=,; set -- $lvm_opts; IFS="$OLD_IFS"; }
+    { IFS=,; set -- $lvm_opts; unset IFS; }
 
     for opt; do case "$opt" in
-        discard | discard=1)
-            lvm_discard="--config=devices{issue_discards=1}"
-        ;;
-        config=0)
-            : > /etc/lvm/lvm.conf
-        ;;
-        group=*)
-            lvm_group="${opt##*=}"
-        ;;
-        name=*)
-            lvm_name="/${opt##*=}"
-        ;;
-        tag=*)
-            lvm_tag="@${opt##*=}"
-        ;;
+        discard | discard=1) lvm_discard="--config=devices{issue_discards=1}" ;;
+        config=0) : > /etc/lvm/lvm.conf  ;;
+        group=*)  lvm_group="${opt##*=}" ;;
+        name=*)   lvm_name="/${opt##*=}" ;;
+        tag=*)    lvm_tag="@${opt##*=}"  ;;
     esac; done
 
     set -- "--sysinit" "-qq" "-aay" "$lvm_discard"
@@ -225,7 +161,7 @@ trigger_lvm()
 
 mount_root()
 {
-    [ "$break" = root ] && { print "break before mount_root()"; shell; }
+    [ "$break" = root ] && { print "break before mount_root()"; sh; }
 
     findfs "$root"
 
@@ -239,17 +175,13 @@ mount_root()
 
 cleanup()
 {
-    [ "$break" = cleanup ] && { print "break before cleanup()"; shell; }
+    [ "$break" = cleanup ] && { print "break before cleanup()"; sh; }
 
-    case "$devmgr" in
-        udev)  udevadm control -e ;;
-        mdev)  kill "$mdev_pid"   ;;
-        mdevd) kill "$mdevd_pid"  ;;
-    esac
+    kill "$devmgr_pid"
 
     # temporary workaround until util-linux release a new version
     # see https://github.com/karelzak/util-linux/issues/997
-    for dir in /run /dev /sys /proc; do
+    for dir in run dev sys proc; do
         mount -o move "$dir" "/mnt/root/${dir}" ||
         mount  --move "$dir" "/mnt/root/${dir}"
     done
@@ -257,7 +189,7 @@ cleanup()
 
 boot_system()
 {
-    [ "$break" = boot ] && { print "break before boot_system()"; shell; }
+    [ "$break" = boot ] && { print "break before boot_system()"; sh; }
 
     set -- "/mnt/root" "${init:-/sbin/init}"
     exec switch_root $@ 2> /dev/null || panic "failed to boot system"

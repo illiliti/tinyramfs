@@ -1,4 +1,4 @@
-#!/bin/sh -ef
+#!/bin/sh
 #
 # tiny initramfs
 #
@@ -13,9 +13,7 @@ print()
 panic()
 {
     print "${1:-unexpected error occurred}" \
-          "\033[1;31m!!\033[m" >&2
-
-    exit 1
+          "\033[1;31m!!\033[m"  >&2; exit 1
 }
 
 usage()
@@ -95,7 +93,6 @@ prepare_environment()
     workdirbin="${workdir}/usr/bin/"
     workdirlib="${workdir}/usr/lib/"
     modker="${moddir}/${kernel}"
-    OLD_IFS="$IFS"
 
     [ "$debug" = 1 ] && set -x || trap trap_helper EXIT INT
 }
@@ -133,6 +130,9 @@ install_requirements()
 
     # install init
     install -m755 "${filesdir}/init" "${workdir}/init"
+
+    # fix ubase mount issue
+    : > "${workdir}/etc/fstab"
 
     populate_config \
         "root='$root'" \
@@ -180,7 +180,7 @@ install_devmgr()
 
     case "$devmgr" in
         none)
-            # TODO implement device-manager-less mode using deprecated
+            # TODO implement mode without device manager using deprecated
             # /sys/kernel/uevent_helper or /proc/sys/kernel/hotplug
         ;;
         mdev)
@@ -193,6 +193,10 @@ install_devmgr()
             > "${workdir}/etc/mdev.conf"
 
             [ "$monolith" = 1 ] && return 0
+
+            for _binary in find sort; do
+                install_binary "$_binary"
+            done
 
             printf "%s\n" \
                 '$MODALIAS=.* 0:0 660 @modprobe "$MODALIAS"' \
@@ -253,7 +257,7 @@ install_lvm()
 
     # word splitting is safe by design
     # shellcheck disable=2086
-    { IFS=,; set -- $lvm_opts; IFS="$OLD_IFS"; }
+    { IFS=,; set -- $lvm_opts; unset IFS; }
 
     for opt; do case "$opt" in
         config | config=1) embed_lvm_config=1 ;;
@@ -282,15 +286,12 @@ install_luks()
 
     # word splitting is safe by design
     # shellcheck disable=2086
-    { IFS=,; set -- $luks_opts; IFS="$OLD_IFS"; }
+    { IFS=,; set -- $luks_opts; unset IFS; }
 
     for opt; do case "${opt%%=*}" in
         key | header)
-            install -m400 "${opt##*=}" \
-                "${workdir}/root/${opt%%=*}" || panic
-
-            luks_opts=$(printf "%s" "$luks_opts" |
-                        sed "s|${opt##*=}|/root/${opt%%=*}|")
+            install -m400 "${opt##*=}" "${workdir}/root/${opt%%=*}" || panic
+            luks_opts=$(printf "%s" "$luks_opts" | sed "s|${opt##*=}|/root/${opt%%=*}|")
         ;;
     esac; done
 
@@ -406,11 +407,6 @@ install_modules()
         populate_config "modules='$modules'"
     }
 
-    [ "$devmgr" = mdev ] &&
-        for _binary in find sort; do
-            install_binary "$_binary"
-        done
-
     install_binary modprobe
 
     install -m644 \
@@ -436,7 +432,7 @@ install_binary()
         *)
             # word splitting is safe by design
             # shellcheck disable=2086
-            { IFS=:; set -- $PATH; IFS="$OLD_IFS"; }
+            { IFS=:; set -- $PATH; unset IFS; }
 
             # try to discover external binary/script by checking PATH
             for _dir; do
@@ -518,6 +514,9 @@ create_initramfs()
 # int main()
 {
     [ "$(id -u)" = 0 ] || panic "must be run as root"
+
+    # enable exit on error and disable globbing
+    set -ef
 
     parse_args "$@"
     prepare_environment

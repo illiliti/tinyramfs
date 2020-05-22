@@ -17,7 +17,7 @@ create_symlink()
 
 # int main()
 {
-    [ "${dev_name=${DEVPATH##*/}}" ] || exit 1
+    [ -b "/dev/${dev_name=${DEVPATH##*/}}" ] || exit 1
 
     exec > /dev/null 2>&1
 

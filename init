@@ -159,6 +159,8 @@ trigger_lvm()
     else
         lvm vgchange $@
     fi
+
+    [ "$?" = 0 ] || panic "failed to trigger LVM"
 }
 
 mount_root()

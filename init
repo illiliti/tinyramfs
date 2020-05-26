@@ -32,11 +32,11 @@ findfs()
 
     # prevent race condition
     while [ ! -e "$device" ]; do sleep 1
-        [ "$(( count += 1 ))" = 30 ] && {
+        [ "$(( count += 1 ))" != 30 ] || {
             panic "failed to lookup partition"
             break
         }
-    done || :
+    done
 }
 
 prepare_environment()
@@ -73,10 +73,10 @@ parse_cmdline()
 
     for line in $cmdline; do case  "$line"  in
         debug | debug=1) set -x             ;;
-        rootfstype=*)    root_type="$line"  ;;
-        rootflags=*)     root_opts="$line"  ;;
-        ro | rw)         rorw="  -o $line"  ;;
-        *.*)             : no operation     ;;
+        rootfstype=*)    root_type="${line##*=}"  ;;
+        rootflags=*)     root_opts="${line##*=}"  ;;
+        ro | rw)         rorw="-o $line"    ;;
+        --)              init_args="${cmdline##*--}"; break ;;
         *=*)             export "$line"     ;;
         *)               export "${line}=1" ;;
     esac; done
@@ -99,8 +99,11 @@ setup_devmgr()
 
             [ "$monolith" = 1 ] && return 0
 
-            set -- $(find /sys -name modalias -exec sort -u {} +)
-            modprobe -a "$@" || :
+            find /sys/devices -name uevent |
+
+            while read -r uevent; do
+                printf add > "$uevent"
+            done
         ;;
         mdevd)
             mdevd & devmgr_pid="$!"
@@ -125,9 +128,8 @@ unlock_luks()
     findfs "$luks_root"
 
     set -- \
-        "$luks_key" "$luks_header" \
-        "$luks_discard" "$device" \
-        "${luks_name:-luks-${device##*/}}"
+        "$luks_key" "$luks_header" "$luks_discard" \
+        "$device" "${luks_name:-luks-${device##*/}}"
 
     cryptsetup open $@ || panic "failed to unlock LUKS"
 }
@@ -166,16 +168,15 @@ mount_root()
     findfs "$root"
 
     set -- \
-        "${root_type:+-t $root_type}" \
         "${rorw:--o ro}${root_opts:+,$root_opts}" \
-        "$device" "/mnt/root"
+        "${root_type:+-t $root_type}" "$device" "/mnt/root"
 
     mount $@ || panic "failed to mount root"
 }
 
-cleanup()
+boot_system()
 {
-    [ "$break" = cleanup ] && { print "break before cleanup()"; sh; }
+    [ "$break" = boot ] && { print "break before boot_system()"; sh; }
 
     kill "$devmgr_pid"
 
@@ -185,14 +186,11 @@ cleanup()
         mount -o move "$dir" "/mnt/root/${dir}" ||
         mount  --move "$dir" "/mnt/root/${dir}"
     done
-}
 
-boot_system()
-{
-    [ "$break" = boot ] && { print "break before boot_system()"; sh; }
+    set -- \
+        "/mnt/root" "${init:-/sbin/init}" "$init_args"
 
-    set -- "/mnt/root" "${init:-/sbin/init}"
-    exec switch_root $@ 2> /dev/null || panic "failed to boot system"
+    exec switch_root $@ || panic "failed to boot system"
 }
 
 # int main()
@@ -207,6 +205,5 @@ boot_system()
     [ "$lvm"  = 1 ] && trigger_lvm
 
     mount_root
-    cleanup
     boot_system
 }

@@ -77,9 +77,9 @@ parse_cmdline()
         rootflags=*)     root_opts="${line##*=}"  ;;
         ro | rw)         rorw="-o $line"    ;;
         --)              init_args="${cmdline##*--}"; break ;;
-        *=*)             export "$line"     ;;
-        *)               export "${line}=1" ;;
-    esac; done
+        *=*)             command export "$line"     ;;
+        *)               command export "${line}=1" ;;
+    esac; done 2> /dev/null || :
 }
 
 setup_devmgr()

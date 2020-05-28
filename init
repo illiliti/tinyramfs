@@ -73,13 +73,13 @@ parse_cmdline()
 
     for line in $cmdline; do case  "$line"  in
         debug | debug=1) set -x             ;;
-        rootfstype=*)    root_type="${line##*=}"  ;;
-        rootflags=*)     root_opts="${line##*=}"  ;;
+        rootfstype=*)    root_type="${line##*=}" ;;
+        rootflags=*)     root_opts="${line##*=}" ;;
         ro | rw)         rorw="-o $line"    ;;
         --)              init_args="${cmdline##*--}"; break ;;
         *=*)             command export "$line"     ;;
         *)               command export "${line}=1" ;;
-    esac; done 2> /dev/null || :
+    esac 2> /dev/null || continue; done
 }
 
 setup_devmgr()
@@ -158,9 +158,7 @@ trigger_lvm()
         lvm lvchange $@ "$lvm_tag"
     else
         lvm vgchange $@
-    fi
-
-    [ "$?" = 0 ] || panic "failed to trigger LVM"
+    fi || panic "failed to trigger LVM"
 }
 
 mount_root()

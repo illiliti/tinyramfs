@@ -109,7 +109,8 @@ trap_helper()
     exit "$ret"
 }
 
-populate_config() {
+populate_config()
+{
     printf "%s\n" "$@" >> "${workdir}/etc/tinyramfs/config"
 }
 
@@ -118,7 +119,7 @@ install_requirements()
     print "installing requirements"
 
     # install required binaries
-    for _binary in \[ sh ln kill mkdir \
+    for _binary in \[ sh ln kill mkdir env \
                    blkid sleep mount printf \
                    switch_root "${filesdir}/device-helper"
     do
@@ -139,7 +140,6 @@ install_requirements()
     populate_config \
         "root='$root'" \
         "devmgr='$devmgr'" \
-        "monolith='$monolith'" \
         "root_type='$root_type'" \
         "root_opts='$root_opts'"
 }
@@ -188,15 +188,15 @@ install_devmgr()
             # /sys/kernel/uevent_helper or /proc/sys/kernel/hotplug
         ;;
         mdev)
-            install_binary mdev
+            for _binary in mdev find; do
+                install_binary "$_binary"
+            done
 
             printf "%s\n" \
                 'SUBSYSTEM=block;.* 0:0 660 @device-helper' \
             > "${workdir}/etc/mdev.conf"
 
             [ "$monolith" = 1 ] && return 0
-
-            install_binary find
 
             printf "%s\n" \
                 '$MODALIAS=.* 0:0 660 @modprobe "$MODALIAS"' \
@@ -402,9 +402,7 @@ install_modules()
     [ "$modules" ] && {
         for _module in $modules; do
             install_module "$_module"
-        done
-
-        populate_config "modules='$modules'"
+        done; populate_config "modules='$modules'"
     }
 
     install_binary modprobe
@@ -422,10 +420,7 @@ install_binary()
     binary=$(command -v "$1")
 
     # check if binary exist and builtin
-    case "$binary" in
-        */*)
-            : no operation
-        ;;
+    case "$binary" in */*) ;;
         "")
             panic "$1 doesn't exist"
         ;;
@@ -434,7 +429,10 @@ install_binary()
             # shellcheck disable=2086
             { IFS=:; set -- $PATH; unset IFS; }
 
-            # try to discover external binary/script by checking PATH
+            # assume that `command -v` returned builtin command.
+            # this behavior depends on shell implementation.
+            # to be independented we simply iterating over PATH
+            # to find external alternative ( e.g kill => /bin/kill )
             for _dir; do
                 [ -x "${_dir}/${binary}" ] || ! continue
 
@@ -456,11 +454,8 @@ install_binary()
     install -m755 "$binary" "${workdirbin}${binary##*/}" || panic
     strip "${workdirbin}${binary##*/}" > /dev/null 2>&1 || :
 
-    # skip static binaries/scripts
-    ldd "$binary" > /dev/null 2>&1 || return 0
-
-    # parse ldd output to find libraries paths
-    ldd "$binary" |
+    # install binary dependencies if any
+    ldd "$binary" 2> /dev/null |
 
     while read -r _library || [ "$_library" ]; do
 
@@ -509,6 +504,8 @@ create_initramfs()
     fi \
     > "$output" 2> /dev/null ||
         panic "failed to generate initramfs image"
+
+    print "done! check out $output"
 )
 
 # int main()
@@ -530,6 +527,4 @@ create_initramfs()
     install_devmgr
     install_requirements
     create_initramfs
-
-    print "done! check out $output"
 }

@@ -19,7 +19,7 @@ panic()
           "\033[1;31m!!\033[m"      >&2; sh
 }
 
-findfs()
+resolve_device()
 {
     count=0; device=
 
@@ -31,7 +31,7 @@ findfs()
     esac
 
     # prevent race condition
-    while [ ! -e "$device" ]; do sleep 1
+    while [ ! -b "$device" ]; do sleep 1
         [ "$(( count += 1 ))" != 30 ] || {
             panic "failed to lookup partition"
             break
@@ -52,10 +52,7 @@ prepare_environment()
     mount -t tmpfs    -o nosuid,nodev,mode=0755  run  /run
     mount -t devtmpfs -o nosuid,noexec,mode=0755 dev  /dev
 
-    mkdir -p \
-        /run/cryptsetup \
-        /run/lock \
-        /run/lvm
+    mkdir -p /run/cryptsetup /run/lock /run/lvm
 
     ln -s /proc/self/fd /dev/fd
     ln -s fd/0          /dev/stdin
@@ -76,7 +73,7 @@ parse_cmdline()
         rootfstype=*)    root_type="${line##*=}" ;;
         rootflags=*)     root_opts="${line##*=}" ;;
         ro | rw)         rorw="-o $line"    ;;
-        --)              init_args="${cmdline##*--}"; break ;;
+        --*)             init_args="${cmdline##*--}"; break ;;
         *=*)             command export "$line"     ;;
         *)               command export "${line}=1" ;;
     esac 2> /dev/null || continue; done
@@ -96,8 +93,6 @@ setup_devmgr()
         mdev)
             mdev -s
             mdev -df & devmgr_pid="$!"
-
-            [ "$monolith" = 1 ] && return 0
 
             find /sys/devices -name uevent |
 
@@ -125,11 +120,11 @@ unlock_luks()
         key=*)    luks_key="-d ${opt##*=}" ;;
     esac; done
 
-    findfs "$luks_root"
+    resolve_device "$luks_root"
 
     set -- \
         "$luks_key" "$luks_header" "$luks_discard" \
-        "$device" "${luks_name:-luks-${device##*/}}"
+        "$device" "${luks_name:-crypt-${device##*/}}"
 
     cryptsetup open $@ || panic "failed to unlock LUKS"
 }
@@ -165,7 +160,7 @@ mount_root()
 {
     [ "$break" = root ] && { print "break before mount_root()"; sh; }
 
-    findfs "$root"
+    resolve_device "$root"
 
     set -- \
         "${rorw:--o ro}${root_opts:+,$root_opts}" \
@@ -185,12 +180,15 @@ boot_system()
     for dir in run dev sys proc; do
         mount -o move "$dir" "/mnt/root/${dir}" ||
         mount  --move "$dir" "/mnt/root/${dir}"
-    done
+    done 2> /dev/null
 
-    set -- \
-        "/mnt/root" "${init:-/sbin/init}" "$init_args"
+    set -- "/mnt/root" "${init:-/sbin/init}" "$init_args"
 
-    exec switch_root $@ || panic "failed to boot system"
+    # use 'env -i' to prevent leaking exported variables
+    exec env -i \
+        TERM=linux \
+        PATH=/bin:/sbin:/usr/bin:/usr/sbin \
+        switch_root $@ || panic "failed to boot system"
 }
 
 # int main()

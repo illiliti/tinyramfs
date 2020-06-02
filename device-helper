@@ -19,8 +19,6 @@ create_symlink()
 {
     [ -b "/dev/${dev_name=${DEVPATH##*/}}" ] || exit 1
 
-    exec > /dev/null 2>&1
-
     # prevent race condition
     while ! blkid "/dev/${dev_name}"; do sleep 1; done
 
@@ -34,4 +32,4 @@ create_symlink()
         mkdir -p /dev/mapper
         ln    -sf "../${dev_name}" "/dev/mapper/${dm_name:?}"
     }
-}
+} > /dev/null 2>&1

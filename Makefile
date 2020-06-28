@@ -11,8 +11,8 @@ install:
 	cp -R hooks/*         ${DESTDIR}${DATADIR}/tinyramfs/hooks/
 	cp init device-helper ${DESTDIR}${DATADIR}/tinyramfs
 	chmod -R 644     	  ${DESTDIR}${DATADIR}/tinyramfs
-	cp config 		 	  ${DESTDIR}${SYSCONFDIR}/tinyramfs
-	chmod 600 		 	  ${DESTDIR}${SYSCONFDIR}/tinyramfs/config
+	cp config        	  ${DESTDIR}${SYSCONFDIR}/tinyramfs
+	chmod 600         	  ${DESTDIR}${SYSCONFDIR}/tinyramfs/config
 	cp tinyramfs 	 	  ${DESTDIR}${BINDIR}/tinyramfs
 	chmod 755    	 	  ${DESTDIR}${BINDIR}/tinyramfs
 

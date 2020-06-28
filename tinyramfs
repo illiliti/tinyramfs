@@ -2,6 +2,8 @@
 #
 # tiny initramfs
 #
+# false positive
+# shellcheck disable=2154
 
 print()
 {
@@ -82,6 +84,8 @@ prepare_environment()
 
     print "preparing environment"
 
+    # false positive
+    # shellcheck disable=1090
     . "${config:-/etc/tinyramfs/config}"
 
     : "${kernel:=$(uname -r)}"
@@ -92,7 +96,7 @@ prepare_environment()
     mkdir -p "${tmpdir:=${TMPDIR:-/tmp}/tinyramfs.$$}"
 
     # false positive
-    # shellcheck disable=2015
+    # shellcheck disable=2015,2064
     [ "$debug" = 1 ] && set -x || trap "rm -rf $tmpdir" EXIT INT
 }
 
@@ -254,8 +258,9 @@ copy_hook()
             mkdir -p "${tmpdir}/usr/share/tinyramfs/hooks/${hook##*/}"
             cp "${_dir}/${hook}/${hook}.init" \
                "${tmpdir}/usr/share/tinyramfs/hooks/${hook##*/}"
+        fi
 
-        elif [ -f "${_dir}/${hook}/${hook}.init.early" ]; then
+        if [ -f "${_dir}/${hook}/${hook}.init.early" ]; then
             mkdir -p "${tmpdir}/usr/share/tinyramfs/hooks/${hook##*/}"
             cp "${_dir}/${hook}/${hook}.init.early" \
                "${tmpdir}/usr/share/tinyramfs/hooks/${hook##*/}"

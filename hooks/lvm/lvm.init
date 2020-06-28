@@ -11,9 +11,9 @@
     for opt; do case "$opt" in
         discard=1) lvm_discard="--config=devices{issue_discards=1}" ;;
         config=0)  : > /etc/lvm/lvm.conf  ;;
-        group=*)   lvm_group="${opt##*=}" ;;
-        name=*)    lvm_name="/${opt##*=}" ;;
-        tag=*)     lvm_tag="@${opt##*=}"  ;;
+        group=*)   lvm_group="${opt#*=}" ;;
+        name=*)    lvm_name="/${opt#*=}" ;;
+        tag=*)     lvm_tag="@${opt#*=}"  ;;
     esac; done
 
     set -- "--sysinit" "-qq" "-aay" "$lvm_discard"

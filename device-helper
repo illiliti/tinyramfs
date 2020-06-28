@@ -6,7 +6,6 @@ create_symlink()
 {
     dir="$1"; sym="$2"
 
-    # remove double quotes
     sym="${sym%\"}"
     sym="${sym#\"}"
     sym="${dir}/${sym}"
@@ -20,7 +19,7 @@ create_symlink()
     [ -b "/dev/${dev_name=${DEVPATH##*/}}" ] || exit 1
 
     # prevent race condition
-    while ! blkid "/dev/${dev_name}"; do sleep 1; done
+    blkid "/dev/${dev_name}" || sleep 2
 
     for line in $(blkid "/dev/${dev_name}"); do case   "${line%%=*}" in
         UUID)     create_symlink /dev/disk/by-uuid     "${line##*=}" ;;

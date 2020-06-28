@@ -2,23 +2,9 @@
 # configuration
 #
 # uncomment and fill settings which you needed
-
-# debug mode
-# default - 0
 #
-#debug=0|1
-
-# overwrite initramfs
-# default - 0
-#
-#force=0|1
-
-# initramfs output path
-#
-# default - /tmp/initramfs-$kernel
-# example - output="/tmp/myinitramfs.img.gz"
-#
-#output=""
+# 0 - disable
+# 1 - enable
 
 # monolithic kernel
 #
@@ -27,48 +13,35 @@
 #
 #monolith=0|1
 
-# modules directory
-#
-# default - /lib/modules
-# example - moddir="/mnt/root/lib/modules"
-#
-#moddir=""
-
-# kernel version
-#
-# default - $(uname -r)
-# example - kernel="5.4.18_1"
-#
-#kernel=""
-
 # compression program
 #
-# default - gzip -9
-# example -
-#   compress="pigz -9"
-#   compress="none" # disable compress
+# supported - whatever you choose
+# default - none
+# example - compress="pigz -9"
 #
 #compress=""
 
-# root
+# root file system
 #
-# supported - PARTUUID, DEVICE, LABEL, UUID
+# supported - UUID, LABEL, DEVICE, PARTUUID
 # example -
 #   root="/dev/sda1"
 #   root="/dev/dm-0"
+#   root="/dev/disk/by-uuid/13bcb7cc-8fe5-4f8e-a1fe-e4b5b336f3ef"
 #   root="PARTUUID=35f923c5-083a-4950-a4da-e611d0778121"
 #
 #root=""
 
-# root type
+# root file system type
 #
-# default - autodetected
+# default - autodetected throught /proc/mounts
 # example - root_type="btrfs"
 #
 #root_type=""
 
-# root options
-# example - see fstab(5)
+# root file system options
+# example - root_opts="subvol=mysubvolume,nodatacow,defaults"
+# see fstab(5) man page for more info
 #
 #root_opts=""
 
@@ -79,72 +52,57 @@
 
 # hostonly mode
 #
+# default - 0
 # dramatically reduce initramfs size
 # useful only for modular kernels
 #
 #hostonly=0|1
 
-# additional modules
-# example - modules="fat crc32c_generic"
+# hooks
 #
-#modules=""
-
-# exclude modules
-# example - modules_exclude="wmi fuse"
+# currently supported - lvm, luks
+# example -
+#   hooks="lvm luks" will support booting LUKS on LVM
+#   hooks="luks lvm" will support booting LVM on LUKS
+#   hooks="luks"     will support booting only LUKS
+#   and so on...
 #
-#modules_exclude=""
-
-# additional binaries
-# example - binaries="ls cat /path/to/mycustomprog"
-#
-#binaries=""
-
-# LVM support
-# default - 0
-#
-#lvm=0|1
+#hooks=""
 
 # LVM options
 #
 # supported - tag, name, group, config, discard
 # description -
 #   tag - trigger lvm by tag
-#   name - trigger lvm by logical volume name
+#   name - trigger lvm by logical volume name. group must be specified
 #   group - trigger lvm by volume group name
 #   config - embed host lvm config
 #   discard - enable issue_discards
 # example -
 #   lvm_opts="tag=lvm-server"
 #   lvm_opts="name=lv1,group=vg1"
-#   lvm_opts="config=1,discard"
+#   lvm_opts="config=1,discard=1"
 #   lvm_opts="discard=1"
 #
 #lvm_opts=""
 
-# LUKS support
-# default - 0
-#
-#luks=0|1
-
-# LUKS encrypted root
-#
-# supported - PARTUUID, DEVICE, LABEL, UUID
-# example -
-#   luks_root="/dev/sda1"
-#   luks_root="PARTUUID=35f923c5-083a-4950-a4da-e611d0778121"
-#
-#luks_root=""
-
 # LUKS options
 #
-# supported - key, name, header, discard
+# supported - key, name, root, header, discard
 # description -
 #   key - embed key
 #   name - device mapper name
+#   root - encrypted root ( UUID, LABEL, DEVICE, PARTUUID )
 #   header - embed header
 #   discard - enable allow-discards
 # example -
-#   luks_opts="key=/path/to/keyfile,name=myluksroot,header=/path/to/header,discard"
-#   luks_opts="discard=1"
+#   luks_opts="root=PARTUUID=35f923c5-083a-4950-a4da-e611d0778121,key=/path/to/keyfile,name=myluksroot,header=/path/to/header,discard=1"
+#   luks_opts="root=PARTUUID=35f923c5-083a-4950-a4da-e611d0778121,
+#              key=/path/to/keyfile,
+#              name=myluksroot,
+#              header=/path/to/header,
+#              discard=1"
+#
+#   luks_opts="root=/dev/sda1,discard=1"
 #
 #luks_opts=""

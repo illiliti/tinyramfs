@@ -1,0 +1,35 @@
+# vim: set ft=sh:
+#
+# trigger_lvm()
+{
+    [ "$break" = lvm ] && { print "break before trigger_lvm()"; sh; }
+
+    mkdir -p /run/lvm /run/lock/lvm
+
+    IFS=,; set -- $lvm_opts; unset IFS
+
+    for opt; do case "$opt" in
+        discard=1) lvm_discard="--config=devices{issue_discards=1}" ;;
+        config=0)  : > /etc/lvm/lvm.conf  ;;
+        group=*)   lvm_group="${opt##*=}" ;;
+        name=*)    lvm_name="/${opt##*=}" ;;
+        tag=*)     lvm_tag="@${opt##*=}"  ;;
+    esac; done
+
+    set -- "--sysinit" "-qq" "-aay" "$lvm_discard"
+
+    # libdevice-mapper assumes that udev have dm rules
+    # which is not true because we use our device-helper for dm stuff
+    # this variable fixes possible(?) hang
+    export DM_DISABLE_UDEV=1
+
+    if [ "$lvm_group" ] && [ "$lvm_name" ]; then
+        lvm lvchange $@ "${lvm_group}${lvm_name}"
+    elif [ "$lvm_group" ]; then
+        lvm vgchange $@ "$lvm_group"
+    elif [ "$lvm_tag" ]; then
+        lvm lvchange $@ "$lvm_tag"
+    else
+        lvm vgchange $@
+    fi || panic "failed to trigger LVM"
+}

@@ -1,12 +1,7 @@
-#!/bin/sh -ef
+#!/bin/sh
 #
 # tiny init
 #
-# word splitting is safe by design
-# shellcheck disable=2068,2046,2086
-#
-# false positive
-# shellcheck disable=2154,2163,1091
 
 print()
 {
@@ -21,21 +16,33 @@ panic()
 
 resolve_device()
 {
-    count=0; device=
+    count=0; device="$1"
 
-    case "${1%%=*}" in
-        /dev/*)   device="$1"                             ;;
-        UUID)     device="/dev/disk/by-uuid/${1##*=}"     ;;
-        LABEL)    device="/dev/disk/by-label/${1##*=}"    ;;
-        PARTUUID) device="/dev/disk/by-partuuid/${1##*=}" ;;
+    case "${device%%=*}" in /dev/*) ;;
+        UUID)     device="/dev/disk/by-uuid/${device#*=}"     ;;
+        LABEL)    device="/dev/disk/by-label/${device#*=}"    ;;
+        PARTUUID) device="/dev/disk/by-partuuid/${device#*=}" ;;
     esac
 
     # prevent race condition
+    # XXX what the hell happens here?
+    # why this loop sometimes trigger panic if i remove '|| :'
     while [ ! -b "$device" ]; do sleep 1
-        [ "$(( count += 1 ))" != 30 ] || {
+        [ "$((count += 1))" = 30 ] && {
             panic "failed to lookup partition"
             break
         }
+    done || :
+}
+
+run_hook()
+{
+    type="$1"; hksdir=/usr/share/tinyramfs/hooks
+
+    # run hooks if any
+    for hook in $hooks; do
+        [ -f "${hksdir}/${hook}/${hook}.${type}" ] || continue
+           . "${hksdir}/${hook}/${hook}.${type}"
     done
 }
 
@@ -45,23 +52,17 @@ prepare_environment()
 
     export \
         PATH=/bin TERM=linux SHELL=/bin/sh \
-        LANG=C LC_ALL=C PS1="# " HOME=/root \
+        LANG=C LC_ALL=C PS1="# " HOME=/root
 
     mount -t proc     -o nosuid,noexec,nodev     proc /proc
     mount -t sysfs    -o nosuid,noexec,nodev     sys  /sys
     mount -t tmpfs    -o nosuid,nodev,mode=0755  run  /run
     mount -t devtmpfs -o nosuid,noexec,mode=0755 dev  /dev
 
-    mkdir -p /run/cryptsetup /run/lock /run/lvm
-
     ln -s /proc/self/fd /dev/fd
     ln -s fd/0          /dev/stdin
     ln -s fd/1          /dev/stdout
     ln -s fd/2          /dev/stderr
-
-    trap panic EXIT
-
-    [ ! "$modules" ] || modprobe -a "$modules"
 }
 
 parse_cmdline()
@@ -69,14 +70,14 @@ parse_cmdline()
     read -r cmdline < /proc/cmdline
 
     for line in $cmdline; do case  "$line"  in
-        debug | debug=1) set -x             ;;
-        rootfstype=*)    root_type="${line##*=}" ;;
-        rootflags=*)     root_opts="${line##*=}" ;;
+        rootfstype=*)    root_type="${line#*=}" ;;
+        rootflags=*)     root_opts="${line#*=}" ;;
+        debug=1)         set -x             ;;
         ro | rw)         rorw="-o $line"    ;;
-        --*)             init_args="${cmdline##*--}"; break ;;
+        --*)             init_args="${cmdline#*-- }"; break ;;
         *=*)             command export "$line"     ;;
         *)               command export "${line}=1" ;;
-    esac 2> /dev/null || continue; done
+    esac 2> /dev/null || :; done
 }
 
 setup_devmgr()
@@ -107,55 +108,6 @@ setup_devmgr()
     esac 2> /dev/null
 }
 
-unlock_luks()
-{
-    [ "$break" = luks ] && { print "break before unlock_luks()"; sh; }
-
-    { IFS=,; set -- $luks_opts; unset IFS; }
-
-    for opt; do case "$opt" in
-        discard | discard=1) luks_discard="--allow-discards" ;;
-        header=*) luks_header="--${opt}"   ;;
-        name=*)   luks_name="${opt##*=}"   ;;
-        key=*)    luks_key="-d ${opt##*=}" ;;
-    esac; done
-
-    resolve_device "$luks_root"
-
-    set -- \
-        "$luks_key" "$luks_header" "$luks_discard" \
-        "$device" "${luks_name:-crypt-${device##*/}}"
-
-    cryptsetup open $@ || panic "failed to unlock LUKS"
-}
-
-trigger_lvm()
-{
-    [ "$break" = lvm ] && { print "break before trigger_lvm()"; sh; }
-
-    { IFS=,; set -- $lvm_opts; unset IFS; }
-
-    for opt; do case "$opt" in
-        discard | discard=1) lvm_discard="--config=devices{issue_discards=1}" ;;
-        config=0) : > /etc/lvm/lvm.conf  ;;
-        group=*)  lvm_group="${opt##*=}" ;;
-        name=*)   lvm_name="/${opt##*=}" ;;
-        tag=*)    lvm_tag="@${opt##*=}"  ;;
-    esac; done
-
-    set -- "--sysinit" "-qq" "-aay" "$lvm_discard"
-
-    if [ "$lvm_group" ] && [ "$lvm_name" ]; then
-        lvm lvchange $@ "${lvm_group}${lvm_name}"
-    elif [ "$lvm_group" ]; then
-        lvm vgchange $@ "$lvm_group"
-    elif [ "$lvm_tag" ]; then
-        lvm lvchange $@ "$lvm_tag"
-    else
-        lvm vgchange $@
-    fi || panic "failed to trigger LVM"
-}
-
 mount_root()
 {
     [ "$break" = root ] && { print "break before mount_root()"; sh; }
@@ -184,6 +136,7 @@ boot_system()
 
     set -- "/mnt/root" "${init:-/sbin/init}" "$init_args"
 
+    # POSIX exec has no -c flag to execute command with empty environment
     # use 'env -i' to prevent leaking exported variables
     exec env -i \
         TERM=linux \
@@ -193,14 +146,16 @@ boot_system()
 
 # int main()
 {
+    # enable exit on error and disable globbing
+    # trap EXIT signal
+    set -ef; trap panic EXIT
+
     prepare_environment
+    run_hook init.early
     parse_cmdline
     setup_devmgr
 
-    # trigger lvm twice to handle both LUKS on LVM and LVM on LUKS
-    [ "$lvm"  = 1 ] && trigger_lvm
-    [ "$luks" = 1 ] && unlock_luks
-    [ "$lvm"  = 1 ] && trigger_lvm
+    run_hook init
 
     mount_root
     boot_system

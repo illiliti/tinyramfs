@@ -7,27 +7,24 @@ Features
 --------
 
 - No `local`'s, no bashisms, only POSIX shell
-- Easy configuration
+- Portable, not distro specific
+- Easy to use configuration
+- Build time and init time hooks
+- LUKS (detached header, key), LVM
 - mdev, mdevd, eudev
-- LUKS, LVM
-- LUKS detached header and key embedded into initramfs
 
 Dependencies
 ------------
 
-* POSIX utilities ( find, mkdir, ... )
+* POSIX utilities
 * POSIX shell
 * `switch_root`
-* `readlink`
-* `install`
 * `mount`
 * `blkid`
 * `cpio`
-* `strip`
+* POSIX SD `strip`
   - Optional
-* `gzip`
-  - Required by default
-* `mdev` OR `mdevd` OR `eudev`
+* `mdev` OR `mdevd` OR `eudev` OR `systemd-udevd`
   - systemd-udevd not tested
 * `lvm2`
   - Required for LVM support
@@ -39,9 +36,8 @@ Dependencies
 Notes
 -----
 
-* busybox modutils doesn't handle soft dependencies (modules.softdep). You must manually include them using `modules` config option
-* busybox and toybox blkid doesn't support PARTUUID. You must use util-linux blkid
-* zsh (in POSIX mode) shows some errors in init stage. Just ignore these errors, it's harmless
+* busybox modutils doesn't handle soft dependencies (modules.softdep). You must manually copy them using hooks
+* busybox and toybox blkid doesn't support PARTUUID. You must use util-linux blkid for PARTUUID support
 * `cp` in toybox incorrectly handles `-P` flag. You need to apply patch from [this issue](https://github.com/landley/toybox/issues/174) or replace cp with another implementation
 
 Installation
@@ -55,20 +51,6 @@ vi /etc/tinyramfs/config # edit config for your needs
 tinyramfs -o /boot/initramfs
 # update your bootloader
 # reboot...
-```
-
-Usage
------
-
-```
-usage: tinyramfs [option]
-       -o, --output <file> set initramfs output path
-       -c, --config <file> set config file path
-       -m, --moddir <dir>  set modules directory
-       -k, --kernel <ver>  set kernel version
-       -F, --files  <dir>  set files directory
-       -d, --debug         enable debug mode
-       -f, --force         overwrite initramfs image
 ```
 
 Configuration

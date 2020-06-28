@@ -1,0 +1,37 @@
+# vim: set ft=sh:
+#
+# handle_luks()
+{
+    print "configuring LUKS"
+
+    [ "$hostonly" = 1 ] &&
+        for _module in \
+            aes ecb xts lrw wp512 sha256 \
+            sha512 twofish serpent dm-crypt
+        do
+            copy_module "$_module"
+        done
+
+    copy_binary cryptsetup
+
+    # avoid possible issues with libgcc_s.so.1
+    # see https://bugs.archlinux.org/task/56771
+    [ -e /lib/libgcc_s.so.1 ] && copy_library /lib/libgcc_s.so.1
+
+    # word splitting is safe by design
+    # shellcheck disable=2086
+    IFS=,; set -- $luks_opts; unset IFS
+
+    set -C; for opt; do case "${opt%%=*}" in
+        key | header)
+            cp "${opt#*=}" "${tmpdir}/root/${opt%%=*}"
+            chmod 400      "${tmpdir}/root/${opt%%=*}"
+
+            sed "s|${opt#*=}|/root/${opt%%=*}|" \
+                "${tmpdir}/etc/tinyramfs/config" > "${tmpdir}/_"
+
+            cp "${tmpdir}/_" "${tmpdir}/etc/tinyramfs/config"
+            chmod 600        "${tmpdir}/etc/tinyramfs/config"
+            rm "${tmpdir}/_"
+    esac || panic; done; set +C
+}

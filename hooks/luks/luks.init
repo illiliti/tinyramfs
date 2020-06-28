@@ -1,0 +1,31 @@
+# vim: set ft=sh:
+#
+# unlock_luks()
+{
+    [ "$break" = luks ] && { print "break before unlock_luks()"; sh; }
+
+    mkdir -p /run/cryptsetup
+
+    IFS=,; set -- $luks_opts; unset IFS
+
+    for opt; do case "$opt" in
+        discard=1) luks_discard="--allow-discards" ;;
+        header=*)  luks_header="--${opt}"  ;;
+        name=*)    luks_name="${opt#*=}"   ;;
+        root=*)    luks_root="${opt#*=}"   ;;
+        key=*)     luks_key="-d ${opt#*=}" ;;
+    esac; done
+
+    resolve_device "$luks_root"
+
+    set -- \
+        "$luks_key" "$luks_header" "$luks_discard" \
+        "$device" "${luks_name:-crypt-${device##*/}}"
+
+    # libdevice-mapper assumes that udev has dm rules
+    # which is not true because we use our device-helper for dm stuff
+    # this variable fixes possible(?) hang
+    export DM_DISABLE_UDEV=1
+
+    cryptsetup open $@ || panic "failed to unlock LUKS"
+}

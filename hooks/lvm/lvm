@@ -1,0 +1,44 @@
+# vim: set ft=sh:
+#
+# handle_lvm()
+{
+    print "configuring LVM"
+
+    [ "$hostonly" = 1 ] &&
+        for _module in \
+            dm-log dm-cache dm-mirror \
+            dm-snapshot dm-multipath dm-thin-pool
+        do
+            copy_module "$_module"
+        done
+
+    copy_binary lvm
+
+    lvm_config="
+        devices {
+            write_cache_state = 0
+        }
+        backup {
+            backup  = 0
+            archive = 0
+        }
+        global {
+            use_lvmetad = 0
+        }"
+
+    # word splitting is safe by design
+    # shellcheck disable=2086
+    IFS=,; set -- $lvm_opts; unset IFS
+
+    for opt; do case "$opt" in
+        config=1) embed_lvm_config=
+    esac; done
+
+    mkdir -p "${tmpdir}/etc/lvm"
+
+    lvm config \
+        --config "$lvm_config" \
+        ${embed_lvm_config+--mergedconfig} \
+    > "${tmpdir}/etc/lvm/lvm.conf"
+}
+

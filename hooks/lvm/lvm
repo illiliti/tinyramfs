@@ -1,4 +1,11 @@
 # vim: set ft=sh:
+# shellcheck shell=sh
+#
+# false positive
+# shellcheck disable=2154
+#
+# word splitting is safe by design
+# shellcheck disable=2086
 #
 # handle_lvm()
 {
@@ -26,8 +33,6 @@
             use_lvmetad = 0
         }"
 
-    # word splitting is safe by design
-    # shellcheck disable=2086
     IFS=,; set -- $lvm_opts; unset IFS
 
     for opt; do case "$opt" in

@@ -1,4 +1,11 @@
 # vim: set ft=sh:
+# shellcheck shell=sh
+#
+# false positive
+# shellcheck disable=2154
+#
+# word splitting is safe by design
+# shellcheck disable=2086
 #
 # handle_luks()
 {
@@ -18,8 +25,6 @@
     # see https://bugs.archlinux.org/task/56771
     [ -e /lib/libgcc_s.so.1 ] && copy_library /lib/libgcc_s.so.1
 
-    # word splitting is safe by design
-    # shellcheck disable=2086
     IFS=,; set -- $luks_opts; unset IFS
 
     set -C; for opt; do case "${opt%%=*}" in

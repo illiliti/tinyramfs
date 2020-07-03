@@ -86,7 +86,7 @@ prepare_environment()
 
     # false positive
     # shellcheck disable=1090
-    . "${config:-/etc/tinyramfs/config}"
+    . "${config:=/etc/tinyramfs/config}"
 
     : "${kernel:=$(uname -r)}"
     : "${moddir:=/lib/modules}"
@@ -96,8 +96,8 @@ prepare_environment()
     mkdir -p "${tmpdir:=${TMPDIR:-/tmp}/tinyramfs.$$}"
 
     # false positive
-    # shellcheck disable=2015,2064
-    [ "$debug" = 1 ] && set -x || trap "rm -rf $tmpdir" EXIT INT
+    # shellcheck disable=2015
+    [ "$debug" = 1 ] && set -x || trap 'rm -rf $tmpdir' EXIT INT
 }
 
 prepare_initramfs()
@@ -150,18 +150,18 @@ copy_binary()
     binary=$(command -v "$1")
 
     # check if binary exist and builtin
+    # false positive
+    # shellcheck disable=2086
     case "$binary" in */*) ;;
         "")
             panic "$1 does not exist"
         ;;
         *)
-            # word splitting is safe by design
-            # shellcheck disable=2086
             IFS=:; set -- $PATH; unset IFS
 
             # assume that `command -v` returned builtin command.
             # this behavior depends on shell implementation.
-            # to be independented we simply iterating over PATH
+            # to be independent we simply iterating over PATH
             # to find external alternative ( e.g kill => /bin/kill )
             for _dir; do
                 [ -x "${_dir}/${binary}" ] || ! continue
@@ -249,25 +249,25 @@ copy_hook()
 {
     hook="$1"
 
+    # false positive
+    # shellcheck disable=1090
     for _dir in "$hksdir" /etc/tinyramfs/hooks /usr/share/tinyramfs/hooks; do
         [ -f "${_dir}/${hook}/${hook}" ] || ! continue
 
         print "running $hook hook"; . "${_dir}/${hook}/${hook}"
 
-        if [ -f "${_dir}/${hook}/${hook}.init" ]; then
-            mkdir -p "${tmpdir}/usr/share/tinyramfs/hooks/${hook##*/}"
-            cp "${_dir}/${hook}/${hook}.init" \
-               "${tmpdir}/usr/share/tinyramfs/hooks/${hook##*/}"
-        fi
+        for _file in init init.early; do
+            [ -f "${_dir}/${hook}/${hook}.${_file}" ] || continue
 
-        if [ -f "${_dir}/${hook}/${hook}.init.early" ]; then
-            mkdir -p "${tmpdir}/usr/share/tinyramfs/hooks/${hook##*/}"
-            cp "${_dir}/${hook}/${hook}.init.early" \
-               "${tmpdir}/usr/share/tinyramfs/hooks/${hook##*/}"
-        fi || panic
+            {
+                mkdir -p "${tmpdir}/usr/share/tinyramfs/hooks/${hook##*/}"
+                cp "${_dir}/${hook}/${hook}.${_file}" \
+                   "${tmpdir}/usr/share/tinyramfs/hooks/${hook##*/}"
+            } || panic
+        done
 
         break
-    done || panic "could not run $hook"
+    done || panic "could not run $hook hook"
 }
 
 copy_modules()

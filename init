@@ -2,6 +2,8 @@
 #
 # tiny init
 #
+# false positive
+# shellcheck disable=2154
 
 print()
 {
@@ -40,6 +42,8 @@ run_hook()
     type="$1"; hksdir=/usr/share/tinyramfs/hooks
 
     # run hooks if any
+    # false positive
+    # shellcheck disable=1090
     for hook in $hooks; do
         [ -f "${hksdir}/${hook}/${hook}.${type}" ] || continue
            . "${hksdir}/${hook}/${hook}.${type}"
@@ -48,6 +52,8 @@ run_hook()
 
 prepare_environment()
 {
+    # false positive
+    # shellcheck disable=1091
     . /etc/tinyramfs/config
 
     export \
@@ -118,6 +124,8 @@ mount_root()
         "${rorw:--o ro}${root_opts:+,$root_opts}" \
         "${root_type:+-t $root_type}" "$device" "/mnt/root"
 
+    # word splitting is safe by design
+    # shellcheck disable=2068
     mount $@ || panic "failed to mount root"
 }
 
@@ -138,6 +146,8 @@ boot_system()
 
     # POSIX exec has no -c flag to execute command with empty environment
     # use 'env -i' to prevent leaking exported variables
+    # word splitting is safe by design
+    # shellcheck disable=2068
     exec env -i \
         TERM=linux \
         PATH=/bin:/sbin:/usr/bin:/usr/sbin \

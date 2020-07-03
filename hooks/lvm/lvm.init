@@ -1,4 +1,11 @@
 # vim: set ft=sh:
+# shellcheck shell=sh
+#
+# false positive
+# shellcheck disable=2154
+#
+# word splitting is safe by design
+# shellcheck disable=2086,2068
 #
 # trigger_lvm()
 {
@@ -10,7 +17,7 @@
 
     for opt; do case "$opt" in
         discard=1) lvm_discard="--config=devices{issue_discards=1}" ;;
-        config=0)  : > /etc/lvm/lvm.conf  ;;
+        config=0)  : > /etc/lvm/lvm.conf ;;
         group=*)   lvm_group="${opt#*=}" ;;
         name=*)    lvm_name="/${opt#*=}" ;;
         tag=*)     lvm_tag="@${opt#*=}"  ;;

@@ -75,14 +75,14 @@ parse_cmdline()
 {
     read -r cmdline < /proc/cmdline
 
-    for line in $cmdline; do case  "$line"  in
-        rootfstype=*)    root_type="${line#*=}" ;;
-        rootflags=*)     root_opts="${line#*=}" ;;
-        debug=1)         set -x             ;;
-        ro | rw)         rorw="-o $line"    ;;
-        --*)             init_args="${cmdline#*-- }"; break ;;
-        *=*)             command export "$line"     ;;
-        *)               command export "${line}=1" ;;
+    for line in $cmdline; do case "$line" in
+        rootfstype=*) root_type="${line#*=}" ;;
+        rootflags=*)  root_opts="${line#*=}" ;;
+        debug=1)      set -x ;;
+        ro | rw)      rorw="-o $line" ;;
+        --*)          init_args="${cmdline#*-- }"; break ;;
+        *=*)          command export "$line"     ;;
+        *)            command export "${line}=1" ;;
     esac 2> /dev/null || :; done
 }
 

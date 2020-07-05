@@ -27,7 +27,7 @@
 
     IFS=,; set -- $luks_opts; unset IFS
 
-    set -C; for opt; do case "${opt%%=*}" in
+    for opt; do case "${opt%%=*}" in
         key | header)
             cp "${opt#*=}" "${tmpdir}/root/${opt%%=*}"
             chmod 400      "${tmpdir}/root/${opt%%=*}"
@@ -35,8 +35,7 @@
             sed "s|${opt#*=}|/root/${opt%%=*}|" \
                 "${tmpdir}/etc/tinyramfs/config" > "${tmpdir}/_"
 
-            cp "${tmpdir}/_" "${tmpdir}/etc/tinyramfs/config"
+            mv "${tmpdir}/_" "${tmpdir}/etc/tinyramfs/config"
             chmod 600        "${tmpdir}/etc/tinyramfs/config"
-            rm "${tmpdir}/_"
-    esac || panic; done; set +C
+    esac || panic; done
 }

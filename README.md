@@ -11,7 +11,7 @@ Features
 - Easy to use configuration
 - Build time and init time hooks
 - LUKS (detached header, key), LVM
-- mdev, mdevd, eudev
+- mdev, mdevd, eudev, systemd-udevd
 
 Dependencies
 ------------
@@ -20,10 +20,11 @@ Dependencies
 * POSIX shell
 * `switch_root`
 * `mount`
-* `blkid`
 * `cpio`
-* POSIX SD `strip`
+* `strip`
   - Optional
+* `blkid`
+  - Required for UUID, LABEL, PARTUUID support
 * `mdev` OR `mdevd` OR `eudev` OR `systemd-udevd`
   - systemd-udevd not tested
 * `lvm2`

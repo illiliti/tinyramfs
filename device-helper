@@ -18,6 +18,13 @@ create_symlink()
 {
     [ -b "/dev/${dev_name=${DEVPATH##*/}}" ] || exit 1
 
+    read -r dm_name < "/sys/block/${dev_name}/dm/name" && {
+        mkdir -p /dev/mapper
+        ln    -sf "../${dev_name}" "/dev/mapper/${dm_name:?}"
+    }
+
+    command -v blkid || exit 0
+
     # prevent race condition
     blkid "/dev/${dev_name}" || sleep 2
 
@@ -26,9 +33,4 @@ create_symlink()
         LABEL)    create_symlink /dev/disk/by-label    "${line##*=}" ;;
         PARTUUID) create_symlink /dev/disk/by-partuuid "${line##*=}" ;;
     esac; done
-
-    read -r dm_name < "/sys/block/${dev_name}/dm/name" && {
-        mkdir -p /dev/mapper
-        ln    -sf "../${dev_name}" "/dev/mapper/${dm_name:?}"
-    }
 } > /dev/null 2>&1

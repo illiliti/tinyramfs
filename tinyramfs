@@ -126,15 +126,19 @@ prepare_initramfs()
     ln -s ../run/lock "${tmpdir}/var/lock"
     ln -s bin     "${tmpdir}/usr/sbin"
 
-    # TODO make blkid optional
     # copy required binaries
     for _binary in \
-        \[ sh ln env kill mkdir \
-        blkid sleep mount printf \
-        switch_root "${srcdir}/device-helper"
+        \[ sh ln env kill mkdir sleep mount \
+        printf switch_root "${srcdir}/device-helper"
     do
         copy_binary "$_binary"
     done
+
+    if command -v blkid; then
+        copy_binary blkid
+    else
+        print "blkid not found. you will unable to use UUID, LABEL, PARTUUID"
+    fi
 
     # copy init
     cp "${srcdir}/init" "${tmpdir}/init"

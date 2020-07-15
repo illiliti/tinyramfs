@@ -364,9 +364,8 @@ copy_devmgr()
     # false positive
     # shellcheck disable=2016
     case "$devmgr" in
-        none)
-            # TODO implement mode without device manager using deprecated
-            # /sys/kernel/uevent_helper or /proc/sys/kernel/hotplug
+        proc)
+            copy_binary find
         ;;
         mdev)
             for _binary in mdev find; do

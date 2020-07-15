@@ -46,7 +46,10 @@
 #root_opts=""
 
 # device manager
-# supported - udev, mdev, mdevd
+#
+# supported - none, proc, udev, mdev, mdevd
+# none means no device manager. requires monolithic kernel and you will unable to use UUID, LABEL, PARTUUID, /dev/mapper/*
+# proc requires monolithic kernel and legacy CONFIG_UEVENT_HELPER
 #
 #devmgr=""
 

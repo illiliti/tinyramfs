@@ -25,7 +25,7 @@ Dependencies
   - Optional
 * `blkid`
   - Required for UUID, LABEL, PARTUUID support
-* `mdev` OR `mdevd` OR `eudev` OR `systemd-udevd`
+* `mdev` OR `mdevd` OR `eudev` OR `systemd-udevd` OR CONFIG_UEVENT_HELPER
   - systemd-udevd not tested
 * `lvm2`
   - Required for LVM support

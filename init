@@ -91,6 +91,16 @@ setup_devmgr()
     [ "$break" = devmgr ] && { print "break before setup_devmgr()"; sh; }
 
     case "$devmgr" in
+        proc)
+            command -v device-helper > /proc/sys/kernel/hotplug
+
+            # get ready for fork bomb. kek
+            find /sys/devices -name uevent |
+
+            while read -r uevent; do
+                printf add > "$uevent"
+            done
+        ;;
         udev)
             udevd -N never & devmgr_pid="$!"
             udevadm trigger -c add -t subsystems
@@ -133,7 +143,9 @@ boot_system()
 {
     [ "$break" = boot ] && { print "break before boot_system()"; sh; }
 
-    kill "$devmgr_pid"
+    {
+        kill "$devmgr_pid" || printf '\n' > /proc/sys/kernel/hotplug
+    } 2> /dev/null || :
 
     # temporary workaround until util-linux release a new version
     # see https://github.com/karelzak/util-linux/issues/997

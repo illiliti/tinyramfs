@@ -148,9 +148,7 @@ boot_system()
     # use 'env -i' to prevent leaking exported variables
     # word splitting is safe by design
     # shellcheck disable=2068
-    exec env -i \
-        TERM=linux \
-        PATH=/bin:/sbin:/usr/bin:/usr/sbin \
+    exec env -i TERM=linux PATH=/bin:/sbin:/usr/bin:/usr/sbin \
         switch_root $@ || panic "failed to boot system"
 }
 
@@ -161,8 +159,11 @@ boot_system()
     set -ef; trap panic EXIT
 
     prepare_environment
-    run_hook init.early
     parse_cmdline
+
+    run_hook init.early
+
+    # XXX may be moved to hooks soon
     setup_devmgr
 
     run_hook init

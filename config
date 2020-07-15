@@ -96,8 +96,8 @@
 #   header - embed header
 #   discard - enable allow-discards
 # example -
-#   luks_opts="root=PARTUUID=35f923c5-083a-4950-a4da-e611d0778121,key=/path/to/keyfile,name=myluksroot,header=/path/to/header,discard=1"
-#   luks_opts="root=PARTUUID=35f923c5-083a-4950-a4da-e611d0778121,
+#   luks_opts="root=PARTUUID=8e05009d-a1d5-4fdb-b407-b0e79360555c,key=/path/to/keyfile,name=myluksroot,header=/path/to/header,discard=1"
+#   luks_opts="root=PARTUUID=8e05009d-a1d5-4fdb-b407-b0e79360555c,
 #              key=/path/to/keyfile,
 #              name=myluksroot,
 #              header=/path/to/header,

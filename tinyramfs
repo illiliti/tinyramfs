@@ -392,11 +392,15 @@ copy_devmgr()
         ;;
         udev)
             # why systemd violates FHS and places daemon in /lib ?
-            udevd=$(command -v /lib/systemd/systemd-udevd) || udevd=udevd
+            if [ -e /lib/systemd/systemd-udevd ]; then
+                copy_binary /lib/systemd/systemd-udevd
+                mv "${tmpdir}/lib/systemd/systemd-udevd" "${tmpdir}/bin/udevd"
+                rmdir "${tmpdir}/lib/systemd"
+            else
+                copy_binary udevd
+            fi
 
-            for _binary in "$udevd" udevadm; do
-                copy_binary "$_binary"
-            done
+            copy_binary udevadm
 
             mkdir -p "${tmpdir}/lib/udev/rules.d"
 

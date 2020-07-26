@@ -147,12 +147,9 @@ boot_system()
         kill "$devmgr_pid" || printf '\n' > /proc/sys/kernel/hotplug
     } 2> /dev/null || :
 
-    # temporary workaround until util-linux release a new version
-    # see https://github.com/karelzak/util-linux/issues/997
     for dir in run dev sys proc; do
-        mount -o move "$dir" "/mnt/root/${dir}" ||
-        mount  --move "$dir" "/mnt/root/${dir}"
-    done 2> /dev/null
+        mount -o move "$dir" "/mnt/root/${dir}"
+    done
 
     set -- "/mnt/root" "${init:-/sbin/init}" "$init_args"
 

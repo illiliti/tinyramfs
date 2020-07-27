@@ -1,0 +1,19 @@
+# vim: set ft=sh:
+# shellcheck shell=sh
+#
+# false positive
+# shellcheck disable=2154,2034
+#
+# run_mdev()
+{
+    [ "$break" = devmgr ] && { print "break before run_mdev()"; sh; }
+    
+    mdev -s
+    mdev -df 2> /dev/null & mdev_pid="$!"
+
+    find /sys/devices -name uevent |
+
+    while read -r uevent; do
+        printf add > "$uevent"
+    done 2> /dev/null
+}

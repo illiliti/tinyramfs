@@ -134,7 +134,7 @@ prepare_initramfs()
         copy_binary "$_binary"
     done
 
-    if command -v blkid; then
+    if command -v blkid > /dev/null; then
         copy_binary blkid
     else
         print "blkid not found. you will unable to use UUID, LABEL, PARTUUID"
@@ -260,7 +260,7 @@ copy_hook()
 
         print "running $hook hook"; . "${_dir}/${hook}/${hook}"
 
-        for _file in init init.early; do
+        for _file in init init.late; do
             [ -f "${_dir}/${hook}/${hook}.${_file}" ] || continue
 
             {
@@ -357,67 +357,6 @@ copy_modules()
     depmod -b "$tmpdir" "$kernel"
 }
 
-copy_devmgr()
-{
-    print "configuring device manager"
-
-    # false positive
-    # shellcheck disable=2016
-    case "$devmgr" in
-        proc)
-            copy_binary find
-        ;;
-        mdev)
-            for _binary in mdev find; do
-                copy_binary "$_binary"
-            done
-
-            printf "%s\n" \
-                'SUBSYSTEM=block;.* 0:0 660 @device-helper' \
-            > "${tmpdir}/etc/mdev.conf"
-
-            [ "$monolith" = 1 ] || printf "%s\n" \
-                '$MODALIAS=.* 0:0 660 @modprobe "$MODALIAS"' \
-            >> "${tmpdir}/etc/mdev.conf"
-        ;;
-        mdevd)
-            for _binary in mdevd mdevd-coldplug; do
-                copy_binary "$_binary"
-            done
-
-            printf "%s\n" \
-                'SUBSYSTEM=block;.* 0:0 660 @device-helper' \
-            > "${tmpdir}/etc/mdev.conf"
-
-            [ "$monolith" = 1 ] || printf "%s\n" \
-                '$MODALIAS=.* 0:0 660 @modprobe "$MODALIAS"' \
-            >> "${tmpdir}/etc/mdev.conf"
-        ;;
-        udev)
-            # why systemd violates FHS and places daemon in /lib ?
-            if [ -e /lib/systemd/systemd-udevd ]; then
-                copy_binary /lib/systemd/systemd-udevd
-                mv "${tmpdir}/lib/systemd/systemd-udevd" "${tmpdir}/bin/udevd"
-                rmdir "${tmpdir}/lib/systemd"
-            else
-                copy_binary udevd
-            fi
-
-            copy_binary udevadm
-
-            mkdir -p "${tmpdir}/lib/udev/rules.d"
-
-            printf "%s\n" \
-                'SUBSYSTEMS=="block", ACTION=="add", RUN+="/bin/device-helper"' \
-            > "${tmpdir}/lib/udev/rules.d/device-helper.rules"
-
-            [ "$monolith" = 1 ] || printf "%s\n" \
-                'ENV{MODALIAS}=="?*", ACTION=="add", RUN+="/bin/modprobe %E{MODALIAS}"' \
-            >> "${tmpdir}/lib/udev/rules.d/device-helper.rules"
-        ;;
-    esac
-}
-
 make_initramfs()
 (
     print "generating initramfs image"
@@ -449,7 +388,6 @@ make_initramfs()
         copy_hook "$_hook"
     done
 
-    copy_devmgr
     copy_modules
     make_initramfs
 }

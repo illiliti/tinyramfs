@@ -86,44 +86,6 @@ parse_cmdline()
     esac 2> /dev/null || :; done
 }
 
-setup_devmgr()
-{
-    [ "$break" = devmgr ] && { print "break before setup_devmgr()"; sh; }
-
-    case "$devmgr" in
-        proc)
-            command -v device-helper > /proc/sys/kernel/hotplug
-
-            # get ready for fork bomb. kek
-            find /sys/devices -name uevent |
-
-            while read -r uevent; do
-                printf add > "$uevent"
-            done
-        ;;
-        udev)
-            udevd -N never & devmgr_pid="$!"
-            udevadm trigger -c add -t subsystems
-            udevadm trigger -c add -t devices
-            udevadm settle
-        ;;
-        mdev)
-            mdev -s
-            mdev -df & devmgr_pid="$!"
-
-            find /sys/devices -name uevent |
-
-            while read -r uevent; do
-                printf add > "$uevent"
-            done
-        ;;
-        mdevd)
-            mdevd & devmgr_pid="$!"
-            mdevd-coldplug
-        ;;
-    esac 2> /dev/null
-}
-
 mount_root()
 {
     [ "$break" = root ] && { print "break before mount_root()"; sh; }
@@ -142,10 +104,6 @@ mount_root()
 boot_system()
 {
     [ "$break" = boot ] && { print "break before boot_system()"; sh; }
-
-    {
-        kill "$devmgr_pid" || printf '\n' > /proc/sys/kernel/hotplug
-    } 2> /dev/null || :
 
     for dir in run dev sys proc; do
         mount -o move "$dir" "/mnt/root/${dir}"
@@ -169,14 +127,8 @@ boot_system()
 
     prepare_environment
     parse_cmdline
-
-    run_hook init.early
-
-    # XXX may be moved to hooks soon
-    setup_devmgr
-
     run_hook init
-
     mount_root
+    run_hook init.late
     boot_system
 }

@@ -45,14 +45,6 @@
 #
 #root_opts=""
 
-# device manager
-#
-# supported - none, proc, udev, mdev, mdevd
-# none means no device manager. requires monolithic kernel and you will unable to use UUID, LABEL, PARTUUID, /dev/mapper/*
-# proc requires monolithic kernel and legacy CONFIG_UEVENT_HELPER
-#
-#devmgr=""
-
 # hostonly mode
 #
 # default - 0
@@ -63,11 +55,12 @@
 
 # hooks
 #
-# currently supported - lvm, luks
+# supported - proc, eudev, systemd-udevd, mdev, mdevd, lvm, luks
 # example -
-#   hooks="lvm luks" will support booting LUKS on LVM
-#   hooks="luks lvm" will support booting LVM on LUKS
-#   hooks="luks"     will support booting only LUKS
+#   hooks="eudev lvm luks" will use eudev as device manager and support booting LUKS on LVM
+#   hooks="mdev luks lvm"  will use mdev as device manager and support booting LVM on LUKS
+#   hooks="systemd-udevd luks" will use systemd-udevd as device manager and support booting only LUKS
+#   hooks="proc" will use CONFIG_UEVENT_HELPER as device manager
 #   and so on...
 #
 #hooks=""

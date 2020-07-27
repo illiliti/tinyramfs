@@ -1,0 +1,10 @@
+# vim: set ft=sh:
+# shellcheck shell=sh
+#
+# false positive
+# shellcheck disable=2154
+#
+# stop_systemd_udevd()
+{
+    kill "$systemd_udevd_pid"
+}

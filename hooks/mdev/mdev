@@ -1,0 +1,22 @@
+# vim: set ft=sh:
+# shellcheck shell=sh
+#
+# false positive
+# shellcheck disable=2154,2016
+#
+# handle_mdev()
+{
+    print "configuring mdev"
+
+    for _binary in mdev find; do
+        copy_binary "$_binary"
+    done
+
+    printf "%s\n" \
+        'SUBSYSTEM=block;.* 0:0 660 @device-helper' \
+    > "${tmpdir}/etc/mdev.conf"
+
+    [ "$monolith" = 1 ] || printf "%s\n" \
+        '$MODALIAS=.* 0:0 660 @modprobe "$MODALIAS"' \
+    >> "${tmpdir}/etc/mdev.conf"
+}

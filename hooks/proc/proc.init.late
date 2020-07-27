@@ -1,0 +1,7 @@
+# vim: set ft=sh:
+# shellcheck shell=sh
+#
+# stop_proc()
+{
+    printf '\n' > /proc/sys/kernel/hotplug
+}

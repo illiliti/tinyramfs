@@ -1,0 +1,9 @@
+# vim: set ft=sh:
+# shellcheck shell=sh
+#
+# handle_proc()
+{
+    print "configuring /proc hotplugger"
+
+    copy_binary find
+}

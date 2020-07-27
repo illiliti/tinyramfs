@@ -1,0 +1,15 @@
+# vim: set ft=sh:
+# shellcheck shell=sh
+#
+# false positive
+# shellcheck disable=2154,2034
+#
+# run_systemd_udevd()
+{
+    [ "$break" = devmgr ] && { print "break before run_systemd_udevd()"; sh; }
+
+    /lib/systemd/systemd-udevd -N never & systemd_udevd_pid="$!"
+    udevadm trigger -c add -t subsystems
+    udevadm trigger -c add -t devices
+    udevadm settle
+}

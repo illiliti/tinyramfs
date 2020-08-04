@@ -1,5 +1,3 @@
-[![Donate with Bitcoin](https://en.cryptobadges.io/badge/micro/1BwrcsgtWZeLVvNeEQSg4A28a3yrGN3FpK)](https://en.cryptobadges.io/donate/1BwrcsgtWZeLVvNeEQSg4A28a3yrGN3FpK)
-
 Tinyramfs
 =========
 
@@ -75,7 +73,9 @@ Thanks
 [E5ten](https://github.com/E5ten)  
 [dylanaraps](https://github.com/dylanaraps)
 
-License
--------
+Donate
+------
 
-Licensed under GPLv3
+You can donate if you like this project
+
+BTC: 1BwrcsgtWZeLVvNeEQSg4A28a3yrGN3FpK

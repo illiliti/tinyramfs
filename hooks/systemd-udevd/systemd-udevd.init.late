@@ -6,5 +6,5 @@
 #
 # stop_systemd_udevd()
 {
-    kill "$systemd_udevd_pid"
+    udevadm control -e
 }

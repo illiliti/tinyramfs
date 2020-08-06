@@ -6,5 +6,5 @@
 #
 # stop_eudev()
 {
-    kill "$eudev_pid"
+    udevadm control -e
 }

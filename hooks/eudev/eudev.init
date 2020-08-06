@@ -8,7 +8,7 @@
 {
     [ "$break" = devmgr ] && { print "break before run_eudev()"; sh; }
 
-    udevd -N never & eudev_pid="$!"
+    udevd -dN never
     udevadm trigger -c add -t subsystems
     udevadm trigger -c add -t devices
     udevadm settle

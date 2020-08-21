@@ -196,11 +196,10 @@ copy_binary()
 
     while read -r _library || [ "$_library" ]; do
 
-        # skip unneeded stuff
-        [ "${_library##*vdso*}" ] || continue
-
         _library="${_library#* => }"
         _library="${_library% *}"
+
+        [ -e "$_library" ] || continue
 
         copy_library "$_library"
     done

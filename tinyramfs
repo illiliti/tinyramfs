@@ -215,7 +215,7 @@ copy_library()
     # iterate throught symlinks and copy them
     while [ -h "$library" ]; do symlink=$(ls -ld "$library")
         cp -P "$library" "${tmpdir}/lib" || panic
-        library="${library%/*}/${symlink##* ->*[ /]}"
+        library="/lib/${symlink##* ->*[ /]}"
     done
 
     {

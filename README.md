@@ -39,7 +39,6 @@ Notes
 
 * busybox modutils doesn't handle soft dependencies (modules.softdep). You must manually copy them using hooks
 * busybox and toybox blkid doesn't support PARTUUID. You must use util-linux blkid for PARTUUID support
-* `cp` in toybox incorrectly handles `-P` flag. You need to apply patch from [this issue](https://github.com/landley/toybox/issues/174) or replace cp with another implementation
 
 Installation
 ------------

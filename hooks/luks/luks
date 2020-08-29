@@ -23,7 +23,7 @@
 
     # avoid possible issues with libgcc_s.so.1
     # see https://bugs.archlinux.org/task/56771
-    [ -e /lib/libgcc_s.so.1 ] && copy_library /lib/libgcc_s.so.1
+    [ -e /lib/libgcc_s.so.1 ] && copy_file /lib/libgcc_s.so.1 /lib 755 1
 
     IFS=,; set -- $luks_opts; unset IFS
 

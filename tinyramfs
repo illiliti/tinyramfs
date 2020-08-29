@@ -140,14 +140,39 @@ prepare_initramfs()
         print "blkid not found. you will unable to use UUID, LABEL, PARTUUID"
     fi
 
-    # copy init
-    cp "${srcdir}/init" "${tmpdir}/init"
-    chmod 755           "${tmpdir}/init"
-
-    # copy config
-    cp "$config" "${tmpdir}/etc/tinyramfs/config"
-    chmod 600    "${tmpdir}/etc/tinyramfs/config"
+    copy_file "${srcdir}/init" /              755 0
+    copy_file "$config"        /etc/tinyramfs 644 0
 }
+
+copy_file()
+(
+    file="$1"; dest="$2"; mode="$3"; strip="$4"
+
+    # check if file already exist
+    [ -e "${tmpdir}${dest}/${file##*/}" ] && return 0
+
+    mkdir -p "${tmpdir}${dest}" || panic
+
+    # iterate throught symlinks and copy them
+    while [ -h "$file" ]; do
+        cp -P "$file" "${tmpdir}${dest}" || panic
+        cd -P "${file%/*}"
+
+        symlink=$(ls -ld "$file")
+        symlink=${symlink##* -> }
+
+        file="${PWD}/${symlink##*/}"
+    done
+
+    {
+        cp    "$file" "${tmpdir}${dest}"
+        chmod "$mode" "${tmpdir}${dest}/${file##*/}"
+    } || panic
+
+    # false positive
+    # shellcheck disable=2015
+    [ "$strip" = 1 ] && strip "${tmpdir}${dest}/${file##*/}" > /dev/null 2>&1 || :
+)
 
 copy_binary()
 {
@@ -175,21 +200,7 @@ copy_binary()
         ;;
     esac
 
-    # check if binary already exist
-    [ -e "${tmpdir}/bin/${binary##*/}" ] && return 0
-
-    # iterate throught symlinks and copy them
-    while [ -h "$binary" ]; do symlink=$(ls -ld "$binary")
-        cp -P "$binary" "${tmpdir}/bin" || panic
-        binary="${binary%/*}/${symlink##* ->*[ /]}"
-    done
-
-    {
-        cp "$binary" "${tmpdir}/bin"
-        chmod 755    "${tmpdir}/bin/${binary##*/}"
-    } || panic
-
-    strip "${tmpdir}/bin/${binary##*/}" > /dev/null 2>&1 || :
+    copy_file "$binary" /bin 755 1
 
     # copy binary dependencies if any
     ldd "$binary" 2> /dev/null |
@@ -201,29 +212,8 @@ copy_binary()
 
         [ -e "$_library" ] || continue
 
-        copy_library "$_library"
+        copy_file "$_library" /lib 755 1
     done
-}
-
-copy_library()
-{
-    library="$1"
-
-    # check if library already exist
-    [ -e "${tmpdir}/lib/${library##*/}" ] && return 0
-
-    # iterate throught symlinks and copy them
-    while [ -h "$library" ]; do symlink=$(ls -ld "$library")
-        cp -P "$library" "${tmpdir}/lib" || panic
-        library="/lib/${symlink##* ->*[ /]}"
-    done
-
-    {
-        cp "$library" "${tmpdir}/lib"
-        chmod 755     "${tmpdir}/lib/${library##*/}"
-    } || panic
-
-    strip "${tmpdir}/lib/${library##*/}" > /dev/null 2>&1 || :
 }
 
 copy_module()
@@ -237,14 +227,7 @@ copy_module()
         # check if module contains full path(not builtin)
         [ "${module##*/*}" ] && continue
 
-        # check if module already exist
-        [ -e "${tmpdir}${module}" ] && continue
-
-        {
-            mkdir -p     "${tmpdir}${module%/*}"
-            cp "$module" "${tmpdir}${module}"
-            chmod 644    "${tmpdir}${module}"
-        } || panic
+        copy_file "$module" "${module%/*}" 644 0
     done
 }
 
@@ -254,7 +237,7 @@ copy_hook()
 
     # false positive
     # shellcheck disable=1090
-    for _dir in "$hksdir" /etc/tinyramfs/hooks /usr/share/tinyramfs/hooks; do
+    for _dir in "$hksdir" /etc/tinyramfs/hooks "${srcdir}/hooks"; do
         [ -f "${_dir}/${hook}/${hook}" ] || ! continue
 
         print "running $hook hook"; . "${_dir}/${hook}/${hook}"
@@ -262,11 +245,8 @@ copy_hook()
         for _file in init init.late; do
             [ -f "${_dir}/${hook}/${hook}.${_file}" ] || continue
 
-            {
-                mkdir -p "${tmpdir}/usr/share/tinyramfs/hooks/${hook##*/}"
-                cp "${_dir}/${hook}/${hook}.${_file}" \
-                   "${tmpdir}/usr/share/tinyramfs/hooks/${hook##*/}"
-            } || panic
+            copy_file "${_dir}/${hook}/${hook}.${_file}" \
+                      "/usr/share/tinyramfs/hooks/${hook##*/}" 644 0
         done
 
         break
@@ -345,13 +325,8 @@ copy_modules()
 
     copy_binary modprobe
 
-    cp "${moddir}/${kernel}/modules.builtin" \
-       "${moddir}/${kernel}/modules.order" \
-       "${tmpdir}${moddir}/${kernel}"
-
-    chmod 644 \
-        "${tmpdir}${moddir}/${kernel}/modules.builtin" \
-        "${tmpdir}${moddir}/${kernel}/modules.order"
+    copy_file "${moddir}/${kernel}/modules.order"   "${moddir}/${kernel}" 644 0
+    copy_file "${moddir}/${kernel}/modules.builtin" "${moddir}/${kernel}" 644 0
 
     depmod -b "$tmpdir" "$kernel"
 }

@@ -48,7 +48,7 @@ git clone https://github.com/illiliti/tinyramfs
 cd tinyramfs
 make install
 vi /etc/tinyramfs/config # edit config for your needs
-tinyramfs -o /boot/initramfs
+tinyramfs -o /boot/initramfs-<ver> # replace <ver> with current kernel version
 # update your bootloader
 # reboot...
 ```

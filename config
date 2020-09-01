@@ -60,6 +60,8 @@
 #   hooks="eudev lvm luks" will use eudev as device manager and support booting LUKS on LVM
 #   hooks="mdev luks lvm"  will use mdev as device manager and support booting LVM on LUKS
 #   hooks="systemd-udevd luks" will use systemd-udevd as device manager and support booting only LUKS
+#   hooks="keymap" will first load the keymap set at keymap_path.
+#   Note: If you use encryption, be sure to load this hook before the others
 #   hooks="proc" will use CONFIG_UEVENT_HELPER as device manager
 #   and so on...
 #
@@ -102,3 +104,10 @@
 #   luks_opts="root=/dev/sda1,discard=1"
 #
 #luks_opts=""
+
+# keymap path
+#
+# path that will be passed to loadkmap
+# example - keymap_path="/usr/share/bkeymaps/us/us.bmap"
+#
+#keymap_path=""

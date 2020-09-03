@@ -6,8 +6,6 @@
 #
 # word splitting is safe by design
 # shellcheck disable=2086,2068
-#
-# unlock_luks()
 {
     [ "$break" = luks ] && { print "break before unlock_luks()"; sh; }
 

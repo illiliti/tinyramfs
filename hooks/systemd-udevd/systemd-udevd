@@ -3,11 +3,7 @@
 #
 # false positive
 # shellcheck disable=2154
-#
-# handle_systemd_udevd()
 {
-    print "configuring systemd-udevd"
-
     for _binary in /lib/systemd/systemd-udevd udevadm; do
         copy_binary "$_binary"
     done

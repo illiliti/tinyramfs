@@ -6,8 +6,6 @@
 #
 # word splitting is safe by design
 # shellcheck disable=2086,2068
-#
-# trigger_lvm()
 {
     [ "$break" = lvm ] && { print "break before trigger_lvm()"; sh; }
 

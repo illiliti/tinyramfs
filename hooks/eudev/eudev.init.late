@@ -3,8 +3,6 @@
 #
 # false positive
 # shellcheck disable=2154
-#
-# stop_eudev()
 {
     udevadm control -e
 }

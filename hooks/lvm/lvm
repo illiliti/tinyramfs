@@ -6,11 +6,7 @@
 #
 # word splitting is safe by design
 # shellcheck disable=2086
-#
-# handle_lvm()
 {
-    print "configuring LVM"
-
     [ "$hostonly" = 1 ] &&
         for _module in \
             dm-log dm-cache dm-mirror \

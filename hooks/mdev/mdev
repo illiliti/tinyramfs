@@ -3,11 +3,7 @@
 #
 # false positive
 # shellcheck disable=2154,2016
-#
-# handle_mdev()
 {
-    print "configuring mdev"
-
     for _binary in mdev find; do
         copy_binary "$_binary"
     done

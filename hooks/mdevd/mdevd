@@ -3,11 +3,7 @@
 #
 # false positive
 # shellcheck disable=2154,2016
-#
-# handle_mdevd()
 {
-    print "configuring mdevd"
-
     for _binary in mdevd mdevd-coldplug; do
         copy_binary "$_binary"
     done

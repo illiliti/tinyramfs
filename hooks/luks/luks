@@ -6,11 +6,7 @@
 #
 # word splitting is safe by design
 # shellcheck disable=2086
-#
-# handle_luks()
 {
-    print "configuring LUKS"
-
     [ "$hostonly" = 1 ] &&
         for _module in \
             aes ecb xts lrw wp512 sha256 \

@@ -3,8 +3,6 @@
 #
 # false positive
 # shellcheck disable=2154
-#
-# stop_mdevd()
 {
     kill "$mdevd_pid"
 }

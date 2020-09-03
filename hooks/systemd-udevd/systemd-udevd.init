@@ -3,8 +3,6 @@
 #
 # false positive
 # shellcheck disable=2154,2034
-#
-# run_systemd_udevd()
 {
     [ "$break" = devmgr ] && { print "break before run_systemd_udevd()"; sh; }
 

@@ -3,11 +3,7 @@
 #
 # false positive
 # shellcheck disable=2154
-#
-# handle_eudev()
 {
-    print "configuring eudev"
-
     for _binary in udevd udevadm; do
         copy_binary "$_binary"
     done

@@ -3,8 +3,6 @@
 #
 # false positive
 # shellcheck disable=2154,2034
-#
-# run_mdev()
 {
     [ "$break" = devmgr ] && { print "break before run_mdev()"; sh; }
     

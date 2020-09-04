@@ -51,7 +51,7 @@ Usage
 
 ```sh
 # read man pages and setup /etc/tinyramfs/config
-tinyramfs -o /boot/initramfs-<ver> # replace <ver> with current kernel version
+tinyramfs -o "/boot/initramfs-$(uname -r)"
 # update your bootloader
 # reboot...
 ```

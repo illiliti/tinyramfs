@@ -18,3 +18,4 @@ install:
 uninstall:
 	rm -f  ${DESTDIR}${BINDIR}/tinyramfs
 	rm -rf ${DESTDIR}${DATADIR}/tinyramfs
+	rm -f  ${DESTDIR}${MANDIR}/man5/tinyramfs.5

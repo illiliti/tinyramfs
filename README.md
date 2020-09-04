@@ -16,6 +16,7 @@ Features
 Dependencies
 ------------
 
+* POSIX make (build time)
 * POSIX utilities
 * POSIX shell
 * `switch_root`

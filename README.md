@@ -31,14 +31,10 @@ Dependencies
   - Required for LVM support
 * `cryptsetup`
   - Required for LUKS support
+* `busybox loadkmap`
+  - Required for loading keymap
 * `kmod` OR `busybox modutils` with [this patch](https://gist.github.com/illiliti/ef9ee781b5c6bf36d9493d99b4a1ffb6) (already included in KISS Linux)
   - Not required for monolithic kernel
-
-Notes
------
-
-* busybox modutils doesn't handle soft dependencies (modules.softdep). You must manually copy them using hooks
-* busybox and toybox blkid doesn't support PARTUUID. You must use util-linux blkid for PARTUUID support
 
 Installation
 ------------
@@ -47,24 +43,17 @@ Installation
 git clone https://github.com/illiliti/tinyramfs
 cd tinyramfs
 make install
-vi /etc/tinyramfs/config # edit config for your needs
+```
+
+Usage
+-----
+
+```sh
+# read man pages and setup /etc/tinyramfs/config
 tinyramfs -o /boot/initramfs-<ver> # replace <ver> with current kernel version
 # update your bootloader
 # reboot...
 ```
-
-Configuration
--------------
-
-Statically via config
------------------
-
-See [config](config)
-
-Dynamically via kernel parameters
------------------------------
-
-TODO finalize and document kernel command-line parameters
 
 Thanks
 ------

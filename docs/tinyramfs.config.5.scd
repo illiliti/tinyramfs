@@ -5,6 +5,7 @@ tinyramfs(5)
 Tinyramfs - configuration file
 
 # SYNOPSIS
+
 */etc/tinyramfs/config*
 
 # DESCRIPTION
@@ -223,4 +224,4 @@ root=/dev/disk/by-uuid/aa82d7bb-ab2b-4739-935f-fd8a5c9a6cb0
 
 # SEE ALSO
 
-*tinyramfs*(8) *tinyramfs.cmdline*(7)
+*tinyramfs*(8) *tinyramfs.cmdline*(7) *tinyramfs.hooks*(7)

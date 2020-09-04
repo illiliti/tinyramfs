@@ -25,8 +25,7 @@
 
     for opt; do case "${opt%%=*}" in
         key | header)
-            cp "${opt#*=}" "${tmpdir}/root/${opt%%=*}"
-            chmod 400      "${tmpdir}/root/${opt%%=*}"
+            copy_file "${opt#*=}" "/root/${opt%%=*}" 400 0
 
             sed "s|${opt#*=}|/root/${opt%%=*}|" \
                 "${tmpdir}/etc/tinyramfs/config" > "${tmpdir}/_"

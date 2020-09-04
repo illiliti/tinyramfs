@@ -1,4 +1,4 @@
-tinyramfs(5)
+tinyramfs.config(5)
 
 # NAME
 

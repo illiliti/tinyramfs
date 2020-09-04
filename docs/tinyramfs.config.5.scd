@@ -133,9 +133,8 @@ you can simply prepend \#.
 	If hook doesn't have options, then it's not yet documented or can be used
 	"as is".
 
-	; TODO tinyramfs.hooks(7)
-	; More detailed information and how to write your own hooks described in
-	; *tinyramfs.hooks*(7).
+	More detailed information and how to write your own hooks described in
+	*tinyramfs.hooks*(7).
 
 # HOOKS OPTIONS
 

@@ -25,7 +25,7 @@
 
     for opt; do case "${opt%%=*}" in
         key | header)
-            copy_file "${opt#*=}" "/root/${opt%%=*}" 400 0
+            copy_file "${opt#*=}" /root 400 0
 
             sed "s|${opt#*=}|/root/${opt%%=*}|" \
                 "${tmpdir}/etc/tinyramfs/config" > "${tmpdir}/_"

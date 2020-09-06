@@ -235,22 +235,24 @@ copy_hook()
 {
     hook="$1"
 
-    # false positive
-    # shellcheck disable=1090
     for _dir in "$hksdir" /etc/tinyramfs/hooks "${srcdir}/hooks"; do
         [ -f "${_dir}/${hook}/${hook}" ] || ! continue
+    done || panic "could not find $hook hook"
 
-        print "running $hook hook"; . "${_dir}/${hook}/${hook}"
+    print "running $hook hook"
 
-        for _file in init init.late; do
-            [ -f "${_dir}/${hook}/${hook}.${_file}" ] || continue
+    # false positive
+    # shellcheck disable=1090
+    . "${_dir}/${hook}/${hook}"
 
-            copy_file "${_dir}/${hook}/${hook}.${_file}" \
-                      "/usr/share/tinyramfs/hooks/${hook##*/}" 644 0
-        done
+    for _file in init init.late; do
+        [ -f "${_dir}/${hook}/${hook}.${_file}" ] || continue
 
-        break
-    done || panic "could not run $hook hook"
+        print "copying ${hook}.${_file}"
+
+        copy_file "${_dir}/${hook}/${hook}.${_file}" \
+            "/usr/share/tinyramfs/hooks/${hook##*/}" 644 0
+    done
 }
 
 copy_modules()

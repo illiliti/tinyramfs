@@ -3,9 +3,6 @@
 #
 # false positive
 # shellcheck disable=2154
-#
-# word splitting is safe by design
-# shellcheck disable=2086
 {
     [ "$hostonly" = 1 ] &&
         for _module in \
@@ -21,16 +18,21 @@
     # see https://bugs.archlinux.org/task/56771
     [ -e /lib/libgcc_s.so.1 ] && copy_file /lib/libgcc_s.so.1 /lib 755 1
 
-    IFS=,; set -- $luks_opts; unset IFS
+    [ "$luks_key" ] && {
+        copy_file "${luks_key#*=}" /root 400 0
 
-    for opt; do case "${opt%%=*}" in
-        key | header)
-            copy_file "${opt#*=}" /root 400 0
+        sed "s|${luks_key#*=}|/root/key|" \
+            "${tmpdir}/etc/tinyramfs/config" > "${tmpdir}/_"
 
-            sed "s|${opt#*=}|/root/${opt%%=*}|" \
-                "${tmpdir}/etc/tinyramfs/config" > "${tmpdir}/_"
+        mv "${tmpdir}/_" "${tmpdir}/etc/tinyramfs/config"
+    }
 
-            mv "${tmpdir}/_" "${tmpdir}/etc/tinyramfs/config"
-            chmod 600        "${tmpdir}/etc/tinyramfs/config"
-    esac || panic; done
+    [ "$luks_header" ] && {
+        copy_file "${luks_header#*=}" /root 400 0
+
+        sed "s|${luks_header#*=}|/root/header|" \
+            "${tmpdir}/etc/tinyramfs/config" > "${tmpdir}/_"
+
+        mv "${tmpdir}/_" "${tmpdir}/etc/tinyramfs/config"
+    }
 }

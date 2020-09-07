@@ -3,9 +3,6 @@
 #
 # false positive
 # shellcheck disable=2154
-#
-# word splitting is safe by design
-# shellcheck disable=2086
 {
     [ "$hostonly" = 1 ] &&
         for _module in \
@@ -29,17 +26,10 @@
             use_lvmetad = 0
         }"
 
-    IFS=,; set -- $lvm_opts; unset IFS
-
-    for opt; do case "$opt" in
-        config=1) embed_lvm_config=
-    esac; done
-
     mkdir -p "${tmpdir}/etc/lvm"
 
     lvm config \
         --config "$lvm_config" \
-        ${embed_lvm_config+--mergedconfig} \
+        ${lvm_config:+--mergedconfig} \
     > "${tmpdir}/etc/lvm/lvm.conf"
 }
-

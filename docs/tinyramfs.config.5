@@ -5,7 +5,7 @@
 .nh
 .ad l
 .\" Begin generated content:
-.TH "tinyramfs.config" "5" "2020-09-05"
+.TH "tinyramfs.config" "5" "2020-09-07"
 .P
 .SH NAME
 .P
@@ -16,21 +16,6 @@ Tinyramfs - configuration file
 \fB/etc/tinyramfs/config\fR
 .P
 .SH DESCRIPTION
-.P
-Let's reduce confusing situations and document everything !\&
-.P
-.SS MAN PAGE SYNTAX
-.P
-.nf
-.RS 4
-*   - any value
-[a] - optional value
-\&.\&.\&. - can be repeated
-0|1 - choice between no and yes
-.fi
-.RE
-.P
-.SS CONFIG SYNTAX
 .P
 Tinyramfs configuration file is a list of environment variables.\&
 Each variable must be written in POSIX way, bashism not allowed.\&
@@ -80,9 +65,20 @@ you can simply prepend #.\&
 .fi
 .RE
 .P
+.SS MAN PAGE SYNTAX
+.P
+.nf
+.RS 4
+|   - OR
+*   - any value
+[a] - optional value
+\&.\&.\&. - can be repeated
+.fi
+.RE
+.P
 .SH GENERAL OPTIONS
 .P
-\fBmonolith\fR=0|1
+\fBmonolith\fR=1
 .P
 .RS 4
 Monolithic kernel means kernel with builtin modules.\&
@@ -93,12 +89,13 @@ version>/modules\fR exist.\& If this directory doesn't exist you probably
 have monolithic kernel which means you need to set \fBmonolith\fR to \fB1\fR.\&
 .P
 .RE
-\fBhostonly\fR=0|1
+\fBhostonly\fR=1
 .P
 .RS 4
 Hostonly mode enumerates \fBsysfs\fR(5) and copies only neccessary modules
 instead of copying all modules.\& Which means that this mode can dramatically
-reduce initramfs size.\& This option ignored if \fBmonolith\fR was set to \fB1\fR.\&
+reduce initramfs size.\& This option will be ignored if \fBmonolith\fR was set
+to \fB1\fR.\&
 .P
 .RE
 \fBcompress\fR=command [args .\&.\&.\&]
@@ -310,146 +307,77 @@ More detailed information and how to write your own hooks described in
 .RE
 .SH HOOKS OPTIONS
 .P
-\fBlvm_opts\fR=[tag, name, group, config, discard]
+.SS LVM
+.P
+\fBlvm_tag\fR=tag
 .P
 .RS 4
-.RS 4
-.ie n \{\
-\h'-04'\(bu\h'+03'\c
-.\}
-.el \{\
-.IP \(bu 4
-.\}
-tag - trigger lvm by tag
-.RE
-.RS 4
-.ie n \{\
-\h'-04'\(bu\h'+03'\c
-.\}
-.el \{\
-.IP \(bu 4
-.\}
-name - trigger lvm by logical volume name.\& group must be specified
-.RE
-.RS 4
-.ie n \{\
-\h'-04'\(bu\h'+03'\c
-.\}
-.el \{\
-.IP \(bu 4
-.\}
-group - trigger lvm by volume group name
-.RE
-.RS 4
-.ie n \{\
-\h'-04'\(bu\h'+03'\c
-.\}
-.el \{\
-.IP \(bu 4
-.\}
-config - embed /etc/lvm.\&conf config
-.RE
-.RS 4
-.ie n \{\
-\h'-04'\(bu\h'+03'\c
-.\}
-.el \{\
-.IP \(bu 4
-.\}
-discard - enable issue_discards
-
-.RE
+Specify LVM tag which will be used to trigger LVM.\& This option will be
+ignored if \fBlvm_name\fR/\fBlvm_group\fR was specified.\&
 .P
 .RE
-\fBluks_opts\fR=root=UUID|LABEL|/dev/*|PARTUUID, [key, name, header, discard]
+\fBlvm_name\fR=name
 .P
 .RS 4
-.RS 4
-.ie n \{\
-\h'-04'\(bu\h'+03'\c
-.\}
-.el \{\
-.IP \(bu 4
-.\}
-key - embed key
-.RE
-.RS 4
-.ie n \{\
-\h'-04'\(bu\h'+03'\c
-.\}
-.el \{\
-.IP \(bu 4
-.\}
-name - device mapper name
-.RE
-.RS 4
-.ie n \{\
-\h'-04'\(bu\h'+03'\c
-.\}
-.el \{\
-.IP \(bu 4
-.\}
-root - encrypted root
-.RS 4
-.RE
-.RS 4
-.ie n \{\
-\h'-04'\(bu\h'+03'\c
-.\}
-.el \{\
-.IP \(bu 4
-.\}
-UUID     - lookup device by uuid
-.RE
-.RS 4
-.ie n \{\
-\h'-04'\(bu\h'+03'\c
-.\}
-.el \{\
-.IP \(bu 4
-.\}
-LABEL    - lookup device by label
-.RE
-.RS 4
-.ie n \{\
-\h'-04'\(bu\h'+03'\c
-.\}
-.el \{\
-.IP \(bu 4
-.\}
-/dev/*   - lookup device by full path
-.RE
-.RS 4
-.ie n \{\
-\h'-04'\(bu\h'+03'\c
-.\}
-.el \{\
-.IP \(bu 4
-.\}
-PARTUUID - lookup device by partition uuid
-.RE
-.RE
-.RS 4
-.ie n \{\
-\h'-04'\(bu\h'+03'\c
-.\}
-.el \{\
-.IP \(bu 4
-.\}
-header - embed header
-.RE
-.RS 4
-.ie n \{\
-\h'-04'\(bu\h'+03'\c
-.\}
-.el \{\
-.IP \(bu 4
-.\}
-discard - enable allow-discards
-
-.RE
+Specify LVM name which will be used to trigger LVM.\& \fBlvm_group\fR must be
+specified.\&
 .P
 .RE
+\fBlvm_group\fR=group
+.P
+.RS 4
+Specify LVM group which will be used to trigger LVM.\&
+.P
+.RE
+\fBlvm_config\fR=1
+.P
+.RS 4
+Include \fB/etc/lvm/lvm.\&conf\fR in initramfs.\&
+.P
+.RE
+\fBlvm_discard\fR=1
+.P
+.RS 4
+Pass issue_discards to lvm.\& Useful for SSD's.\&
+.P
+.RE
+.SS LUKS
+.P
+\fBluks_key\fR=/path/to/key
+.RS 4
+.P
+Specify location to key.\&
+GPG-encrypted key currently not supported.\&
+.P
+.RE
+\fBluks_name\fR=name
+.P
+.RS 4
+Specify which name will be registered to mapping table after cryptsetup
+unlocks LUKS root.\&
+.P
+.RE
+\fBluks_root\fR=UUID|LABEL|/dev/*|PARTUUID
+.P
+.RS 4
+See \fBroot\fR for details.\&
+.P
+.RE
+\fBluks_header\fR=/path/to/header
+.P
+.RS 4
+Specify location to detached header.\&
+.P
+.RE
+\fBluks_discard\fR=1
+.P
+.RS 4
+Pass --allow-discards to \fBcryptsetup\fR.\& Useful for SSD's, but you must know
+that security will be decreased.\&
+.P
+.RE
+.SS KEYMAP
+.P
 \fBkeymap_path\fR=/path/to/keymap
 .P
 .RS 4
@@ -460,7 +388,7 @@ kbd loadkeys not supported.\&
 .RE
 .SH EXAMPLES
 .P
-Remember, it's just examples !\& Don't copy blindly !\& Your configuration may
+Remember, these just examples !\& \fIDon't copy blindly\fR !\& Your configuration may
 (and should) differ.\&
 .P
 .SS ROOT
@@ -510,8 +438,11 @@ keymap_path=/usr/share/bkeymaps/colemak/en-latin9\&.bmap
 .RS 4
 hooks="mdev luks"
 root=LABEL=my_root
-luks_opts=root=PARTUUID=35f923c5-083a-4950-a4da-e611d0778121
-luks_opts="${luks_opts},key=/root/key,header=/root/header,discard=1"
+
+luks_discard=1
+luks_key=/root/key
+luks_header=/root/header
+luks_root=PARTUUID=35f923c5-083a-4950-a4da-e611d0778121
 .fi
 .RE
 .P
@@ -521,9 +452,15 @@ luks_opts="${luks_opts},key=/root/key,header=/root/header,discard=1"
 .RS 4
 compress="lz4 -9"
 hooks="eudev lvm luks"
-luks_opts=root=/dev/sdb2,discard=1
-lvm_opts=name=lvm1,group=lvm_grp2,config=1,discard=1
 root=/dev/disk/by-uuid/aa82d7bb-ab2b-4739-935f-fd8a5c9a6cb0
+
+luks_discard=1
+luks_root=/dev/sdb2
+
+lvm_config=1
+lvm_discard=1
+lvm_name=lvm1
+lvm_group=lvm_grp2
 .fi
 .RE
 .P

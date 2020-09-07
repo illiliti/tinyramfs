@@ -10,19 +10,6 @@ Tinyramfs - configuration file
 
 # DESCRIPTION
 
-Let's reduce confusing situations and document everything !
-
-## MAN PAGE SYNTAX
-
-```
-*   - any value
-[a] - optional value
-... - can be repeated
-0|1 - choice between no and yes
-```
-
-## CONFIG SYNTAX
-
 Tinyramfs configuration file is a list of environment variables.
 Each variable must be written in POSIX way, bashism not allowed.
 
@@ -61,9 +48,18 @@ you can simply prepend \#.
 #key=value
 ```
 
+## MAN PAGE SYNTAX
+
+```
+|   - OR
+*   - any value
+[a] - optional value
+... - can be repeated
+```
+
 # GENERAL OPTIONS
 
-*monolith*=0|1
+*monolith*=1
 
 	Monolithic kernel means kernel with builtin modules.
 	If you didn't build kernel yourself, then in most cases you have
@@ -72,11 +68,12 @@ you can simply prepend \#.
 	version>/modules* exist. If this directory doesn't exist you probably 
 	have monolithic kernel which means you need to set *monolith* to *1*.
 
-*hostonly*=0|1
+*hostonly*=1
 
 	Hostonly mode enumerates *sysfs*(5) and copies only neccessary modules
 	instead of copying all modules. Which means that this mode can dramatically
-	reduce initramfs size. This option ignored if *monolith* was set to *1*.
+	reduce initramfs size. This option will be ignored if *monolith* was set
+	to *1*.
 
 *compress*=command [args ...]
 
@@ -138,25 +135,56 @@ you can simply prepend \#.
 
 # HOOKS OPTIONS
 
-*lvm_opts*=[tag, name, group, config, discard]
+## LVM
 
-	- tag - trigger lvm by tag
-	- name - trigger lvm by logical volume name. group must be specified
-	- group - trigger lvm by volume group name
-	- config - embed /etc/lvm.conf config
-	- discard - enable issue_discards
+*lvm_tag*=tag
 
-*luks_opts*=root=UUID|LABEL|/dev/\*|PARTUUID, [key, name, header, discard]
+	Specify LVM tag which will be used to trigger LVM. This option will be
+	ignored if *lvm_name*/*lvm_group* was specified.
 
-	- key - embed key
-	- name - device mapper name
-	- root - encrypted root
-		- UUID     - lookup device by uuid
-		- LABEL    - lookup device by label
-		- /dev/\*   - lookup device by full path
-		- PARTUUID - lookup device by partition uuid
-	- header - embed header
-	- discard - enable allow-discards
+*lvm_name*=name
+
+	Specify LVM name which will be used to trigger LVM. *lvm_group* must be
+	specified.
+
+*lvm_group*=group
+
+	Specify LVM group which will be used to trigger LVM.
+
+*lvm_config*=1
+
+	Include */etc/lvm/lvm.conf* in initramfs.
+
+*lvm_discard*=1
+
+	Pass issue_discards to lvm. Useful for SSD's.
+
+## LUKS
+
+*luks_key*=/path/to/key
+
+	Specify location to key.
+	GPG-encrypted key currently not supported.
+
+*luks_name*=name
+
+	Specify which name will be registered to mapping table after cryptsetup
+	unlocks LUKS root.
+
+*luks_root*=UUID|LABEL|/dev/\*|PARTUUID
+
+	See *root* for details.
+
+*luks_header*=/path/to/header
+
+	Specify location to detached header.
+
+*luks_discard*=1
+
+	Pass --allow-discards to *cryptsetup*. Useful for SSD's, but you must know
+	that security will be decreased.
+
+## KEYMAP
 
 *keymap_path*=/path/to/keymap
 
@@ -166,7 +194,7 @@ you can simply prepend \#.
 
 # EXAMPLES
 
-Remember, it's just examples ! Don't copy blindly ! Your configuration may
+Remember, these just examples ! _Don't copy blindly_ ! Your configuration may
 (and should) differ.
 
 ## ROOT
@@ -207,8 +235,11 @@ keymap_path=/usr/share/bkeymaps/colemak/en-latin9.bmap
 ```
 hooks="mdev luks"
 root=LABEL=my_root
-luks_opts=root=PARTUUID=35f923c5-083a-4950-a4da-e611d0778121
-luks_opts="${luks_opts},key=/root/key,header=/root/header,discard=1"
+
+luks_discard=1
+luks_key=/root/key
+luks_header=/root/header
+luks_root=PARTUUID=35f923c5-083a-4950-a4da-e611d0778121
 ```
 
 ## ROOT + LVM + LUKS
@@ -216,9 +247,15 @@ luks_opts="${luks_opts},key=/root/key,header=/root/header,discard=1"
 ```
 compress="lz4 -9"
 hooks="eudev lvm luks"
-luks_opts=root=/dev/sdb2,discard=1
-lvm_opts=name=lvm1,group=lvm_grp2,config=1,discard=1
 root=/dev/disk/by-uuid/aa82d7bb-ab2b-4739-935f-fd8a5c9a6cb0
+
+luks_discard=1
+luks_root=/dev/sdb2
+
+lvm_config=1
+lvm_discard=1
+lvm_name=lvm1
+lvm_group=lvm_grp2
 ```
 
 # SEE ALSO

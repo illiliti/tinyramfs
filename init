@@ -30,7 +30,7 @@ resolve_device()
     # XXX what the hell happens here?
     # why this loop sometimes trigger panic if i remove '|| :'
     while [ ! -b "$device" ]; do sleep 1
-        [ "$((count += 1))" = 30 ] && {
+        [ "$((count += 1))" = "${rootdelay:=30}" ] && {
             panic "failed to lookup partition"
             break
         }

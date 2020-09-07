@@ -68,6 +68,10 @@ interact with build and init system.
 	on file. Tinyramfs will silently ignore errors if strip doesn't
 	exists or failed to strip binary.
 
+## I: resolve_device <UUID|LABEL|/dev/\*|PARTUUID>
+
+	Resolves UUID|LABEL|/dev/\*|PARTUUID to full path of /dev device
+
 # VARIABLES
 
 ```
@@ -89,7 +93,7 @@ Create */etc/tinyramfs/hooks/ext4* directory and copy below scripts with
 appropriate names to that directory. After that, prepend *ext4* to *hooks*
 option in tinyrams config.
 
-ext4
+## ext4
 
 ```
 print "Copying ext4 dependencies"
@@ -99,7 +103,7 @@ for _mod in crc32c libcrc32c; do
 done
 ```
 
-ext4.init
+## ext4.init
 
 ```
 modprobe -a crc32c libcrc32c

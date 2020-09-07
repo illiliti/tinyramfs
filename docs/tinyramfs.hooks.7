@@ -5,7 +5,7 @@
 .nh
 .ad l
 .\" Begin generated content:
-.TH "tinyramfs.hooks" "7" "2020-09-04"
+.TH "tinyramfs.hooks" "7" "2020-09-07"
 .P
 .SH NAME
 .P
@@ -122,6 +122,12 @@ on file.\& Tinyramfs will silently ignore errors if strip doesn't
 exists or failed to strip binary.\&
 .P
 .RE
+.SS I: resolve_device <UUID|LABEL|/dev/\*|PARTUUID>
+.P
+.RS 4
+Resolves UUID|LABEL|/dev/*|PARTUUID to full path of /dev device
+.P
+.RE
 .SH VARIABLES
 .P
 .nf
@@ -145,7 +151,7 @@ Create \fB/etc/tinyramfs/hooks/ext4\fR directory and copy below scripts with
 appropriate names to that directory.\& After that, prepend \fBext4\fR to \fBhooks\fR
 option in tinyrams config.\&
 .P
-ext4
+.SS ext4
 .P
 .nf
 .RS 4
@@ -157,7 +163,7 @@ done
 .fi
 .RE
 .P
-ext4.\&init
+.SS ext4.init
 .P
 .nf
 .RS 4

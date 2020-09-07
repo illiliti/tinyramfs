@@ -19,7 +19,7 @@ panic()
 usage()
 {
     cat << EOF
-usage: ${0##*/} [option...]
+usage: ${0##*/} [option ...]
        -o, --output <file> set initramfs output path
                            default is /boot/initramfs-$(uname -r)
 

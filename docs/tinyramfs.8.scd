@@ -6,7 +6,7 @@ Tinyramfs - tiny initramfs written in POSIX shell
 
 # SYNOPSIS
 
-*tinyramfs* [-df] [-o output] [-c config] [-m dir] [-s dir] [-k ver] [-H dir]
+*tinyramfs* [option ...]
 
 # DESCRIPTION
 

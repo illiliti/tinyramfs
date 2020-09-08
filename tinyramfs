@@ -155,14 +155,16 @@ copy_file()
 
     # iterate throught symlinks and copy them
     while [ -h "$file" ]; do
-        cp -P "$file" "${tmpdir}${dest}" || panic
+        cp -P "$file" "${tmpdir}${dest%/*}/${file##*/}"
         cd -P "${file%/*}"
 
         symlink=$(ls -ld "$file")
         symlink="${symlink##* -> }"
-
         file="${PWD}/${symlink##*/}"
     done
+
+    # handle case when file and dest have same basenames
+    [ -h "${tmpdir}${dest}" ] && dest="${dest%/*}/${file##*/}"
 
     {
         cp    "$file" "${tmpdir}${dest}"

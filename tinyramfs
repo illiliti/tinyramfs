@@ -140,8 +140,8 @@ prepare_initramfs()
         print "blkid not found. you will unable to use UUID, LABEL, PARTUUID"
     fi
 
-    copy_file "${srcdir}/init" /              755 0
-    copy_file "$config"        /etc/tinyramfs 644 0
+    copy_file "${srcdir}/init" /init                 755 0
+    copy_file "$config"        /etc/tinyramfs/config 644 0
 }
 
 copy_file()
@@ -149,9 +149,9 @@ copy_file()
     file="$1"; dest="$2"; mode="$3"; strip="$4"
 
     # check if file already exist
-    [ -e "${tmpdir}${dest}/${file##*/}" ] && return 0
+    [ -e "${tmpdir}${dest}" ] && return 0
 
-    mkdir -p "${tmpdir}${dest}" || panic
+    mkdir -p "${tmpdir}${dest%/*}" || panic
 
     # iterate throught symlinks and copy them
     while [ -h "$file" ]; do
@@ -159,19 +159,19 @@ copy_file()
         cd -P "${file%/*}"
 
         symlink=$(ls -ld "$file")
-        symlink=${symlink##* -> }
+        symlink="${symlink##* -> }"
 
         file="${PWD}/${symlink##*/}"
     done
 
     {
         cp    "$file" "${tmpdir}${dest}"
-        chmod "$mode" "${tmpdir}${dest}/${file##*/}"
+        chmod "$mode" "${tmpdir}${dest}"
     } || panic
 
     # false positive
     # shellcheck disable=2015
-    [ "$strip" = 1 ] && strip "${tmpdir}${dest}/${file##*/}" > /dev/null 2>&1 || :
+    [ "$strip" = 1 ] && strip "${tmpdir}${dest}" > /dev/null 2>&1 || :
 )
 
 copy_binary()
@@ -200,7 +200,7 @@ copy_binary()
         ;;
     esac
 
-    copy_file "$binary" /bin 755 1
+    copy_file "$binary" "/bin/${binary##*/}" 755 1
 
     # copy binary dependencies if any
     ldd "$binary" 2> /dev/null |
@@ -212,7 +212,7 @@ copy_binary()
 
         [ -e "$_library" ] || continue
 
-        copy_file "$_library" /lib 755 1
+        copy_file "$_library" "/lib/${_library##*/}" 755 1
     done
 }
 
@@ -227,7 +227,7 @@ copy_module()
         # check if module contains full path(not builtin)
         [ "${module##*/*}" ] && continue
 
-        copy_file "$module" "${module%/*}" 644 0
+        copy_file "$module" "$module" 644 0
     done
 }
 
@@ -251,7 +251,7 @@ copy_hook()
         print "copying ${hook}.${_file}"
 
         copy_file "${_dir}/${hook}/${hook}.${_file}" \
-            "/usr/share/tinyramfs/hooks/${hook##*/}" 644 0
+            "/usr/share/tinyramfs/hooks/${hook}/${hook}.${_file}" 644 0
     done
 }
 
@@ -327,8 +327,8 @@ copy_modules()
 
     copy_binary modprobe
 
-    copy_file "${moddir}/${kernel}/modules.order"   "${moddir}/${kernel}" 644 0
-    copy_file "${moddir}/${kernel}/modules.builtin" "${moddir}/${kernel}" 644 0
+    copy_file "${moddir}/${kernel}/modules.order"   "/lib/modules/${kernel}/modules.order"   644 0
+    copy_file "${moddir}/${kernel}/modules.builtin" "/lib/modules/${kernel}/modules.builtin" 644 0
 
     depmod -b "$tmpdir" "$kernel"
 }

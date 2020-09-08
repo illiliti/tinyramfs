@@ -16,10 +16,10 @@
 
     # avoid possible issues with libgcc_s.so.1
     # see https://bugs.archlinux.org/task/56771
-    [ -e /lib/libgcc_s.so.1 ] && copy_file /lib/libgcc_s.so.1 /lib 755 1
+    [ -e /lib/libgcc_s.so.1 ] && copy_file /lib/libgcc_s.so.1 /lib/libgcc_s.so.1 755 1
 
     [ "$luks_key" ] && {
-        copy_file "${luks_key#*=}" /root 400 0
+        copy_file "${luks_key#*=}" /root/key 400 0
 
         sed "s|${luks_key#*=}|/root/key|" \
             "${tmpdir}/etc/tinyramfs/config" > "${tmpdir}/_"
@@ -28,7 +28,7 @@
     }
 
     [ "$luks_header" ] && {
-        copy_file "${luks_header#*=}" /root 400 0
+        copy_file "${luks_header#*=}" /root/header 400 0
 
         sed "s|${luks_header#*=}|/root/header|" \
             "${tmpdir}/etc/tinyramfs/config" > "${tmpdir}/_"

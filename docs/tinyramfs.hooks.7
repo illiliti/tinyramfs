@@ -5,7 +5,7 @@
 .nh
 .ad l
 .\" Begin generated content:
-.TH "tinyramfs.hooks" "7" "2020-09-07"
+.TH "tinyramfs.hooks" "7" "2020-09-08"
 .P
 .SH NAME
 .P
@@ -111,9 +111,9 @@ tinyramfs working directory.\& Otherwise error message will appear.\&
 .RS 4
 <file> must be full path to file.\&
 .P
-<destination> must be directory where <file> should be stored.\& Tinyramfs
-will automatically create that directory if it doesn't exist already.\& Also
-no need to prepend path of tinyramfs working directory.\&
+<destination> must be full path where <file> should be stored.\& Tinyramfs
+will automatically create all leading directories if they aren't exist
+already.\& Also no need to prepend path of tinyramfs working directory.\&
 .P
 <mode> permissions in octal format.\&
 .P
@@ -125,7 +125,7 @@ exists or failed to strip binary.\&
 .SS I: resolve_device <UUID|LABEL|/dev/\*|PARTUUID>
 .P
 .RS 4
-Resolves UUID|LABEL|/dev/*|PARTUUID to full path of /dev device
+Sets \fBdevice\fR variable to full path of resolved UUID|LABEL|/dev/*|PARTUUID
 .P
 .RE
 .SH VARIABLES

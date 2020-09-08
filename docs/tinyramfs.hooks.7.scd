@@ -58,9 +58,9 @@ interact with build and init system.
 
 	<file> must be full path to file.
 
-	<destination> must be directory where <file> should be stored. Tinyramfs
-	will automatically create that directory if it doesn't exist already. Also
-	no need to prepend path of tinyramfs working directory.
+	<destination> must be full path where <file> should be stored. Tinyramfs
+	will automatically create all leading directories if they aren't exist
+	already. Also no need to prepend path of tinyramfs working directory.
 
 	<mode> permissions in octal format.
 
@@ -70,7 +70,7 @@ interact with build and init system.
 
 ## I: resolve_device <UUID|LABEL|/dev/\*|PARTUUID>
 
-	Resolves UUID|LABEL|/dev/\*|PARTUUID to full path of /dev device
+	Sets *device* variable to full path of resolved UUID|LABEL|/dev/\*|PARTUUID
 
 # VARIABLES
 

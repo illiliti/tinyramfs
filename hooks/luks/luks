@@ -18,21 +18,21 @@
     # see https://bugs.archlinux.org/task/56771
     [ -e /lib/libgcc_s.so.1 ] && copy_file /lib/libgcc_s.so.1 /lib/libgcc_s.so.1 755 1
 
-    [ "$luks_key" ] && {
+    if [ "$luks_key" ]; then
         copy_file "${luks_key#*=}" /root/key 400 0
 
         sed "s|${luks_key#*=}|/root/key|" \
             "${tmpdir}/etc/tinyramfs/config" > "${tmpdir}/_"
 
         mv "${tmpdir}/_" "${tmpdir}/etc/tinyramfs/config"
-    }
+    fi
 
-    [ "$luks_header" ] && {
+    if [ "$luks_header" ]; then
         copy_file "${luks_header#*=}" /root/header 400 0
 
         sed "s|${luks_header#*=}|/root/header|" \
             "${tmpdir}/etc/tinyramfs/config" > "${tmpdir}/_"
 
         mv "${tmpdir}/_" "${tmpdir}/etc/tinyramfs/config"
-    }
+    fi
 }

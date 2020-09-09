@@ -23,18 +23,18 @@ Dependencies
 * `mount`
 * `cpio`
 * `strip`
-  - Optional
+  - Optional. Required for binary stripping
 * `blkid`
-  - Required for UUID, LABEL, PARTUUID support
+  - Optional. Required for UUID, LABEL, PARTUUID support
 * `mdev` OR `mdevd` OR `eudev` OR `systemd-udevd` OR CONFIG_UEVENT_HELPER
-  - systemd-udevd not tested
+  - Optional. Required for modular kernel, /dev/mapper/* and /dev/disk/* creation
 * `lvm2`
-  - Required for LVM support
+  - Optional. Required for LVM support
 * `cryptsetup`
-  - Required for LUKS support
+  - Optional. Required for LUKS support
 * `busybox loadkmap`
-  - Required for loading keymap
-* `kmod` OR `busybox modutils` with [this patch](https://gist.github.com/illiliti/ef9ee781b5c6bf36d9493d99b4a1ffb6) (already included in KISS Linux)
+  - Optional. Required for keymap support
+* `kmod` OR `busybox modutils` with [patch](https://gist.github.com/illiliti/ef9ee781b5c6bf36d9493d99b4a1ffb6) (already included in KISS Linux)
   - Not required for monolithic kernel
 
 Installation
@@ -50,7 +50,7 @@ Usage
 -----
 
 ```sh
-# read man pages and setup /etc/tinyramfs/config
+# read tinyramfs.config(5) and setup /etc/tinyramfs/config
 tinyramfs -o "/boot/initramfs-$(uname -r)"
 # update your bootloader
 # reboot...

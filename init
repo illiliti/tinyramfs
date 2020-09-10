@@ -20,10 +20,12 @@ resolve_device()
 {
     count=0; device="$1"
 
-    case "${device%%=*}" in /dev/*) ;;
+    case "${device%%=*}" in
         UUID)     device="/dev/disk/by-uuid/${device#*=}"     ;;
         LABEL)    device="/dev/disk/by-label/${device#*=}"    ;;
         PARTUUID) device="/dev/disk/by-partuuid/${device#*=}" ;;
+        /dev/*)            ;;
+        *)        return 0 ;;
     esac
 
     # prevent race condition

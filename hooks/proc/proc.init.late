@@ -1,5 +1,4 @@
 # vim: set ft=sh:
 # shellcheck shell=sh
-{
-    printf '\n' > /proc/sys/kernel/hotplug
-}
+
+printf '\n' > /proc/sys/kernel/hotplug

@@ -5,7 +5,7 @@
 .nh
 .ad l
 .\" Begin generated content:
-.TH "tinyramfs.cmdline" "7" "2020-09-07"
+.TH "tinyramfs.cmdline" "7" "2020-09-10"
 .P
 .SH NAME
 .P
@@ -37,26 +37,8 @@ Enable debug mode.\&
 .P
 .RS 4
 Specify breakpoint where shell should be invoked.\& Useful for
-debugging.\& List of supported breakpoints:
+debugging.\& List of builtin breakpoints:
 .P
-.RS 4
-.ie n \{\
-\h'-04'\(bu\h'+03'\c
-.\}
-.el \{\
-.IP \(bu 4
-.\}
-keymap
-.RE
-.RS 4
-.ie n \{\
-\h'-04'\(bu\h'+03'\c
-.\}
-.el \{\
-.IP \(bu 4
-.\}
-devmgr
-.RE
 .RS 4
 .ie n \{\
 \h'-04'\(bu\h'+03'\c
@@ -74,26 +56,11 @@ root
 .IP \(bu 4
 .\}
 boot
-.RE
-.RS 4
-.ie n \{\
-\h'-04'\(bu\h'+03'\c
-.\}
-.el \{\
-.IP \(bu 4
-.\}
-luks
-.RE
-.RS 4
-.ie n \{\
-\h'-04'\(bu\h'+03'\c
-.\}
-.el \{\
-.IP \(bu 4
-.\}
-lvm
 
 .RE
+.P
+Hooks can provide their own breakpoints.\& See source code of hooks
+for more information.\&
 .P
 .RE
 \fBroot\fR=UUID|LABEL|/dev/*|PARTUUID

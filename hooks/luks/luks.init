@@ -6,17 +6,16 @@
 #
 # word splitting is safe by design
 # shellcheck disable=2068
-{
-    [ "$break" = luks ] && { print "break before unlock_luks()"; sh; }
 
-    export DM_DISABLE_UDEV=1
-    mkdir -p /run/cryptsetup
+[ "$break" = luks ] && { print "break before luks.init"; sh; }
 
-    resolve_device "$luks_root"
+export DM_DISABLE_UDEV=1
+mkdir -p /run/cryptsetup
 
-    set -- \
-         "${luks_discard:+--allow-discards}" "${luks_header:+--header $luks_header}" \
-         "${luks_key:+-d $luks_key}" "$device" "${luks_name:-crypt-${device##*/}}"
+resolve_device "$luks_root"
 
-    cryptsetup open $@ || panic "failed to unlock LUKS"
-}
+set -- \
+    "${luks_discard:+--allow-discards}" "${luks_header:+--header $luks_header}" \
+    "${luks_key:+-d $luks_key}" "$device" "${luks_name:-crypt-${device##*/}}"
+
+cryptsetup open $@ || panic "failed to unlock LUKS"

@@ -3,6 +3,5 @@
 #
 # false positive
 # shellcheck disable=2154
-{
-    kill "$mdevd_pid"
-}
+
+kill "$mdevd_pid"

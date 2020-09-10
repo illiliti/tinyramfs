@@ -6,22 +6,21 @@
 #
 # word splitting is safe by design
 # shellcheck disable=2068
-{
-    [ "$break" = lvm ] && { print "break before trigger_lvm()"; sh; }
 
-    export DM_DISABLE_UDEV=1
-    mkdir -p /run/lvm /run/lock/lvm
+[ "$break" = lvm ] && { print "break before lvm.init"; sh; }
 
-    set -- \
-        --sysinit -qq -aay "${lvm_discard:+--config=devices{issue_discards=1}}"
+export DM_DISABLE_UDEV=1
+mkdir -p /run/lvm /run/lock/lvm
 
-    if [ "$lvm_group" ] && [ "$lvm_name" ]; then
-        lvm lvchange $@ "${lvm_group}/${lvm_name}"
-    elif [ "$lvm_group" ]; then
-        lvm vgchange $@ "$lvm_group"
-    elif [ "$lvm_tag" ]; then
-        lvm lvchange $@ "@${lvm_tag}"
-    else
-        lvm vgchange $@
-    fi || panic "failed to trigger LVM"
-}
+set -- \
+    --sysinit -qq -aay "${lvm_discard:+--config=devices{issue_discards=1}}"
+
+if [ "$lvm_group" ] && [ "$lvm_name" ]; then
+    lvm lvchange $@ "${lvm_group}/${lvm_name}"
+elif [ "$lvm_group" ]; then
+    lvm vgchange $@ "$lvm_group"
+elif [ "$lvm_tag" ]; then
+    lvm lvchange $@ "@${lvm_tag}"
+else
+    lvm vgchange $@
+fi || panic "failed to trigger LVM"

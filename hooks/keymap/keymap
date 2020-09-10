@@ -3,7 +3,6 @@
 #
 # false positive
 # shellcheck disable=2154
-{
-    copy_file "$keymap_path" "$keymap_path" 644 0
-    copy_binary loadkmap
-}
+
+copy_file "$keymap_path" "$keymap_path" 644 0
+copy_binary loadkmap

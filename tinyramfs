@@ -134,11 +134,7 @@ prepare_initramfs()
         copy_binary "$_binary"
     done
 
-    if command -v blkid > /dev/null; then
-        copy_binary blkid
-    else
-        print "blkid not found. you will unable to use UUID, LABEL, PARTUUID"
-    fi
+    command -v blkid > /dev/null && copy_binary blkid
 
     copy_file "${srcdir}/init" /init                 755 0
     copy_file "$config"        /etc/tinyramfs/config 644 0
@@ -237,7 +233,7 @@ copy_hook()
 {
     hook="$1"
 
-    for _dir in "$hksdir" /etc/tinyramfs/hooks "${srcdir}/hooks"; do
+    for _dir in "$hksdir" /etc/tinyramfs/hooks /usr/share/tinyramfs/hooks; do
         [ -f "${_dir}/${hook}/${hook}" ] || ! continue
     done || panic "could not find $hook hook"
 
@@ -247,13 +243,13 @@ copy_hook()
     # shellcheck disable=1090
     . "${_dir}/${hook}/${hook}"
 
-    for _file in init init.late; do
-        [ -f "${_dir}/${hook}/${hook}.${_file}" ] || continue
+    for _type in init init.late; do
+        [ -f "${_dir}/${hook}/${hook}.${_type}" ] || continue
 
-        print "copying ${hook}.${_file}"
+        print "copying ${hook}.${_type}"
 
-        copy_file "${_dir}/${hook}/${hook}.${_file}" \
-            "/usr/share/tinyramfs/hooks/${hook}/${hook}.${_file}" 644 0
+        copy_file "${_dir}/${hook}/${hook}.${_type}" \
+            "/usr/share/tinyramfs/hooks/${hook}/${hook}.${_type}" 644 0
     done
 }
 
@@ -262,7 +258,6 @@ copy_modules()
     # skip this function if kernel
     # compiled with builtin modules
     if [ "$monolith" = 1 ]; then
-        print "skipping modules"
         return 0
 
     elif [ "$hostonly" = 1 ]; then
@@ -351,21 +346,18 @@ make_initramfs()
     print "done! check out $output"
 )
 
-# int main()
-{
-    [ "$(id -u)" = 0 ] || panic "must be run as root"
+[ "$(id -u)" = 0 ] || panic "must be run as root"
 
-    # enable exit on error and disable globbing
-    set -ef
+# enable exit on error and disable globbing
+set -ef
 
-    prepare_environment "$@"
-    prepare_initramfs
+prepare_environment "$@"
+prepare_initramfs
 
-    # copy and run hooks if any
-    for _hook in $hooks; do
-        copy_hook "$_hook"
-    done
+# copy and run hooks if any
+for _hook in $hooks; do
+    copy_hook "$_hook"
+done
 
-    copy_modules
-    make_initramfs
-}
+copy_modules
+make_initramfs

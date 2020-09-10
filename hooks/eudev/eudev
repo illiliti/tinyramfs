@@ -3,18 +3,17 @@
 #
 # false positive
 # shellcheck disable=2154
-{
-    for _binary in udevd udevadm; do
-        copy_binary "$_binary"
-    done
 
-    mkdir -p "${tmpdir}/lib/udev/rules.d"
+for _binary in udevd udevadm; do
+    copy_binary "$_binary"
+done
 
-    printf "%s\n" \
-        'SUBSYSTEMS=="block", ACTION=="add", RUN+="/bin/device-helper"' \
-    > "${tmpdir}/lib/udev/rules.d/device-helper.rules"
+mkdir -p "${tmpdir}/lib/udev/rules.d"
 
-    [ "$monolith" = 1 ] || printf "%s\n" \
-        'ENV{MODALIAS}=="?*", ACTION=="add", RUN+="/bin/modprobe %E{MODALIAS}"' \
-    >> "${tmpdir}/lib/udev/rules.d/device-helper.rules"
-}
+printf "%s\n" \
+    'SUBSYSTEMS=="block", ACTION=="add", RUN+="/bin/device-helper"' \
+> "${tmpdir}/lib/udev/rules.d/device-helper.rules"
+
+[ "$monolith" = 1 ] || printf "%s\n" \
+    'ENV{MODALIAS}=="?*", ACTION=="add", RUN+="/bin/modprobe %E{MODALIAS}"' \
+>> "${tmpdir}/lib/udev/rules.d/device-helper.rules"

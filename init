@@ -29,8 +29,6 @@ resolve_device()
     esac
 
     # prevent race condition
-    # XXX what the hell happens here?
-    # why this loop sometimes trigger panic if i remove '|| :'
     while [ ! -b "$device" ]; do sleep 1
         [ "$((count += 1))" = "${rootdelay:=30}" ] && {
             panic "failed to lookup partition"
@@ -41,14 +39,14 @@ resolve_device()
 
 run_hook()
 {
-    type="$1"; hksdir=/usr/share/tinyramfs/hooks
+    type="$1"
 
     # run hooks if any
     # false positive
     # shellcheck disable=1090
     for hook in $hooks; do
-        [ -f "${hksdir}/${hook}/${hook}.${type}" ] || continue
-           . "${hksdir}/${hook}/${hook}.${type}"
+        [ -f "/usr/share/tinyramfs/hooks/${hook}/${hook}.${type}" ] || continue
+           . "/usr/share/tinyramfs/hooks/${hook}/${hook}.${type}"
     done
 }
 
@@ -121,16 +119,13 @@ boot_system()
         switch_root $@ || panic "failed to boot system"
 }
 
-# int main()
-{
-    # enable exit on error and disable globbing
-    # trap EXIT signal
-    set -ef; trap panic EXIT
+# enable exit on error and disable globbing
+# trap EXIT signal
+set -ef; trap panic EXIT
 
-    prepare_environment
-    parse_cmdline
-    run_hook init
-    mount_root
-    run_hook init.late
-    boot_system
-}
+prepare_environment
+parse_cmdline
+run_hook init
+mount_root
+run_hook init.late
+boot_system

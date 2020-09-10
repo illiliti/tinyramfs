@@ -25,14 +25,13 @@ kernel parameters without needing to regenerate initramfs image.
 *break*=breakpoint
 
 	Specify breakpoint where shell should be invoked. Useful for
-	debugging. List of supported breakpoints:
+	debugging. List of builtin breakpoints:
 
-	- keymap
-	- devmgr
 	- root
 	- boot
-	- luks
-	- lvm
+
+	Hooks can provide their own breakpoints. See source code of hooks
+	for more information.
 
 *root*=UUID|LABEL|/dev/\*|PARTUUID
 

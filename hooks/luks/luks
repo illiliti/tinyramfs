@@ -3,36 +3,35 @@
 #
 # false positive
 # shellcheck disable=2154
-{
-    [ "$hostonly" = 1 ] &&
-        for _module in \
-            aes ecb xts lrw wp512 sha256 \
-            sha512 twofish serpent dm-crypt
-        do
-            copy_module "$_module"
-        done
 
-    copy_binary cryptsetup
+[ "$luks_key" ] && {
+    copy_file "${luks_key#*=}" /root/key 400 0
 
-    # avoid possible issues with libgcc_s.so.1
-    # see https://bugs.archlinux.org/task/56771
-    [ -e /lib/libgcc_s.so.1 ] && copy_file /lib/libgcc_s.so.1 /lib/libgcc_s.so.1 755 1
+    sed "s|${luks_key#*=}|/root/key|" \
+        "${tmpdir}/etc/tinyramfs/config" > "${tmpdir}/_"
 
-    if [ "$luks_key" ]; then
-        copy_file "${luks_key#*=}" /root/key 400 0
-
-        sed "s|${luks_key#*=}|/root/key|" \
-            "${tmpdir}/etc/tinyramfs/config" > "${tmpdir}/_"
-
-        mv "${tmpdir}/_" "${tmpdir}/etc/tinyramfs/config"
-    fi
-
-    if [ "$luks_header" ]; then
-        copy_file "${luks_header#*=}" /root/header 400 0
-
-        sed "s|${luks_header#*=}|/root/header|" \
-            "${tmpdir}/etc/tinyramfs/config" > "${tmpdir}/_"
-
-        mv "${tmpdir}/_" "${tmpdir}/etc/tinyramfs/config"
-    fi
+    mv "${tmpdir}/_" "${tmpdir}/etc/tinyramfs/config"
 }
+
+[ "$luks_header" ] && {
+    copy_file "${luks_header#*=}" /root/header 400 0
+
+    sed "s|${luks_header#*=}|/root/header|" \
+        "${tmpdir}/etc/tinyramfs/config" > "${tmpdir}/_"
+
+    mv "${tmpdir}/_" "${tmpdir}/etc/tinyramfs/config"
+}
+
+[ "$hostonly" = 1 ] &&
+    for _module in \
+        aes ecb xts lrw wp512 sha256 \
+        sha512 twofish serpent dm-crypt
+    do
+        copy_module "$_module"
+    done
+
+copy_binary cryptsetup
+
+# avoid possible issues with libgcc_s.so.1
+# see https://bugs.archlinux.org/task/56771
+[ -e /lib/libgcc_s.so.1 ] && copy_file /lib/libgcc_s.so.1 /lib/libgcc_s.so.1 755 1

@@ -3,15 +3,14 @@
 #
 # false positive
 # shellcheck disable=2154
-{
-    [ "$break" = devmgr ] && { print "break before run_proc()"; sh; }
-    
-    command -v device-helper > /proc/sys/kernel/hotplug
 
-    # get ready for fork bomb. kek
-    find /sys/devices -name uevent |
+[ "$break" = proc ] && { print "break before proc.init"; sh; }
 
-    while read -r uevent; do
-        printf add > "$uevent"
-    done 2> /dev/null
-}
+command -v device-helper > /proc/sys/kernel/hotplug
+
+# get ready for fork bomb. kek
+find /sys/devices -name uevent |
+
+while read -r uevent; do
+    printf add > "$uevent"
+done 2> /dev/null

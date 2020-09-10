@@ -3,33 +3,32 @@
 #
 # false positive
 # shellcheck disable=2154
-{
-    [ "$hostonly" = 1 ] &&
-        for _module in \
-            dm-log dm-cache dm-mirror \
-            dm-snapshot dm-multipath dm-thin-pool
-        do
-            copy_module "$_module"
-        done
 
-    copy_binary lvm
+[ "$hostonly" = 1 ] &&
+    for _module in \
+        dm-log dm-cache dm-mirror \
+        dm-snapshot dm-multipath dm-thin-pool
+    do
+        copy_module "$_module"
+    done
 
-    lvm_config="
-        devices {
-            write_cache_state = 0
-        }
-        backup {
-            backup  = 0
-            archive = 0
-        }
-        global {
-            use_lvmetad = 0
-        }"
+copy_binary lvm
 
-    mkdir -p "${tmpdir}/etc/lvm"
+lvm_config="
+    devices {
+        write_cache_state = 0
+    }
+    backup {
+        backup  = 0
+        archive = 0
+    }
+    global {
+        use_lvmetad = 0
+    }"
 
-    lvm config \
-        --config "$lvm_config" \
-        ${lvm_config:+--mergedconfig} \
-    > "${tmpdir}/etc/lvm/lvm.conf"
-}
+mkdir -p "${tmpdir}/etc/lvm"
+
+lvm config \
+    --config "$lvm_config" \
+    ${lvm_config:+--mergedconfig} \
+> "${tmpdir}/etc/lvm/lvm.conf"

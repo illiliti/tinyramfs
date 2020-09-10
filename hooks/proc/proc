@@ -1,5 +1,4 @@
 # vim: set ft=sh:
 # shellcheck shell=sh
-{
-    copy_binary find
-}
+
+copy_binary find

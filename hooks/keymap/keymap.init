@@ -3,8 +3,7 @@
 #
 # false positive
 # shellcheck disable=2154
-{
-    [ "$break" = keymap ] && { print "break before run_keymap()"; sh; }
 
-    loadkmap < "$keymap_path"
-}
+[ "$break" = keymap ] && { print "break before keymap.init"; sh; }
+
+loadkmap < "$keymap_path"

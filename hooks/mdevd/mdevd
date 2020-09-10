@@ -3,16 +3,15 @@
 #
 # false positive
 # shellcheck disable=2154,2016
-{
-    for _binary in mdevd mdevd-coldplug; do
-        copy_binary "$_binary"
-    done
 
-    printf "%s\n" \
-        'SUBSYSTEM=block;.* 0:0 660 @device-helper' \
-    > "${tmpdir}/etc/mdev.conf"
+for _binary in mdevd mdevd-coldplug; do
+    copy_binary "$_binary"
+done
 
-    [ "$monolith" = 1 ] || printf "%s\n" \
-        '$MODALIAS=.* 0:0 660 @modprobe "$MODALIAS"' \
-    >> "${tmpdir}/etc/mdev.conf"
-}
+printf "%s\n" \
+    'SUBSYSTEM=block;.* 0:0 660 @device-helper' \
+> "${tmpdir}/etc/mdev.conf"
+
+[ "$monolith" = 1 ] || printf "%s\n" \
+    '$MODALIAS=.* 0:0 660 @modprobe "$MODALIAS"' \
+>> "${tmpdir}/etc/mdev.conf"

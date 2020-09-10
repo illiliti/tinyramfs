@@ -14,23 +14,22 @@ create_symlink()
     ln    -s "../../${dev_name}" "$sym"
 }
 
-# int main()
-{
-    [ -b "/dev/${dev_name=${DEVPATH##*/}}" ] || exit 1
+[ -b "/dev/${dev_name=${DEVPATH##*/}}" ] || exit 1
 
-    read -r dm_name < "/sys/block/${dev_name}/dm/name" && {
-        mkdir -p /dev/mapper
-        ln    -sf "../${dev_name}" "/dev/mapper/${dm_name:?}"
-    }
+exec > /dev/null 2>&1
 
-    command -v blkid || exit 0
+read -r dm_name < "/sys/block/${dev_name}/dm/name" && {
+    mkdir -p /dev/mapper
+    ln    -sf "../${dev_name}" "/dev/mapper/${dm_name:?}"
+}
 
-    # prevent race condition
-    blkid "/dev/${dev_name}" || sleep 2
+command -v blkid || exit 0
 
-    for line in $(blkid "/dev/${dev_name}"); do case   "${line%%=*}" in
-        UUID)     create_symlink /dev/disk/by-uuid     "${line##*=}" ;;
-        LABEL)    create_symlink /dev/disk/by-label    "${line##*=}" ;;
-        PARTUUID) create_symlink /dev/disk/by-partuuid "${line##*=}" ;;
-    esac; done
-} > /dev/null 2>&1
+# prevent race condition
+blkid "/dev/${dev_name}" || sleep 2
+
+for line in $(blkid "/dev/${dev_name}"); do case   "${line%%=*}" in
+    UUID)     create_symlink /dev/disk/by-uuid     "${line##*=}" ;;
+    LABEL)    create_symlink /dev/disk/by-label    "${line##*=}" ;;
+    PARTUUID) create_symlink /dev/disk/by-partuuid "${line##*=}" ;;
+esac; done

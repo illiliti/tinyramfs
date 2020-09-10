@@ -3,9 +3,8 @@
 #
 # false positive
 # shellcheck disable=2154,2034
-{
-    [ "$break" = devmgr ] && { print "break before run_mdevd()"; sh; }
-    
-    mdevd 2> /dev/null & mdevd_pid="$!"
-    mdevd-coldplug
-}
+
+[ "$break" = mdevd ] && { print "break before mdevd.init"; sh; }
+
+mdevd 2> /dev/null & mdevd_pid="$!"
+mdevd-coldplug

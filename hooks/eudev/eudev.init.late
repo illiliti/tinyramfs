@@ -3,6 +3,5 @@
 #
 # false positive
 # shellcheck disable=2154
-{
-    udevadm control -e
-}
+
+udevadm control -e

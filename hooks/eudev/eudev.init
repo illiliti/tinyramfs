@@ -3,11 +3,10 @@
 #
 # false positive
 # shellcheck disable=2154,2034
-{
-    [ "$break" = devmgr ] && { print "break before run_eudev()"; sh; }
 
-    udevd -dN never
-    udevadm trigger -c add -t subsystems
-    udevadm trigger -c add -t devices
-    udevadm settle
-}
+[ "$break" = eudev ] && { print "break before eudev.init"; sh; }
+
+udevd -dN never
+udevadm trigger -c add -t subsystems
+udevadm trigger -c add -t devices
+udevadm settle

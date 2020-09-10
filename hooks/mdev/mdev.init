@@ -3,15 +3,14 @@
 #
 # false positive
 # shellcheck disable=2154,2034
-{
-    [ "$break" = devmgr ] && { print "break before run_mdev()"; sh; }
-    
-    mdev -s
-    mdev -df 2> /dev/null & mdev_pid="$!"
 
-    find /sys/devices -name uevent |
+[ "$break" = mdev ] && { print "break before mdev.init"; sh; }
 
-    while read -r uevent; do
-        printf add > "$uevent"
-    done 2> /dev/null
-}
+mdev -s
+mdev -df 2> /dev/null & mdev_pid="$!"
+
+find /sys/devices -name uevent |
+
+while read -r uevent; do
+    printf add > "$uevent"
+done 2> /dev/null

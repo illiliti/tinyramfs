@@ -1,0 +1,30 @@
+#!/bin/sh
+#
+# false positive
+# shellcheck disable=2154
+
+modprobe -a cdrom loop overlay squashfs 
+
+medium=/run/initramfs/medium
+system=/run/initramfs/system
+
+mkdir -p "$medium" "$system" /run/initramfs/overlayfs/work /run/initramfs/overlayfs/write
+
+[ -h "/dev/disk/by-$live_disk_type/$live_disk" ] || { sleep 5; }
+
+mount -o ro "/dev/disk/by-$live_disk_type/$live_disk" "$medium" || panic
+
+sfsimg="$medium/$live_img_file"
+
+[ "$ram" ] && {
+    mkdir -p /run/initramfs/ram
+    mount -t tmpfs -o "${live_ram_opts:?}" ram /run/initramfs/ram || panic
+    cp "$sfsimg" /run/initramfs/ram || panic
+    umount "$medium"
+    sfsimg="$ramdir/$live_img_file"
+}
+
+sfsdev=$(losetup -f)
+losetup -f -r "$sfsimg"
+
+mount -t squashfs -o "${live_sfs_opts:-defaults,ro}" "$sfsdev" "$system" || panic

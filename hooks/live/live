@@ -1,0 +1,17 @@
+#!/bin/sh
+#
+# false positive
+# shellcheck disable=2154
+
+cdrom="/usr/lib/modules/$kernel/kernel/drivers/cdrom/cdrom.ko"
+loop="/usr/lib/modules/$kernel/kernel/drivers/block/loop.ko"
+overlay="/usr/lib/modules/$kernel/kernel/fs/overlayfs/overlay.ko"
+squash="/usr/lib/modules/$kernel/kernel/fs/squashfs/squashfs.ko"
+
+for _mod in "$cdrom" "$loop" "$overlay" "$squash"; do
+    copy_module "$_mod"
+done
+
+for _bin in blockdev cp losetup umount; do
+    copy_binary "$_bin"
+done

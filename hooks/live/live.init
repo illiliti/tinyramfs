@@ -21,7 +21,7 @@ sfsimg="$medium/$live_img_file"
     mount -t tmpfs -o "${live_ram_opts:?}" ram /run/initramfs/ram || panic
     cp "$sfsimg" /run/initramfs/ram || panic
     umount "$medium"
-    sfsimg="$ramdir/$live_img_file"
+    sfsimg="/run/initramfs/ram/$live_img_file"
 }
 
 sfsdev=$(losetup -f)

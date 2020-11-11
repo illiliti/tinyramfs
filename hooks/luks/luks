@@ -30,8 +30,8 @@
         copy_module "$_module"
     done
 
-copy_binary cryptsetup
-
 # avoid possible issues with libgcc_s.so.1
 # see https://bugs.archlinux.org/task/56771
 [ -e /lib/libgcc_s.so.1 ] && copy_file /lib/libgcc_s.so.1 /lib/libgcc_s.so.1 755 1
+
+copy_binary cryptsetup

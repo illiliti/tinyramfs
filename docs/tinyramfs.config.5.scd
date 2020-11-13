@@ -119,6 +119,7 @@ you can simply prepend \#.
 
 	- lvm - LVM support
 	- luks - LUKS support 
+	- live - live support
 	- mdev - mdev support
 	- proc - CONFIG_UEVENT_HELPER support
 	- mdevd - mdevd support
@@ -134,6 +135,24 @@ you can simply prepend \#.
 	*tinyramfs.hooks*(7).
 
 # HOOKS OPTIONS
+
+## LIVE
+
+*live_disk*=LABEL
+
+	Specify LABEL from the live disk to boot from.
+
+*live_img_file*=/path/to/pseudo-fs
+
+	Specify location to the pseudo-fs image file.
+
+*live_ram_opts*=opts
+
+	Options for ram mountpoint.
+
+*live_sfs_opts*=opts
+
+	Options for pseudo-fs mountpoint.
 
 ## LVM
 
@@ -228,6 +247,19 @@ root_type=f2fs
 hooks="eudev keymap"
 root=UUID=13bcb7cc-8fe5-4f8e-a1fe-e4b5b336f3ef
 keymap_path=/usr/share/bkeymaps/colemak/en-latin9.bmap
+```
+
+## ROOT + LIVE
+
+```
+hooks="mdev live"
+
+root=overlay
+root_type="$root"
+
+live_disk=LIVECD
+live_img_file=system/livefs.sfs
+live_ram_opts="size=50%,mode=0755"
 ```
 
 ## ROOT + LUKS

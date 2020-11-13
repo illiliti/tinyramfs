@@ -61,6 +61,24 @@ kernel parameters without needing to regenerate initramfs image.
 
 Initramfs must contain appropriate hooks for ability to use below parameters.
 
+## LIVE
+
+*live_disk*=LABEL
+
+	Specify LABEL from the live disk to boot from.
+
+*live_img_file*=/path/to/pseudo-fs
+
+	Specify location to the pseudo-fs image file.
+
+*live_ram_opts*=opts
+
+	Options for ram mountpoint.
+
+*live_sfs_opts*=opts
+
+	Options for pseudo-fs mountpoint.
+
 ## LVM
 
 *lvm_tag*=tag
@@ -117,6 +135,12 @@ vmlinuz initrd=\\initramfs luks_discard= lvm_discard= ...
 vmlinuz initrd=\\initramfs ... -- args
 ```
 
+## BOOT FROM RAM IN LIVE CD
+```
+vmlinuz initrd=\\initramfs ram
+```
+
 # SEE ALSO
 
 *tinyramfs*(8) *tinyramfs.config*(5) *tinyramfs.hooks*(7)
+tinyramfs.config(5)

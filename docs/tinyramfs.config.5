@@ -5,7 +5,7 @@
 .nh
 .ad l
 .\" Begin generated content:
-.TH "tinyramfs.config" "5" "2020-09-07"
+.TH "tinyramfs.config" "5" "2020-11-13"
 .P
 .SH NAME
 .P
@@ -248,6 +248,15 @@ luks - LUKS support
 .el \{\
 .IP \(bu 4
 .\}
+live - live support
+.RE
+.RS 4
+.ie n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.IP \(bu 4
+.\}
 mdev - mdev support
 .RE
 .RS 4
@@ -307,6 +316,32 @@ More detailed information and how to write your own hooks described in
 .RE
 .SH HOOKS OPTIONS
 .P
+.SS LIVE
+.P
+\fBlive_disk\fR=LABEL
+.P
+.RS 4
+Specify LABEL from the live disk to boot from.
+.P
+.RE
+\fBlive_img_file\fR=/path/to/pseudo-fs
+.P
+.RS 4
+Specify location to the pseudo-fs image file.
+.P
+.RE
+\fBlive_ram_opts\fR=opts
+.P
+.RS 4
+Options for ram mountpoint.
+.P
+.RE
+\fBlive_sfs_opts\fR=opts
+.P
+.RS 4
+Options for pseudo-fs mountpoint.
+.P
+.RE
 .SS LVM
 .P
 \fBlvm_tag\fR=tag
@@ -429,6 +464,21 @@ root_type=f2fs
 hooks="eudev keymap"
 root=UUID=13bcb7cc-8fe5-4f8e-a1fe-e4b5b336f3ef
 keymap_path=/usr/share/bkeymaps/colemak/en-latin9\&.bmap
+.fi
+.RE
+.P
+.SS ROOT + LIVE
+.P
+.nf
+.RS 4
+hooks="mdev live"
+
+root=overlay
+root_type="$root"
+
+live_disk=LIVECD
+live_img_file=system/livefs\&.sfs
+live_ram_opts="size=50%,mode=0755"
 .fi
 .RE
 .P

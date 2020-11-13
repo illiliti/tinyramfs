@@ -5,7 +5,7 @@
 .nh
 .ad l
 .\" Begin generated content:
-.TH "tinyramfs.cmdline" "7" "2020-09-10"
+.TH "tinyramfs.cmdline" "7" "2020-11-13"
 .P
 .SH NAME
 .P
@@ -132,6 +132,32 @@ See \fBfstab\fR(5) fourth field.\&
 .P
 Initramfs must contain appropriate hooks for ability to use below parameters.\&
 .P
+.SS LIVE
+.P
+\fBlive_disk\fR=LABEL
+.P
+.RS 4
+Specify LABEL from the live disk to boot from.
+.P
+.RE
+\fBlive_img_file\fR=/path/to/pseudo-fs
+.P
+.RS 4
+Specify location to the pseudo-fs image file.
+.P
+.RE
+\fBlive_ram_opts\fR=opts
+.P
+.RS 4
+Options for ram mountpoint.
+.P
+.RE
+\fBlive_sfs_opts\fR=opts
+.P
+.RS 4
+Options for pseudo-fs mountpoint.
+.P
+.RE
 .SS LVM
 .P
 \fBlvm_tag\fR=tag
@@ -205,6 +231,13 @@ vmlinuz initrd=\\initramfs luks_discard= lvm_discard= \&.\&.\&.
 .nf
 .RS 4
 vmlinuz initrd=\\initramfs \&.\&.\&. -- args
+.fi
+.RE
+.P
+.SS BOOT FROM RAM IN LIVE CD
+.nf
+.RS 4
+vmlinuz initrd=\\initramfs ram
 .fi
 .RE
 .P

@@ -1,4 +1,4 @@
-#!/bin/sh
+# vim: set ft=sh:
 #
 # false positive
 # shellcheck disable=2154
@@ -10,7 +10,7 @@ system=/run/initramfs/system
 
 mkdir -p "$medium" "$system" /run/initramfs/overlayfs/work /run/initramfs/overlayfs/write
 
-[ -h "/dev/disk/by-$live_disk_type/$live_disk" ] || { sleep 5; }
+[ -h "/dev/disk/by-$live_disk_type/$live_disk" ] || sleep 5
 
 mount -o ro "/dev/disk/by-$live_disk_type/$live_disk" "$medium" || panic
 

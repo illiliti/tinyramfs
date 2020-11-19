@@ -13,7 +13,7 @@ export DM_DISABLE_UDEV=1
 mkdir -p /run/lvm /run/lock/lvm
 
 set -- \
-    --sysinit -qq -aay "${lvm_discard:+--config=devices{issue_discards=1}}"
+    --sysinit -qq -aay "${lvm_discard:+--config=devices\{issue_discards=1\}}"
 
 if [ "$lvm_group" ] && [ "$lvm_name" ]; then
     lvm lvchange $@ "${lvm_group}/${lvm_name}"

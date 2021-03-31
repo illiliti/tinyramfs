@@ -106,7 +106,7 @@ mount_root()
 
          #word splitting is safe by design
          #shellcheck disable=2068
-        mount $@ || panic "failed to mount root"
+        # mount $@ || panic "failed to mount root"
     fi
 }
 

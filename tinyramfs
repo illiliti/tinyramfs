@@ -134,6 +134,14 @@ prepare_initramfs()
         copy_binary "$_binary"
     done
 
+    # implement check for zfs
+    for _binary in zpool zfs mount.zfs
+    do
+        copy_binary "$_binary"
+    done
+    mkdir -p "${tmpdir}/etc/zfs" 
+    copy_file /etc/zfs/zpool.cache /etc/zfs/zpool.cache 644 0 
+
     command -v blkid > /dev/null && copy_binary blkid
 
     copy_file "${srcdir}/init" /init                 755 0

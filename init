@@ -24,17 +24,20 @@ resolve_device()
         UUID)     device="/dev/disk/by-uuid/${device#*=}"     ;;
         LABEL)    device="/dev/disk/by-label/${device#*=}"    ;;
         PARTUUID) device="/dev/disk/by-partuuid/${device#*=}" ;;
+        ZFS)      device="${device#*=}"                       ;;
         /dev/*)            ;;
         *)        return 0 ;;
     esac
 
     # prevent race condition
-    while [ ! -b "$device" ]; do sleep 1
-        [ "$((count += 1))" = "${rootdelay:=30}" ] && {
-            panic "failed to lookup partition"
-            break
-        }
-    done || :
+    [ ! "${device%%=*}" = ZFS ] || {
+        while [ ! -b "$device" ]; do sleep 1
+            [ "$((count += 1))" = "${rootdelay:=30}" ] && {
+                panic "failed to lookup partition"
+                break
+            }
+        done || : 
+    }
 }
 
 run_hook()
@@ -92,13 +95,19 @@ mount_root()
 
     resolve_device "$root"
 
-    set -- \
-        "${rorw:--o ro}${root_opts:+,$root_opts}" \
-        "${root_type:+-t $root_type}" "$device" "/mnt/root"
+    if [ "${device%%=*}" = ZFS ]; then
+        zpool import -R "/mnt/root" "${device%%/*}"
+# -o {mount opts}
+#-R "/mnt/root" 
+    else
+        set -- \
+            "${rorw:--o ro}${root_opts:+,$root_opts}" \
+            "${root_type:+-t $root_type}" "$device" "/mnt/root"
 
-    # word splitting is safe by design
-    # shellcheck disable=2068
-    mount $@ || panic "failed to mount root"
+         #word splitting is safe by design
+         #shellcheck disable=2068
+        mount $@ || panic "failed to mount root"
+    fi
 }
 
 boot_system()

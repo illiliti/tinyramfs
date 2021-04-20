@@ -1,0 +1,20 @@
+# vim: set ft:sh:
+# shellcheck shell-sh
+
+# Copy our zpool cache; should make for faster importing...
+copy_file "${zfs_cache#*=}" /root/etc/zfs/zpool.cache 600 0
+
+# Copy our modules, just in case someone made them modules...
+for module in \
+    zlib_deflate spl zavl zcommon \
+    znvpair zunicode zlua zfs icp
+do
+    copy_module "$module"
+done
+
+# Copy our binaries so we can actually mount the friggen thing
+for binary in \
+    blockid zdb zpool zfs mount.zfs
+do
+    copy_binary "$binary"
+done

@@ -1,50 +1,10 @@
 # vim: set ft=sh:
 # shellcheck shell=sh
-
-## NOTES
-#ZFS=/usr/bin/zfs
-#ZED=/usr/bin/zed
-#ZPOOL=/usr/bin/zpool
-#ZPOOL_CACHE=/etc/zfs/zpool.cache
 #
-#Sepcify root_type=zfs? Probably nah
-#root=ZFS=poolname/dataset/system
-#
-#We just need to get the poolname anyways. Do we really need all the other stuff? 
-#Importing multiple pools would be cool. I guess. ...
+# false positive
+# shellcheck disable=2154
 
 # We break!
 [ "$break" = zfs ] && { print "break before zfs.init"; sh; }
 
-# Get our pool - this is easier than you might think, becuase
-# we require the user tells us where ROOTFS is
-#resolve_device "$root"
-# Instead of adding an entire section to resolve_device() just for ZFS, 
-# can't we just demand to know $poolname?
-
-# Mount that bad boy. 
-# pivot_root breaks our 
-# `zpool import -R /mnt/root -N POOL`
-# `zfs mount -o mountpoint=/ ROOTFS`
-# So we have to just do it the _long way_.
-
-# We recursively list every filesystem that mounts to $pool_name, and 
-# mount them in that order - so we start with $pool_name, and move down 
-# to $pool_name/dataset -> $pool_name/dataset/NAME, etc.
-# so it looks like:
-# for fs in zpool zpool/home zpool/home/dilyn zpool/root zpool/root/KISS
-# do
-#   mount $fs
-# done
-# And we should be automagically mounted. 
-# Now, technically these filesystems could be marked as canmount=1, and
-# therefore all get automounted with zfs mount -a. 
-# But again, /mnt/root is out pointpoint. so. 
-
-zpool import "$pool_name"
-
-filesystems=$(zfs list -oname -tfilesystem -H -r "$pool_name")
-for fs in $filesystems
-do
-    zfs mount "$fs" /root/mnt
-done
+zpool import -N "$pool_name"

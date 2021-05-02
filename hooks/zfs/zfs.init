@@ -7,4 +7,4 @@
 # We break!
 [ "$break" = zfs ] && { print "break before zfs.init"; sh; }
 
-zpool import -N "$pool_name"
+zpool import -c /etc/zfs/zpool.cache -N "$pool_name"

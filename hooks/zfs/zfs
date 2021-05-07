@@ -1,14 +1,9 @@
-# vim: set ft:sh:
+# vim: set ft=sh:
 # shellcheck shell-sh
 
-copy_file "${zfs_cache#*=}" /root/etc/zfs/zpool.cache 600 0
+copy_file "${zfs_cache#*=}" /etc/zfs/zpool.cache 600 0
 
-for module in \
-    zlib_deflate spl zavl zcommon \
-    znvpair zunicode zlua zfs icp
-do
-    copy_module "$module"
-done
+copy_module zfs
 
 copy_binary zfs
 copy_binary zpool

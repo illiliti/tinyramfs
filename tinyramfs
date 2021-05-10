@@ -1,8 +1,8 @@
 #!/bin/sh
 #
-# tiny initramfs
+# Tiny initramfs
 #
-# false positive
+# https://www.shellcheck.net/wiki/SC2154
 # shellcheck disable=2154
 
 print()
@@ -13,39 +13,27 @@ print()
 panic()
 {
     print "${1:-unexpected error occurred}" \
-          "\033[1;31m!!\033[m"  >&2; exit 1
-}
+          "\033[1;31m!!\033[m"
+
+    exit 1
+} >&2
 
 usage()
 {
     cat << EOF
-usage: ${0##*/} [option ...]
-       -o, --output <file> set initramfs output path
-                           default is /boot/initramfs-$(uname -r)
-
-       -c, --config <file> set config file path
-                           default is /etc/tinyramfs/config
-
-       -m, --modules <dir> set modules directory
-                           default is /lib/modules
-
-       -s, --sources <dir> set sources directory
-                           default is /usr/share/tinyramfs
-
-       -k, --kernel  <ver> set kernel version
-                           default is $(uname -r)
-
-       -H, --hooks   <dir> set hooks directory
-                           default is /etc/tinyramfs/hooks (user hooks)
-                           and /usr/share/tinyramfs/hooks (system hooks)
-
-       -d, --debug         enable debug mode
-       -f, --force         overwrite initramfs image
-
+usage: ${0##*/} [option]...
+       -o, --output  <file>  set initramfs output path
+       -c, --config  <file>  set config file path
+       -m, --modules <dir>   set modules directory
+       -s, --sources <dir>   set sources directory
+       -k, --kernel  <ver>   set kernel version
+       -H, --hooks   <dir>   set hooks directory
+       -d, --debug           enable debug mode
+       -f, --force           overwrite initramfs image
 EOF
 }
 
-prepare_environment()
+parse_arguments()
 {
     while [ "$1" ]; do case "$1" in
         -o | --output)
@@ -76,15 +64,13 @@ prepare_environment()
             usage; exit 0
         ;;
         *)
-            printf "invalid option: %s\n\n" "$1"
+            printf "invalid option: %s\n" "$1"
 
             usage; exit 1
         ;;
     esac; done
 
-    print "preparing environment"
-
-    # false positive
+    # https://www.shellcheck.net/wiki/SC1090
     # shellcheck disable=1090
     . "${config:=/etc/tinyramfs/config}"
 
@@ -95,7 +81,7 @@ prepare_environment()
 
     mkdir -p "${tmpdir:=${TMPDIR:-/tmp}/tinyramfs.$$}"
 
-    # false positive
+    # https://www.shellcheck.net/wiki/SC2015
     # shellcheck disable=2015
     [ "$debug" = 1 ] && set -x || trap 'rm -rf $tmpdir' EXIT INT
 }
@@ -104,7 +90,7 @@ prepare_initramfs()
 {
     print "preparing initramfs"
 
-    # make directories
+    # https://wikipedia.org/wiki/Filesystem_Hierarchy_Standard
     mkdir -p \
         "${tmpdir}/dev" \
         "${tmpdir}/sys" \
@@ -118,7 +104,6 @@ prepare_initramfs()
         "${tmpdir}/mnt/root" \
         "${tmpdir}/etc/tinyramfs"
 
-    # make symlinks
     ln -s usr/lib "${tmpdir}/lib"
     ln -s usr/bin "${tmpdir}/bin"
     ln -s usr/bin "${tmpdir}/sbin"
@@ -126,7 +111,6 @@ prepare_initramfs()
     ln -s ../run/lock "${tmpdir}/var/lock"
     ln -s bin     "${tmpdir}/usr/sbin"
 
-    # copy required binaries
     for _binary in \
         \[ sh ln env kill mkdir sleep mount \
         printf switch_root "${srcdir}/device-helper"
@@ -144,12 +128,11 @@ copy_file()
 (
     file="$1"; dest="$2"; mode="$3"; strip="$4"
 
-    # check if file already exist
     [ -e "${tmpdir}${dest}" ] && return 0
 
     mkdir -p "${tmpdir}${dest%/*}" || panic
 
-    # iterate throught symlinks and copy them
+    # Iterate throught symlinks and copy them
     while [ -h "$file" ]; do
         cp -P "$file" "${tmpdir}${dest%/*}/${file##*/}"
         cd -P "${file%/*}"
@@ -159,7 +142,7 @@ copy_file()
         file="${PWD}/${symlink##*/}"
     done
 
-    # handle case when file and dest have same basenames
+    # Handle case when file and dest have same basenames
     [ -h "${tmpdir}${dest}" ] && dest="${dest%/*}/${file##*/}"
 
     {
@@ -167,7 +150,7 @@ copy_file()
         chmod "$mode" "${tmpdir}${dest}"
     } || panic
 
-    # false positive
+    # https://www.shellcheck.net/wiki/SC2015
     # shellcheck disable=2015
     [ "$strip" = 1 ] && strip "${tmpdir}${dest}" > /dev/null 2>&1 || :
 )
@@ -176,8 +159,13 @@ copy_binary()
 {
     binary=$(command -v "$1")
 
-    # check if binary exist and builtin
-    # false positive
+    # If output is
+    #
+    # empty, do panic
+    # external command, do nothing
+    # builtin command, try to find external alternative.
+    #
+    # https://www.shellcheck.net/wiki/SC2086
     # shellcheck disable=2086
     case "$binary" in */*) ;;
         "")
@@ -186,21 +174,17 @@ copy_binary()
         *)
             IFS=:; set -- $PATH; unset IFS
 
-            # assume that `command -v` returned builtin command.
-            # this behavior depends on shell implementation.
-            # to be independent we simply iterating over PATH
-            # to find external alternative ( e.g kill => /bin/kill )
             for _dir; do
-                [ -x "${_dir}/${binary}" ] || ! continue
+                binary="${_dir}/${binary}"
 
-                binary="${_dir}/${binary}"; break
+                [ -x "$binary" ] && break
             done || panic "$1 does not exist"
         ;;
     esac
 
     copy_file "$binary" "/bin/${binary##*/}" 755 1
 
-    # copy binary dependencies if any
+    # Copy binary dependencies if any exist.
     ldd "$binary" 2> /dev/null |
 
     while read -r _library || [ "$_library" ]; do
@@ -222,8 +206,8 @@ copy_module()
 
     while read -r _ module || [ "$module" ]; do
 
-        # check if module contains full path(not builtin)
-        [ "${module##*/*}" ] && continue
+        # Skip builtin modules.
+        case "$module" in */*) ;; *) continue; esac
 
         copy_file "$module" "$module" 644 0
     done
@@ -234,12 +218,12 @@ copy_hook()
     hook="$1"
 
     for _dir in "$hksdir" /etc/tinyramfs/hooks /usr/share/tinyramfs/hooks; do
-        [ -f "${_dir}/${hook}/${hook}" ] || ! continue
+        [ -f "${_dir}/${hook}/${hook}" ] && break
     done || panic "could not find $hook hook"
 
     print "running $hook hook"
 
-    # false positive
+    # https://www.shellcheck.net/wiki/SC1090
     # shellcheck disable=1090
     . "${_dir}/${hook}/${hook}"
 
@@ -255,22 +239,22 @@ copy_hook()
 
 copy_modules()
 {
-    # skip this function if kernel
-    # compiled with builtin modules
+    # Skip this function if kernel
+    # compiled with builtin modules.
     if [ "$monolith" = 1 ]; then
         return 0
 
     elif [ "$hostonly" = 1 ]; then
         print "copying hostonly modules"
 
-        # perform autodetection of modules via /sys
-        # see https://wiki.archlinux.org/index.php/Modalias
+        # Perform autodetection of modules via /sys
+        # https://wiki.archlinux.org/index.php/Modalias
         find /sys/devices -name modalias -exec sort -u {} + |
 
         while read -r _module || [ "$_module" ]; do
 
-            # skip unneeded modules and skip modules which
-            # depends on them as well
+            # Skip unneeded modules and skip modules which
+            # depends on them as well.
             case $(modprobe -S "$kernel" -D "$_module") in
                 *wmi* | *gpu* | *net*) continue ;;
             esac 2> /dev/null
@@ -278,16 +262,14 @@ copy_modules()
             copy_module "$_module"
         done
 
-        # copy root filesystem module
         if [ "$root_type" ]; then
             copy_module "$root_type"
         else
             while read -r _ _dir _type _; do
-                [ "$_dir" = / ] || ! continue
+                [ "$_dir" = / ] && break
+            done < /proc/mounts || panic "failed to autodetect root fs module"
 
-                copy_module "$_type"; break
-            done < /proc/mounts ||
-            panic "could not copy root fs module"
+            copy_module "$_type"
         fi
     else
         print "copying all modules"
@@ -308,11 +290,11 @@ copy_modules()
 
         while read -r _module || [ "$_module" ]; do
 
-            # strip path and extension
+            # Strip path and extension
             _module="${_module##*/}"
             _module="${_module%%.*}"
 
-            # skip unneeded modules and skip modules which
+            # Skip unneeded modules and skip modules which
             # depends on them as well
             case $(modprobe -S "$kernel" -D "$_module") in
                 *wmi* | *gpu* | *net*) continue ;;
@@ -334,7 +316,6 @@ make_initramfs()
 (
     print "generating initramfs image"
 
-    # check if image already exist
     [ "$force" != 1 ] && [ -e "$output" ] &&
         panic "initramfs image already exist"
 
@@ -348,13 +329,12 @@ make_initramfs()
 
 [ "$(id -u)" = 0 ] || panic "must be run as root"
 
-# enable exit on error and disable globbing
+# Exit if command fails and disable globbing.
 set -ef
 
-prepare_environment "$@"
+parse_arguments "$@"
 prepare_initramfs
 
-# copy and run hooks if any
 for _hook in $hooks; do
     copy_hook "$_hook"
 done

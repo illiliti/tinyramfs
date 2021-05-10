@@ -80,8 +80,9 @@ interact with build and init system.
 - B: tmpdir - full path of tinyramfs working directory (initramfs rootfs in future)
 - B: kernel - kernel version
 - B: moddir - modules directory
+- B: init   - path to init script
+- B: helper - path to device-helper script
 - B: config - config location
-- B: srcdir - directory of tinyramfs system files
 - B: output - output path
 - BI: see tinyramfs.config(5)
 ```

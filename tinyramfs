@@ -22,14 +22,15 @@ usage()
 {
     cat << EOF
 usage: ${0##*/} [option]...
-       -o, --output  <file>  set initramfs output path
-       -c, --config  <file>  set config file path
-       -m, --modules <dir>   set modules directory
-       -s, --sources <dir>   set sources directory
-       -k, --kernel  <ver>   set kernel version
-       -H, --hooks   <dir>   set hooks directory
-       -d, --debug           enable debug mode
-       -f, --force           overwrite initramfs image
+       -o, --output <file>  set path to initramfs image
+       -c, --config <file>  set path to config
+       -k, --kernel  <ver>  set kernel version
+       -m, --modules <dir>  set path to modules
+       -H, --hooks   <dir>  set directory to hooks
+       -D, --helper <file>  set path to device helper
+       -I, --init   <file>  set path to init script
+       -d, --debug          enable debug mode
+       -f, --force          overwrite initramfs image
 EOF
 }
 
@@ -42,17 +43,20 @@ parse_arguments()
         -c | --config)
             config="${2:?}"; shift 2
         ;;
-        -m | --modules)
-            moddir="${2:?}"; shift 2
-        ;;
-        -s | --sources)
-            srcdir="${2:?}"; shift 2
-        ;;
         -k | --kernel)
             kernel="${2:?}"; shift 2
         ;;
+        -m | --modules)
+            moddir="${2:?}"; shift 2
+        ;;
         -H | --hooks)
             hksdir="${2:?}"; shift 2
+        ;;
+        -D | --helper)
+            helper="${2:?}"; shift 2
+        ;;
+        -I | --init)
+            init="${2:?}"; shift 2
         ;;
         -d | --debug)
             debug=1; shift 1
@@ -76,8 +80,9 @@ parse_arguments()
 
     : "${kernel:=$(uname -r)}"
     : "${moddir:=/lib/modules}"
-    : "${srcdir:=/usr/share/tinyramfs}"
-    : "${output:=/boot/tinyramfs-${kernel}}"
+    : "${init:=/usr/share/tinyramfs/init}"
+    : "${helper:=/usr/share/tinyramfs/device-helper}"
+    : "${output:=${TMPDIR:-/tmp}/tinyramfs-${kernel}}"
 
     mkdir -p "${tmpdir:=${TMPDIR:-/tmp}/tinyramfs.$$}"
 
@@ -113,15 +118,15 @@ prepare_initramfs()
 
     for _binary in \
         \[ sh ln env kill mkdir sleep mount \
-        printf switch_root "${srcdir}/device-helper"
+        printf switch_root "$helper"
     do
         copy_binary "$_binary"
     done
 
     command -v blkid > /dev/null && copy_binary blkid
 
-    copy_file "${srcdir}/init" /init                 755 0
-    copy_file "$config"        /etc/tinyramfs/config 644 0
+    copy_file "$init"   /init                 755 0
+    copy_file "$config" /etc/tinyramfs/config 644 0
 }
 
 copy_file()
@@ -183,6 +188,9 @@ copy_binary()
     esac
 
     copy_file "$binary" "/bin/${binary##*/}" 755 1
+
+    # Skip copying binary dependencies if ldd not available.
+    command -v ldd || return 0
 
     # Copy binary dependencies if any exist.
     ldd "$binary" 2> /dev/null |
@@ -289,25 +297,17 @@ copy_modules()
             -type f 2> /dev/null |
 
         while read -r _module || [ "$_module" ]; do
-
-            # Strip path and extension
-            _module="${_module##*/}"
-            _module="${_module%%.*}"
-
-            # Skip unneeded modules and skip modules which
-            # depends on them as well
-            case $(modprobe -S "$kernel" -D "$_module") in
-                *wmi* | *gpu* | *net*) continue ;;
-            esac 2> /dev/null
-
-            copy_module "$_module"
+            copy_file "$_module" "/lib/modules/${_module#$moddir}" 644 0
         done
     fi
 
     copy_binary modprobe
 
-    copy_file "${moddir}/${kernel}/modules.order"   "/lib/modules/${kernel}/modules.order"   644 0
-    copy_file "${moddir}/${kernel}/modules.builtin" "/lib/modules/${kernel}/modules.builtin" 644 0
+    copy_file "${moddir}/${kernel}/modules.order" \
+              "/lib/modules/${kernel}/modules.order" 644 0
+
+    copy_file "${moddir}/${kernel}/modules.builtin" \
+              "/lib/modules/${kernel}/modules.builtin" 644 0
 
     depmod -b "$tmpdir" "$kernel"
 }
@@ -326,8 +326,6 @@ make_initramfs()
 
     print "done! check out $output"
 )
-
-[ "$(id -u)" = 0 ] || panic "must be run as root"
 
 # Exit if command fails and disable globbing.
 set -ef

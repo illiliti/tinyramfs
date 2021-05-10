@@ -6,7 +6,7 @@ Tinyramfs - tiny initramfs written in POSIX shell
 
 # SYNOPSIS
 
-*tinyramfs* [option ...]
+*tinyramfs* [option]...
 
 # DESCRIPTION
 
@@ -15,20 +15,11 @@ with focus on portability.
 
 # OPTIONS
 
-*-m*, *--modules* <directory>
-
-	Specify directory where modules stored. Default is */lib/modules*.
-	
-*-s*, *--sources* <directory>
-	
-	Specify directory where tinyramfs stored files such as *device-helper*
-	and *init*. Default is */usr/share/tinyramfs*.
-
-*-o*, *--output* <output>
+*-o*, *--output* <file>
 
 	Specify output location where initramfs image will be stored.
 
-*-c*, *--config* <config>
+*-c*, *--config* <file>
 
 	Specify config location. Default is */etc/tinyramfs/config*.
 
@@ -37,11 +28,24 @@ with focus on portability.
 	Specify kernel version. Useful for bootstraping future system with modular
 	kernel. Default is current kernel version.
 
+*-m*, *--modules* <directory>
+
+	Specify directory where modules stored. Default is */lib/modules*.
+	This option has no effect if *monolith* or *hostonly* were enabled in config.
+
 *-H*, *--hooks* <directory>
 
 	Specify additional hooks location. Default is */usr/share/tinyramfs/hooks*
 	and */etc/tinyramfs/hooks*.
 	
+*-D*, *--helper* <file>
+
+	Specify location to device helper. Default is */usr/share/tinyramfs/device-helper*.
+
+*-I*, *--init* <file>
+
+	Specify location to init script. Default is */usr/share/tinyramfs/init*.
+
 *-d*, *--debug*
 
 	Enable debug mode. Useful for reporting bugs in build stage.

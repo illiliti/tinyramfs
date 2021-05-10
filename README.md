@@ -22,6 +22,8 @@ Dependencies
 * `switch_root`
 * `mount`
 * `cpio`
+* `ldd`
+  - Optional. Required for copying binary dependencies
 * `strip`
   - Optional. Required for reducing image size by stripping binaries
 * `blkid`
@@ -51,6 +53,7 @@ Usage
 
 ```sh
 # read tinyramfs.config(5) and setup /etc/tinyramfs/config
+# run as root
 tinyramfs -o "/boot/initramfs-$(uname -r)"
 # update your bootloader
 # reboot...

@@ -190,7 +190,7 @@ copy_binary()
     copy_file "$binary" "/bin/${binary##*/}" 755 1
 
     # Skip copying binary dependencies if ldd not available.
-    command -v ldd || return 0
+    command -v ldd > /dev/null || return 0
 
     # Copy binary dependencies if any exist.
     ldd "$binary" 2> /dev/null |

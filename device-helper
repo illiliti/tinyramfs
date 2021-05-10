@@ -14,6 +14,7 @@ create_symlink()
     ln    -s "../../${dev_name}" "$sym"
 }
 
+# DEVPATH is part of uevent which is exported to environment by device manager.
 [ -b "/dev/${dev_name=${DEVPATH##*/}}" ] || exit 1
 
 exec > /dev/null 2>&1
@@ -25,7 +26,9 @@ read -r dm_name < "/sys/block/${dev_name}/dm/name" && {
 
 command -v blkid || exit 0
 
-# prevent race condition
+# Race condition may occur if uevent arrives faster(isn't that a kernel bug!?)
+# than the kernel initializes device. This prevents blkid to fetch data from
+# device. To fix this, we simply waiting until blkid is succeeded.
 while ! blkid "/dev/${dev_name}"; do
     if [ "$((count += 1))" = 30 ]; then
         exit 1

@@ -23,7 +23,7 @@ Dependencies
 * `mount`
 * `cpio`
 * `strip`
-  - Optional. Required for binary stripping
+  - Optional. Required for reducing image size by stripping binaries
 * `blkid`
   - Optional. Required for UUID, LABEL, PARTUUID support
 * `mdev` OR `mdevd` OR `eudev` OR `systemd-udevd` OR CONFIG_UEVENT_HELPER

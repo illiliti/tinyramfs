@@ -1,7 +1,8 @@
 # vim: set ft=sh:
 # shellcheck shell=sh
 #
-# false positive
+# https://www.shellcheck.net/wiki/SC2154
+# https://www.shellcheck.net/wiki/SC2034
 # shellcheck disable=2154,2034
 
 [ "$break" = mdev ] && { print "break before mdev.init"; sh; }

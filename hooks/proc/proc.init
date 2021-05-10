@@ -1,14 +1,14 @@
 # vim: set ft=sh:
 # shellcheck shell=sh
 #
-# false positive
+# https://www.shellcheck.net/wiki/SC2154
 # shellcheck disable=2154
 
 [ "$break" = proc ] && { print "break before proc.init"; sh; }
 
 command -v device-helper > /proc/sys/kernel/hotplug
 
-# get ready for fork bomb. kek
+# Prepare for fork bomb!
 find /sys/devices -name uevent |
 
 while read -r uevent; do

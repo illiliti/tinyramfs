@@ -1,8 +1,8 @@
 # vim: set ft=sh:
 # shellcheck shell=sh
 #
-# false positive
-# shellcheck disable=2154,2034
+# https://www.shellcheck.net/wiki/SC2154
+# shellcheck disable=2154
 
 [ "$break" = systemd-udevd ] && { print "break before systemd-udevd.init"; sh; }
 

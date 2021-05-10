@@ -1,21 +1,17 @@
 # vim: set ft=sh:
 # shellcheck shell=sh
 #
-# false positive
+# https://www.shellcheck.net/wiki/SC2154
 # shellcheck disable=2154
-#
-# word splitting is safe by design
-# shellcheck disable=2068
 
 [ "$break" = luks ] && { print "break before luks.init"; sh; }
 
-export DM_DISABLE_UDEV=1
 mkdir -p /run/cryptsetup
 
 resolve_device "$luks_root"
 
-set -- \
-    "${luks_discard:+--allow-discards}" "${luks_header:+--header $luks_header}" \
-    "${luks_key:+-d $luks_key}" "$device" "${luks_name:-crypt-${device##*/}}"
-
-cryptsetup open $@ || panic "failed to unlock LUKS"
+DM_DISABLE_UDEV=1 cryptsetup open \
+    "${luks_discard:+--allow-discards}" \
+    "${luks_header:+--header=$luks_header}" \
+    "${luks_key:+--key-file=$luks_key}" -- "$device" \
+    "${luks_name:-crypt-${device##*/}}" || panic "failed to unlock LUKS"

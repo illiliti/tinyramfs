@@ -1,9 +1,10 @@
 # vim: set ft=sh:
 # shellcheck shell=sh
 #
-# false positive
+# https://www.shellcheck.net/wiki/SC2154
 # shellcheck disable=2154
 
 [ "$break" = keymap ] && { print "break before keymap.init"; sh; }
 
+# TODO support loadkeys
 loadkmap < "$keymap_path"

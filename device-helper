@@ -26,7 +26,13 @@ read -r dm_name < "/sys/block/${dev_name}/dm/name" && {
 command -v blkid || exit 0
 
 # prevent race condition
-blkid "/dev/${dev_name}" || sleep 2
+while ! blkid "/dev/${dev_name}"; do
+    if [ "$((count += 1))" = 30 ]; then
+        exit 1
+    else
+        sleep 1
+    fi
+done
 
 for line in $(blkid "/dev/${dev_name}"); do case   "${line%%=*}" in
     UUID)     create_symlink /dev/disk/by-uuid     "${line##*=}" ;;

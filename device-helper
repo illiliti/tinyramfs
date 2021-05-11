@@ -4,13 +4,13 @@
 
 create_symlink()
 {
-    dir="$1"; sym="$2"
+    typ="$1"; sym="$2"
 
     sym="${sym%\"}"
     sym="${sym#\"}"
-    sym="${dir}/${sym}"
+    sym="/dev/disk/by-${typ}/${sym}"
 
-    mkdir -p "$dir"
+    mkdir -p "${sym%/*}"
     ln    -s "../../${dev_name}" "$sym"
 }
 
@@ -37,8 +37,8 @@ while ! _blkid=$(blkid "/dev/${dev_name}"); do
     fi
 done
 
-for line in $_blkid; do case                       "${line%%=*}" in
-    UUID)     create_symlink /dev/disk/by-uuid     "${line##*=}" ;;
-    LABEL)    create_symlink /dev/disk/by-label    "${line##*=}" ;;
-    PARTUUID) create_symlink /dev/disk/by-partuuid "${line##*=}" ;;
+for line in $_blkid; do case          "${line%%=*}" in
+    UUID)     create_symlink uuid     "${line##*=}" ;;
+    LABEL)    create_symlink label    "${line##*=}" ;;
+    PARTUUID) create_symlink partuuid "${line##*=}" ;;
 esac; done

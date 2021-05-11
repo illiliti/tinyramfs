@@ -89,7 +89,7 @@ parse_cmdline()
         rootfstype=*) root_type="${line#*=}" ;;
         rootflags=*)  root_opts="${line#*=}" ;;
         debug=1)      set -x ;;
-        ro | rw)      rorw="-o $line" ;;
+        ro | rw)      rorw="$line" ;;
         --*)          init_args="${cmdline#*-- }"; break ;;
         *=*)          command export "$line"     ;;
         *)            command export "${line}=1" ;;
@@ -105,7 +105,7 @@ mount_root()
     # https://www.shellcheck.net/wiki/SC2086
     # shellcheck disable=2086
     mount \
-        ${rorw:--o ro}${root_opts:+,$root_opts} ${root_type:+-t $root_type} \
+        -o "${rorw:-ro}${root_opts:+,$root_opts}" ${root_type:+-t $root_type} \
         -- "$device" /mnt/root || panic "failed to mount root"
 }
 

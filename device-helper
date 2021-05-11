@@ -29,7 +29,7 @@ command -v blkid || exit 0
 # Race condition may occur if uevent arrives faster(isn't that a kernel bug!?)
 # than the kernel initializes device. This prevents blkid to fetch data from
 # device. To fix this, we simply waiting until blkid is succeeded.
-while ! blkid "/dev/${dev_name}"; do
+while ! _blkid=$(blkid "/dev/${dev_name}"); do
     if [ "$((count += 1))" = 30 ]; then
         exit 1
     else
@@ -37,7 +37,7 @@ while ! blkid "/dev/${dev_name}"; do
     fi
 done
 
-for line in $(blkid "/dev/${dev_name}"); do case   "${line%%=*}" in
+for line in $_blkid; do case                       "${line%%=*}" in
     UUID)     create_symlink /dev/disk/by-uuid     "${line##*=}" ;;
     LABEL)    create_symlink /dev/disk/by-label    "${line##*=}" ;;
     PARTUUID) create_symlink /dev/disk/by-partuuid "${line##*=}" ;;

@@ -13,10 +13,10 @@ print()
 panic()
 {
     print "${1:-unexpected error occurred}" \
-          "\033[1;31m!!\033[m"
+          "\033[1;31m!!\033[m" >&2
 
     sh
-} >&2
+}
 
 resolve_device()
 {

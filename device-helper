@@ -30,7 +30,7 @@ command -v blkid || exit 0
 # than the kernel initializes device. This prevents blkid to fetch data from
 # device. To fix this, we simply waiting until blkid is succeeded.
 while ! _blkid=$(blkid "/dev/${dev_name}"); do
-    if [ "$((count += 1))" = 30 ]; then
+    if [ "$((count += 1))" = 10 ]; then
         exit 1
     else
         sleep 1

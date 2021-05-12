@@ -179,11 +179,13 @@ copy_binary()
         *)
             IFS=:; set -- $PATH; unset IFS
 
+            _binary="$binary"
+
             for _dir; do
-                binary="${_dir}/${binary}"
+                binary="${_dir}/${_binary}"
 
                 [ -x "$binary" ] && break
-            done || panic "$1 does not exist"
+            done || panic "$_binary does not exist"
         ;;
     esac
 

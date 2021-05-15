@@ -5,7 +5,7 @@
 # https://www.shellcheck.net/wiki/SC2016
 # shellcheck disable=2154,2016
 
-for _binary in mdev find; do
+for _binary in mdev find kill; do
     copy_binary "$_binary"
 done
 

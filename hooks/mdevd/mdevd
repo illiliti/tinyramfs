@@ -5,7 +5,7 @@
 # https://www.shellcheck.net/wiki/SC2016
 # shellcheck disable=2154,2016
 
-for _binary in mdevd mdevd-coldplug; do
+for _binary in mdevd mdevd-coldplug kill; do
     copy_binary "$_binary"
 done
 

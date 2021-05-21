@@ -227,22 +227,22 @@ copy_hook()
 {
     hook="$1"
 
-    for _dir in "$hksdir" /etc/tinyramfs/hooks /usr/share/tinyramfs/hooks; do
-        [ -f "${_dir}/${hook}/${hook}" ] && break
+    for hook_dir in "$hksdir" /etc/tinyramfs/hooks /usr/share/tinyramfs/hooks; do
+        [ -f "${hook_dir}/${hook}/${hook}" ] && break
     done || panic "could not find $hook hook"
 
     print "running $hook hook"
 
     # https://www.shellcheck.net/wiki/SC1090
     # shellcheck disable=1090
-    . "${_dir}/${hook}/${hook}"
+    . "${hook_dir}/${hook}/${hook}"
 
     for _type in init init.late; do
-        [ -f "${_dir}/${hook}/${hook}.${_type}" ] || continue
+        [ -f "${hook_dir}/${hook}/${hook}.${_type}" ] || continue
 
         print "copying ${hook}.${_type}"
 
-        copy_file "${_dir}/${hook}/${hook}.${_type}" \
+        copy_file "${hook_dir}/${hook}/${hook}.${_type}" \
             "/usr/share/tinyramfs/hooks/${hook}/${hook}.${_type}" 644 0
     done
 }

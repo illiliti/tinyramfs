@@ -18,6 +18,7 @@ panic()
     exit 1
 } >&2
 
+# TODO add version
 usage()
 {
     cat << EOF
@@ -109,6 +110,8 @@ prepare_initramfs()
         "${tmpdir}/mnt/root" \
         "${tmpdir}/etc/tinyramfs"
 
+    ln -s usr/lib "${tmpdir}/usr/lib64"
+    ln -s usr/lib "${tmpdir}/lib64"
     ln -s usr/lib "${tmpdir}/lib"
     ln -s usr/bin "${tmpdir}/bin"
     ln -s usr/bin "${tmpdir}/sbin"
@@ -133,31 +136,35 @@ copy_file()
 (
     file="$1"; dest="$2"; mode="$3"; strip="$4"
 
-    [ -e "${tmpdir}${dest}" ] && return 0
+    [ -e "${tmpdir}/${dest}" ] && return 0
 
-    mkdir -p "${tmpdir}${dest%/*}" || panic
+    mkdir -p "${tmpdir}/${dest%/*}" || panic
 
     # Iterate throught symlinks and copy them
     while [ -h "$file" ]; do
-        cp -P "$file" "${tmpdir}${dest%/*}/${file##*/}"
+        cp -P "$file" "${tmpdir}/${dest%/*}/${file##*/}"
         cd -P "${file%/*}"
 
         symlink=$(ls -ld "$file")
         symlink="${symlink##* -> }"
-        file="${PWD}/${symlink##*/}"
+
+        # TODO handle ../../..
+        case "$symlink" in
+            /*) file="$symlink" ;;
+            *)  file="${PWD}/${symlink##*/}" ;;
+        esac
     done
 
-    # Handle case when file and dest have same basenames
-    [ -h "${tmpdir}${dest}" ] && dest="${dest%/*}/${file##*/}"
+    [ -h "${tmpdir}/${dest}" ] && dest="$file"
 
     {
-        cp    "$file" "${tmpdir}${dest}"
-        chmod "$mode" "${tmpdir}${dest}"
+        cp    "$file" "${tmpdir}/${dest}"
+        chmod "$mode" "${tmpdir}/${dest}"
     } || panic
 
     # https://www.shellcheck.net/wiki/SC2015
     # shellcheck disable=2015
-    [ "$strip" = 1 ] && strip "${tmpdir}${dest}" > /dev/null 2>&1 || :
+    [ "$strip" = 1 ] && strip "${tmpdir}/${dest}" > /dev/null 2>&1 || :
 )
 
 copy_binary()

@@ -9,7 +9,8 @@ Features
 - No `local`'s, no bashisms, only POSIX shell
 - Portable, not distro specific
 - Easy to use configuration
-- Build time and init time hooks
+- Make time and init time hooks
+- ZFS + native encryption support
 - LUKS (detached header, key), LVM
 - mdev, mdevd, eudev, systemd-udevd
 
@@ -30,6 +31,8 @@ Dependencies
   - Optional. Required for UUID, LABEL, PARTUUID support
 * `mdev` OR `mdevd` OR `eudev` OR `systemd-udevd` OR CONFIG_UEVENT_HELPER
   - Optional. Required for modular kernel, /dev/mapper/* and /dev/disk/* creation
+* `zfs`
+  - Optional. Required for ZFS support
 * `lvm2`
   - Optional. Required for LVM support
 * `cryptsetup`

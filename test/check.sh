@@ -28,6 +28,8 @@ if command -v modprobe > /dev/null; then
     modprobe kvm
     modprobe nbd
     modprobe zfs
+    modprobe dm_mod
+    modprobe dm_crypt
 fi
 
 [ "$1" ] || set -- *.test

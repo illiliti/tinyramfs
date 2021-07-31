@@ -1,7 +1,7 @@
 Tinyramfs
 =========
 
-**Currently tinyramfs is incomplete, don't expect that everything is working**
+**Usable and stable. Documentation will be rewritten and (re-)added later.**
 
 Features
 --------
@@ -46,20 +46,7 @@ Installation
 ------------
 
 ```sh
-git clone https://github.com/illiliti/tinyramfs
-cd tinyramfs
-make install
-```
-
-Usage
------
-
-```sh
-# read tinyramfs.config(5) and setup /etc/tinyramfs/config
-# run as root
-tinyramfs -o "/boot/initramfs-$(uname -r)"
-# update your bootloader
-# reboot...
+make PREFIX=/usr install
 ```
 
 Thanks

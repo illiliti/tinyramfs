@@ -10,7 +10,7 @@ cleanup()
     rm -rf "$tmpdir"
 }
 
-command -v lvm > /dev/null && grep -q dm_mod /proc/modules || exit 222
+command -v lvm > /dev/null || exit 222
 
 set -ef
 trap cleanup EXIT INT

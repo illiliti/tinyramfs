@@ -10,7 +10,7 @@ cleanup()
     rm -rf "$tmpdir"
 }
 
-command -v cryptsetup > /dev/null && grep -q dm_crypt /proc/modules || exit 222
+command -v cryptsetup > /dev/null || exit 222
 
 set -ef
 trap cleanup EXIT INT

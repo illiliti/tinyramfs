@@ -20,12 +20,6 @@ panic()
     fi
 }
 
-# random()
-# {
-#     _sum=$(cksum < /proc/uptime)
-#     printf '%s' "${sum% *}"
-# }
-
 # TODO ensure correctness
 copy_file()
 (

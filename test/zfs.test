@@ -9,7 +9,7 @@ cleanup()
     rm -rf "$tmpdir"
 }
 
-command -v zfs > /dev/null || exit 222
+command -v zfs > /dev/null && grep -q zfs /proc/modules || exit 222
 
 set -ef
 trap cleanup EXIT INT

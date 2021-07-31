@@ -44,8 +44,10 @@ for file; do
     case $? in
         222) status=SKIP ;;
         0)   status=PASS ;;
-        *)   status=FAIL ;;
+        *)   status=FAIL failed=1 ;;
     esac
 
     printf '%s: %s\n' "$file" "$status" >&2
 done
+
+[ -z "$failed" ]

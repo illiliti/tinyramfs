@@ -1,0 +1,125 @@
+#!/bin/sh
+
+. ../lib/common.sh
+
+cleanup()
+{
+    umount "${tmpdir}/root" || :
+    vgchange -an "$vg" || :
+    qemu-nbd -d /dev/nbd0 || :
+    rm -rf "$tmpdir"
+}
+
+command -v lvm > /dev/null || exit 222
+
+set -ef
+trap cleanup EXIT INT
+
+devmgr=${DEVMGR:-proc}
+arch=${ARCH:-$(uname -m)}
+kernel=${KERNEL:-$(uname -r)}
+vmlinuz=${VMLINUZ:-"/boot/vmlinuz-${kernel}"}
+
+mkdir -p "${tmpdir:=${TMPDIR:-/tmp}/${0##*/}.$$}"
+
+vg="vg$$"
+lv="lv$$"
+root="${tmpdir}/root"
+config="${tmpdir}/config"
+image="${tmpdir}/root.qcow2"
+initrd="${tmpdir}/initramfs-$(uname -r)"
+
+qemu-img create -f qcow2 "$image" 1G
+qemu-nbd -c /dev/nbd0 "$image"
+
+# o: Create MBR table.
+# n: Add new partition to table.
+# p: Primary partition.
+# 1: Partition number.
+# newline: Use default value for first sector.
+# newline: Use default value for last sector.
+# w: Write changes and re-read partition table.
+fdisk /dev/nbd0 << EOF
+o
+n
+p
+1
+
+
+w
+EOF
+
+cat > "$config" << EOF
+hooks=$devmgr,lvm
+root=LABEL=root
+lvm_group=$vg
+lvm_name=$lv
+EOF
+
+vgcreate "$vg" /dev/nbd0p1
+lvcreate -l 100%FREE -n "$lv" "$vg"
+lvchange -ay "${vg}/${lv}"
+
+mkdir -p "$root"
+
+mkfs.ext4 -L root "/dev/mapper/${vg}-${lv}"
+mount "/dev/mapper/${vg}-${lv}" "$root"
+
+(
+    tmpdir=$root; cd "$tmpdir"
+
+    mkdir -p \
+        dev sys tmp run proc \
+        root usr/lib usr/bin
+
+    ln -s usr/lib lib
+    ln -s usr/bin bin
+    ln -s usr/bin sbin
+    ln -s bin     usr/sbin
+
+    copy_exec sh
+    copy_exec e2label
+
+    cat > sbin/init << EOF
+#!/bin/sh
+exec e2label /dev/disk/by-label/root success
+EOF
+
+    chmod +x sbin/init
+)
+
+umount "$root"
+vgchange -an "$vg"
+qemu-nbd -d /dev/nbd0
+
+(cd .. && ./tinyramfs -lk "$kernel" -c "$config" "$initrd")
+
+set -- \
+    -no-reboot \
+    -initrd "$initrd" \
+    -kernel "$vmlinuz" \
+    -device virtio-scsi \
+    -drive  file="$image",if=virtio
+
+if [ -c /dev/kvm ]; then
+    set -- -enable-kvm -cpu host "$@"
+fi
+
+if [ "$DEBUG" ]; then
+    set -- -append 'panic=-1 rdpanic debug rddebug console=ttyS0' -nographic "$@"
+else
+    set -- -append 'panic=-1 rdpanic' -display none "$@"
+fi
+
+"qemu-system-${arch}" "$@"
+
+qemu-nbd -c /dev/nbd0 "$image"
+
+# Re-read partition table.
+fdisk /dev/nbd0 << EOF
+w
+EOF
+
+lvchange -ay "${vg}/${lv}"
+
+[ "$(e2label "/dev/mapper/${vg}-${lv}")" = success ]

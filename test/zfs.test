@@ -1,0 +1,131 @@
+#!/bin/sh
+
+. ../lib/common.sh
+
+cleanup()
+{
+    zpool export "$pool" || :
+    qemu-nbd -d /dev/nbd0 || :
+    rm -rf "$tmpdir"
+}
+
+command -v zfs > /dev/null || exit 222
+
+set -ef
+trap cleanup EXIT INT
+
+devmgr=${DEVMGR:-proc}
+arch=${ARCH:-$(uname -m)}
+kernel=${KERNEL:-$(uname -r)}
+vmlinuz=${VMLINUZ:-"/boot/vmlinuz-${kernel}"}
+
+mkdir -p "${tmpdir:=${TMPDIR:-/tmp}/${0##*/}.$$}"
+
+pool="pool$$"
+root="${tmpdir}/root"
+config="${tmpdir}/config"
+image="${tmpdir}/root.qcow2"
+initrd="${tmpdir}/initramfs-$(uname -r)"
+
+qemu-img create -f qcow2 "$image" 1G
+qemu-nbd -c /dev/nbd0 "$image"
+
+# o: Create MBR table.
+# n: Add new partition to table.
+# p: Primary partition.
+# 1: Partition number.
+# newline: Use default value for first sector.
+# newline: Use default value for last sector.
+# w: Write changes and re-read partition table.
+fdisk /dev/nbd0 << EOF
+o
+n
+p
+1
+
+
+w
+EOF
+
+dd bs=512 count=1 if=/dev/urandom of="${tmpdir}/key"
+
+zpool create -m none "$pool" /dev/nbd0p1
+zfs create \
+    -o mountpoint=legacy \
+    -o canmount=noauto \
+    -o encryption=on \
+    -o keyformat=passphrase \
+    -o keylocation="file://${tmpdir}/key" \
+    "${pool}/root"
+
+cat > "$config" << EOF
+hooks=$devmgr,zfs
+root=${pool}/root
+root_type=zfs
+# required if mountpoint != legacy
+#root_opts=zfsutil
+zfs_key=${tmpdir}/key
+# toybox/busybox blkid doesn't support zfs. fallback to /dev/* (unstable)
+zfs_root=/dev/vda1
+EOF
+
+mkdir -p "$root"
+mount -t zfs "${pool}/root" "$root"
+
+(
+    tmpdir=$root; cd "$tmpdir"
+
+    mkdir -p \
+        dev sys tmp run proc \
+        root usr/lib usr/bin
+
+    ln -s usr/lib lib
+    ln -s usr/bin bin
+    ln -s usr/bin sbin
+    ln -s bin     usr/sbin
+
+    copy_exec sh
+    copy_exec zfs
+
+    cat > sbin/init << EOF
+#!/bin/sh
+exec zfs set success:=true "${pool}/root"
+EOF
+
+    chmod +x sbin/init
+)
+
+zpool export "$pool"
+qemu-nbd -d /dev/nbd0
+
+(cd .. && ./tinyramfs -lk "$kernel" -c "$config" "$initrd")
+
+set -- \
+    -no-reboot \
+    -initrd "$initrd" \
+    -kernel "$vmlinuz" \
+    -device virtio-scsi \
+    -drive  file="$image",if=virtio
+
+if [ -c /dev/kvm ]; then
+    set -- -enable-kvm -cpu host "$@"
+fi
+
+if [ "$DEBUG" ]; then
+    set -- -append 'panic=-1 rdpanic debug rddebug console=ttyS0' -nographic "$@"
+else
+    set -- -append 'panic=-1 rdpanic' -display none "$@"
+fi
+
+"qemu-system-${arch}" "$@"
+
+qemu-nbd -c /dev/nbd0 "$image"
+
+# Re-read partition table.
+fdisk /dev/nbd0 << EOF
+w
+EOF
+
+zpool import -Nd /dev/nbd0p1 "$pool"
+
+[ "$(zfs get -Ho value success: "${pool}/root")" = true ]

@@ -1,0 +1,18 @@
+# vim: set ft=sh:
+# shellcheck shell=sh
+#
+# https://shellcheck.net/wiki/SC2154
+# shellcheck disable=2154
+
+[ "$zfs_key" ] && {
+    copy_file "${zfs_key#*=}" /root/zfs_key 0400
+
+    sed "s|${zfs_key#*=}|/root/zfs_key|" \
+        "${tmpdir}/etc/tinyramfs/config" > "${tmpdir}/_"
+
+    mv "${tmpdir}/_" "${tmpdir}/etc/tinyramfs/config"
+}
+
+copy_kmod zfs
+copy_exec zfs
+copy_exec zpool

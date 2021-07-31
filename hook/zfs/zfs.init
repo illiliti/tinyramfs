@@ -1,0 +1,16 @@
+# vim: set ft=sh:
+# shellcheck shell=sh
+#
+# https://shellcheck.net/wiki/SC2154
+# shellcheck disable=2154
+
+modprobe zfs 2> /dev/null
+
+resolve_device "$zfs_root"
+zpool import -Nd "$device" "${root%%/*}"
+
+if [ "$zfs_key" ]; then
+    zfs load-key -L "file://${zfs_key}" "$root"
+elif [ "$(zfs get -Ho value encryption "$root")" != off ]; then
+    zfs load-key -L prompt "$root"
+fi

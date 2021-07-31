@@ -1,256 +1,85 @@
 #!/bin/sh
 #
-# Tiny initramfs
-#
-# https://www.shellcheck.net/wiki/SC2154
+# https://shellcheck.net/wiki/SC2154
 # shellcheck disable=2154
-
-print()
-{
-    printf "%b %s\n" "${2:-"\033[1;37m>>\033[m"}" "$1"
-}
-
-panic()
-{
-    print "${1:-unexpected error occurred}" \
-          "\033[1;31m!!\033[m"
-
-    exit 1
-} >&2
 
 # TODO add version
 usage()
 {
-    cat << EOF
-usage: ${0##*/} [option]...
-       -o, --output <file>  set path to initramfs image
-       -c, --config <file>  set path to config
-       -k, --kernel  <ver>  set kernel version
-       -m, --modules <dir>  set path to modules
-       -H, --hooks   <dir>  set directory to hooks
-       -D, --helper <file>  set path to device helper
-       -I, --init   <file>  set path to init script
-       -d, --debug          enable debug mode
-       -f, --force          overwrite initramfs image
+    cat >&2 << EOF
+usage: ${0##*/} [option]... <output>
+    -c <file>  set path to config
+    -k <kern>  set kernel version
+    -m <path>  set path to modules
+    -l         enable local mode
+    -d         enable debug mode
+    -f         overwrite initramfs image
+    -h         display this message
 EOF
+
+    exit "$1"
 }
 
-parse_arguments()
+init_base()
 {
-    while [ "$1" ]; do case "$1" in
-        -o | --output)
-            output="${2:?}"; shift 2
-        ;;
-        -c | --config)
-            config="${2:?}"; shift 2
-        ;;
-        -k | --kernel)
-            kernel="${2:?}"; shift 2
-        ;;
-        -m | --modules)
-            moddir="${2:?}"; shift 2
-        ;;
-        -H | --hooks)
-            hksdir="${2:?}"; shift 2
-        ;;
-        -D | --helper)
-            helper="${2:?}"; shift 2
-        ;;
-        -I | --init)
-            init="${2:?}"; shift 2
-        ;;
-        -d | --debug)
-            debug=1; shift 1
-        ;;
-        -f | --force)
-            force=1; shift 1
-        ;;
-        -h | --help)
-            usage; exit 0
-        ;;
-        *)
-            printf "invalid option: %s\n" "$1"
-
-            usage; exit 1
-        ;;
-    esac; done
-
-    # https://www.shellcheck.net/wiki/SC1090
-    # shellcheck disable=1090
-    . "${config:=/etc/tinyramfs/config}"
-
-    : "${kernel:=$(uname -r)}"
-    : "${moddir:=/lib/modules}"
-    : "${init:=/usr/share/tinyramfs/init}"
-    : "${helper:=/usr/share/tinyramfs/device-helper}"
-    : "${output:=${TMPDIR:-/tmp}/tinyramfs-${kernel}}"
+    print 'creating ramfs structure'
 
     mkdir -p "${tmpdir:=${TMPDIR:-/tmp}/tinyramfs.$$}"
 
-    # https://www.shellcheck.net/wiki/SC2015
+    # https://shellcheck.net/wiki/SC2015
     # shellcheck disable=2015
-    [ "$debug" = 1 ] && set -x || trap 'rm -rf $tmpdir' EXIT INT
-}
+    [ "$debug" ] && set -x || trap 'rm -rf $tmpdir' EXIT INT
 
-prepare_initramfs()
-{
-    print "preparing initramfs"
+    (
+        cd "$tmpdir"
 
-    # https://wikipedia.org/wiki/Filesystem_Hierarchy_Standard
-    mkdir -p \
-        "${tmpdir}/dev" \
-        "${tmpdir}/sys" \
-        "${tmpdir}/tmp" \
-        "${tmpdir}/run" \
-        "${tmpdir}/var" \
-        "${tmpdir}/proc" \
-        "${tmpdir}/root" \
-        "${tmpdir}/usr/lib" \
-        "${tmpdir}/usr/bin" \
-        "${tmpdir}/mnt/root" \
-        "${tmpdir}/etc/tinyramfs"
+        # https://wikipedia.org/wiki/Filesystem_Hierarchy_Standard
+        mkdir -p \
+            dev sys tmp run var proc root \
+            usr/lib usr/bin mnt/root etc/tinyramfs
 
-    ln -s usr/lib "${tmpdir}/usr/lib64"
-    ln -s usr/lib "${tmpdir}/lib64"
-    ln -s usr/lib "${tmpdir}/lib"
-    ln -s usr/bin "${tmpdir}/bin"
-    ln -s usr/bin "${tmpdir}/sbin"
-    ln -s ../run  "${tmpdir}/var/run"
-    ln -s ../run/lock "${tmpdir}/var/lock"
-    ln -s bin     "${tmpdir}/usr/sbin"
+        ln -s usr/lib lib
+        ln -s usr/bin bin
+        ln -s usr/bin sbin
+        ln -s ../run  var/run
+        ln -s ../run/lock var/lock
+        ln -s bin     usr/sbin
 
-    for _binary in \
-        \[ sh ln env mkdir sleep mount \
-        printf switch_root "$helper"
+        ln -s lib/tinyramfs/init.sh   init
+        ln -s ../lib/tinyramfs/helper.sh bin/helper
+    )
+
+    for _bin in \
+        \[ sh ln env mkdir sleep \
+        printf switch_root mount
     do
-        copy_binary "$_binary"
+        copy_exec "$_bin"
     done
 
-    command -v blkid > /dev/null && copy_binary blkid
+    if ! command -v ldd > /dev/null; then
+        print 'unable to find ldd' '~>'
+    fi
 
-    copy_file "$init"   /init                 755 0
-    copy_file "$config" /etc/tinyramfs/config 644 0
+    if ! command -v blkid > /dev/null; then
+        print 'unable to find blkid' '~>'
+    else
+        copy_exec blkid
+    fi
+
+    copy_file "$config" /etc/tinyramfs/config    0644
+    copy_file "$init"   /lib/tinyramfs/init.sh   0755
+    copy_file "$devh"   /lib/tinyramfs/helper.sh 0755
+    copy_file "$shrd"   /lib/tinyramfs/common.sh 0755
 }
 
-copy_file()
-(
-    file="$1"; dest="$2"; mode="$3"; strip="$4"
-
-    [ -e "${tmpdir}/${dest}" ] && return 0
-
-    mkdir -p "${tmpdir}/${dest%/*}" || panic
-
-    # Iterate throught symlinks and copy them
-    while [ -h "$file" ]; do
-        cp -P "$file" "${tmpdir}/${dest%/*}/${file##*/}"
-        cd -P "${file%/*}"
-
-        symlink=$(ls -ld "$file")
-        symlink="${symlink##* -> }"
-
-        # TODO handle ../../..
-        case "$symlink" in
-            /*) file="$symlink" ;;
-            *)  file="${PWD}/${symlink##*/}" ;;
-        esac
-    done
-
-    [ -h "${tmpdir}/${dest}" ] && dest="$file"
-
-    {
-        cp    "$file" "${tmpdir}/${dest}"
-        chmod "$mode" "${tmpdir}/${dest}"
-    } || panic
-
-    # https://www.shellcheck.net/wiki/SC2015
-    # shellcheck disable=2015
-    [ "$strip" = 1 ] && strip "${tmpdir}/${dest}" > /dev/null 2>&1 || :
-)
-
-copy_binary()
+copy_hooks()
 {
-    binary=$(command -v "$1")
-
-    # If output is
-    #
-    # empty, do panic
-    # external command, do nothing
-    # builtin command, try to find external alternative.
-    #
-    # https://www.shellcheck.net/wiki/SC2086
+    # https://shellcheck.net/wiki/SC2086
     # shellcheck disable=2086
-    case "$binary" in */*) ;;
-        "")
-            panic "$1 does not exist"
-        ;;
-        *)
-            IFS=:; set -- $PATH; unset IFS
+    { IFS=,; set -- $hooks; unset IFS; }
 
-            _binary="$binary"
-
-            for _dir; do
-                binary="${_dir}/${_binary}"
-
-                [ -x "$binary" ] && break
-            done || panic "$_binary does not exist"
-        ;;
-    esac
-
-    copy_file "$binary" "/bin/${binary##*/}" 755 1
-
-    # Skip copying binary dependencies if ldd not available.
-    command -v ldd > /dev/null || return 0
-
-    # Copy binary dependencies if any exist.
-    ldd "$binary" 2> /dev/null |
-
-    while read -r _library || [ "$_library" ]; do
-
-        _library="${_library#* => }"
-        _library="${_library% *}"
-
-        [ -e "$_library" ] || continue
-
-        copy_file "$_library" "/lib/${_library##*/}" 755 1
-    done
-}
-
-copy_module()
-{
-    module="$1"
-
-    modprobe -S "$kernel" -D "$module" 2> /dev/null |
-
-    while read -r _ module || [ "$module" ]; do
-
-        # Skip builtin modules.
-        case "$module" in */*) ;; *) continue; esac
-
-        copy_file "$module" "$module" 644 0
-    done
-}
-
-copy_hook()
-{
-    hook="$1"
-
-    for hook_dir in "$hksdir" /etc/tinyramfs/hooks /usr/share/tinyramfs/hooks; do
-        [ -f "${hook_dir}/${hook}/${hook}" ] && break
-    done || panic "could not find $hook hook"
-
-    print "running $hook hook"
-
-    # https://www.shellcheck.net/wiki/SC1090
-    # shellcheck disable=1090
-    . "${hook_dir}/${hook}/${hook}"
-
-    for _type in init init.late; do
-        [ -f "${hook_dir}/${hook}/${hook}.${_type}" ] || continue
-
-        print "copying ${hook}.${_type}"
-
-        copy_file "${hook_dir}/${hook}/${hook}.${_type}" \
-            "/usr/share/tinyramfs/hooks/${hook}/${hook}.${_type}" 644 0
+    for _hook; do
+        copy_hook "$_hook"
     done
 }
 
@@ -258,93 +87,118 @@ copy_modules()
 {
     # Skip this function if kernel
     # compiled with builtin modules.
-    if [ "$monolith" = 1 ]; then
-        return 0
+    if [ "$monolith" ]; then
+        return
 
-    elif [ "$hostonly" = 1 ]; then
-        print "copying hostonly modules"
+    elif [ "$hostonly" ]; then
+        print 'copying hostonly modules'
 
         # Perform autodetection of modules via /sys
         # https://wiki.archlinux.org/index.php/Modalias
         find /sys/devices -name modalias -exec sort -u {} + |
 
-        while read -r _module || [ "$_module" ]; do
-
+        while read -r _mod; do
             # Skip unneeded modules and skip modules which
             # depends on them as well.
-            case $(modprobe -S "$kernel" -D "$_module") in
+            case $(modprobe -S "$kernel" -D "$_mod") in
                 *wmi* | *gpu* | *net*) continue ;;
             esac 2> /dev/null
 
-            copy_module "$_module"
+            copy_kmod "$_mod"
         done
 
         if [ "$root_type" ]; then
-            copy_module "$root_type"
+            copy_kmod "$root_type"
         else
             while read -r _ _dir _type _; do
                 [ "$_dir" = / ] && break
-            done < /proc/mounts || panic "failed to autodetect root fs module"
+            done < /proc/mounts || panic 'unable to detect rootfs module'
 
-            copy_module "$_type"
+            copy_kmod "$_type"
         fi
     else
-        print "copying all modules"
+        print 'copying all modules'
 
-        find \
-            "${moddir}/${kernel}/kernel/fs" \
-            "${moddir}/${kernel}/kernel/lib" \
-            "${moddir}/${kernel}/kernel/arch" \
-            "${moddir}/${kernel}/kernel/crypto" \
-            "${moddir}/${kernel}/kernel/drivers/md" \
-            "${moddir}/${kernel}/kernel/drivers/ata" \
-            "${moddir}/${kernel}/kernel/drivers/scsi" \
-            "${moddir}/${kernel}/kernel/drivers/block" \
-            "${moddir}/${kernel}/kernel/drivers/virtio" \
-            "${moddir}/${kernel}/kernel/drivers/usb/host" \
-            "${moddir}/${kernel}/kernel/drivers/usb/storage" \
-            -type f 2> /dev/null |
+        (
+            cd "${moddir}/${kernel}/kernel"
 
-        while read -r _module || [ "$_module" ]; do
-            copy_file "$_module" "/lib/modules/${_module#$moddir}" 644 0
-        done
+            find \
+                fs lib arch crypto drivers/md drivers/ata drivers/scsi \
+                drivers/block drivers/virtio drivers/usb/host \
+                drivers/usb/storage -type f 2> /dev/null |
+
+            while read -r _mod; do
+                copy_file "$_mod" "/lib/modules/${kernel}/${_mod}" 0644
+            done
+        )
     fi
 
-    copy_binary modprobe
+    copy_exec modprobe
 
     copy_file "${moddir}/${kernel}/modules.order" \
-              "/lib/modules/${kernel}/modules.order" 644 0
+              "/lib/modules/${kernel}/modules.order" 0644
 
     copy_file "${moddir}/${kernel}/modules.builtin" \
-              "/lib/modules/${kernel}/modules.builtin" 644 0
+              "/lib/modules/${kernel}/modules.builtin" 0644
 
     depmod -b "$tmpdir" "$kernel"
 }
 
-make_initramfs()
-(
-    print "generating initramfs image"
+create_image()
+{
+    print 'generating initramfs image'
 
-    [ "$force" != 1 ] && [ -e "$output" ] &&
-        panic "initramfs image already exist"
+    [ -z "$force" ] && [ -e "$output" ] &&
+        panic 'initramfs image already exist'
 
-    cd "$tmpdir"; find . |
-    cpio -oH newc 2> /dev/null |
-    ${compress:-cat} > "$output" ||
-    panic "failed to generate initramfs image"
+    (cd "$tmpdir" && find . | cpio -oH newc 2> /dev/null) | ${compress:-cat} > "$output" ||
+        panic 'failed to generate initramfs image'
 
-    print "done! check out $output"
-)
+    print "done: $output" '+>'
+}
 
-# Exit if command fails and disable globbing.
+while getopts c:k:m:ldfh opt; do case $opt in
+    c) config=$OPTARG ;;
+    k) kernel=$OPTARG ;;
+    m) moddir=$OPTARG ;;
+    l) local=1 ;;
+    d) debug=1 ;;
+    f) force=1 ;;
+    h) usage 0 ;;
+    ?) usage 2 ;;
+esac; done
+
+shift "$((OPTIND - 1))"
+
+# https://shellcheck.net/wiki/SC2015
+# shellcheck disable=2015
+[ "$1" ] && output=$1 || usage 2
+
+[ "$local" ] && {
+    init="${PWD}/lib/init.sh"
+    shrd="${PWD}/lib/common.sh"
+    devh="${PWD}/lib/helper.sh"
+}
+
+: "${kernel:=$(uname -r)}"
+: "${moddir:=/lib/modules}"
+: "${init:=/lib/tinyramfs/init.sh}"
+: "${devh:=/lib/tinyramfs/helper.sh}"
+: "${shrd:=/lib/tinyramfs/common.sh}"
+
+# -e: Exit if command return status greater than 0
+# -f: Disable globbing *?[]
 set -ef
 
-parse_arguments "$@"
-prepare_initramfs
+# https://shellcheck.net/wiki/SC1090
+# shellcheck disable=1090
+. "$shrd"
 
-for _hook in $hooks; do
-    copy_hook "$_hook"
-done
+# https://shellcheck.net/wiki/SC1090
+# shellcheck disable=1090
+. "${config:=/etc/tinyramfs/config}"
 
+init_base
+copy_hooks
 copy_modules
-make_initramfs
+create_image

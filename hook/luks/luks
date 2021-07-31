@@ -1,0 +1,36 @@
+# vim: set ft=sh:
+# shellcheck shell=sh
+#
+# https://shellcheck.net/wiki/SC2154
+# shellcheck disable=2154
+
+[ "$luks_key" ] && {
+    copy_file "${luks_key#*=}" /root/luks_key 0400
+
+    sed "s|${luks_key#*=}|/root/luks_key|" \
+        "${tmpdir}/etc/tinyramfs/config" > "${tmpdir}/_"
+
+    mv "${tmpdir}/_" "${tmpdir}/etc/tinyramfs/config"
+}
+
+[ "$luks_header" ] && {
+    copy_file "${luks_header#*=}" /root/luks_header 0400
+
+    sed "s|${luks_header#*=}|/root/luks_header|" \
+        "${tmpdir}/etc/tinyramfs/config" > "${tmpdir}/_"
+
+    mv "${tmpdir}/_" "${tmpdir}/etc/tinyramfs/config"
+}
+
+[ "$hostonly" ] &&
+    for _mod in \
+        aes ecb xts lrw wp512 sha256 \
+        sha512 twofish serpent dm-crypt
+    do
+        copy_kmod "$_mod"
+    done
+
+# https://bugs.archlinux.org/task/56771
+[ -e /lib/libgcc_s.so.1 ] && copy_file /lib/libgcc_s.so.1 /lib/libgcc_s.so.1 0755 1
+
+copy_exec cryptsetup

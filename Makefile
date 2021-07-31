@@ -1,29 +1,21 @@
 .POSIX:
 
-PREFIX = /usr
+PREFIX = /usr/local
 BINDIR = ${PREFIX}/bin
-DATADIR = ${PREFIX}/share
-MANDIR = ${PREFIX}/share/man
+LIBDIR = ${PREFIX}/lib
 
 install:
-	mkdir -p ${DESTDIR}${DATADIR}/tinyramfs \
-		     ${DESTDIR}${MANDIR}/man5 \
-		     ${DESTDIR}${MANDIR}/man8 \
-		     ${DESTDIR}${MANDIR}/man7 \
-		     ${DESTDIR}${BINDIR}
-	cp -R hooks      ${DESTDIR}${DATADIR}/tinyramfs
-	cp device-helper ${DESTDIR}${DATADIR}/tinyramfs
-	cp init          ${DESTDIR}${DATADIR}/tinyramfs
-	cp tinyramfs     ${DESTDIR}${BINDIR}/tinyramfs
-	cp docs/tinyramfs.8 ${DESTDIR}${MANDIR}/man8
-	cp docs/tinyramfs.hooks.7 ${DESTDIR}${MANDIR}/man7
-	cp docs/tinyramfs.cmdline.7 ${DESTDIR}${MANDIR}/man7
-	cp docs/tinyramfs.config.5 ${DESTDIR}${MANDIR}/man5
+	mkdir -p ${DESTDIR}${BINDIR}
+	mkdir -p ${DESTDIR}${LIBDIR}/tinyramfs
+	cp -f tinyramfs     ${DESTDIR}${BINDIR}/
+	cp -f lib/init.sh   ${DESTDIR}${LIBDIR}/tinyramfs/
+	cp -f lib/helper.sh ${DESTDIR}${LIBDIR}/tinyramfs/
+	cp -f lib/common.sh ${DESTDIR}${LIBDIR}/tinyramfs/
+	cp -R hook          ${DESTDIR}${LIBDIR}/tinyramfs/hook.d
 
 uninstall:
 	rm -f  ${DESTDIR}${BINDIR}/tinyramfs
-	rm -rf ${DESTDIR}${DATADIR}/tinyramfs
-	rm -f  ${DESTDIR}${MANDIR}/man8/tinyramfs.8
-	rm -f  ${DESTDIR}${MANDIR}/man7/tinyramfs.hooks.7
-	rm -f  ${DESTDIR}${MANDIR}/man7/tinyramfs.cmdline.7
-	rm -f  ${DESTDIR}${MANDIR}/man5/tinyramfs.config.5
+	rm -rf ${DESTDIR}${LIBDIR}/tinyramfs
+
+check:
+	(cd test && ./check.sh)

@@ -1,0 +1,15 @@
+# vim: set ft=sh:
+# shellcheck shell=sh
+#
+# https://shellcheck.net/wiki/SC2154
+# shellcheck disable=2154
+
+for _bin in udevd udevadm; do
+    copy_exec "$_bin"
+done
+
+mkdir -p "${tmpdir}/lib/udev/rules.d"
+cat > "${tmpdir}/lib/udev/rules.d/device.rules" << EOF
+SUBSYSTEMS=="block", ACTION=="add", RUN+="/sbin/helper"
+ENV{MODALIAS}=="?*", ACTION=="add", RUN+="/sbin/helper"
+EOF

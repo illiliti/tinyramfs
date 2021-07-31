@@ -1,0 +1,30 @@
+# vim: set ft=sh:
+# shellcheck shell=sh
+#
+# https://shellcheck.net/wiki/SC2154
+# shellcheck disable=2154
+
+mkdir -p /run/lvm /run/lock/lvm
+
+set -- --sysinit -qq -aay ${lvm_discard:+--config=devices\{issue_discards=1\}}
+
+if [ "$lvm_group" ] && [ "$lvm_name" ]; then
+    set -- lvchange "$@" "${lvm_group}/${lvm_name}"
+elif [ "$lvm_group" ]; then
+    set -- vgchange "$@" "$lvm_group"
+elif [ "$lvm_tag" ]; then
+    set -- lvchange "$@" "@${lvm_tag}"
+else
+    set -- vgchange "$@"
+fi
+
+_count=0
+
+# Handle race condition.
+while ! DM_DISABLE_UDEV=1 lvm "$@"; do
+    if [ "$((_count += 1))" = 10 ]; then
+        panic "failed to trigger LVM"
+    else
+        sleep 1
+    fi
+done

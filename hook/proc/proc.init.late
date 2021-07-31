@@ -1,0 +1,4 @@
+# vim: set ft=sh:
+# shellcheck shell=sh
+
+printf '\0' > /proc/sys/kernel/hotplug

@@ -1,0 +1,24 @@
+# vim: set ft=sh:
+# shellcheck shell=sh
+#
+# https://shellcheck.net/wiki/SC2154
+# shellcheck disable=2154
+
+mdev -s
+mdev -df 2> /dev/null &
+
+# https://shellcheck.net/wiki/SC2034
+# shellcheck disable=2034
+mdev_pid=$!
+
+find /sys/devices -name uevent |
+
+while read -r uevent; do
+    printf add > "$uevent"
+done 2> /dev/null
+
+find /sys/devices -name uevent |
+
+while read -r uevent; do
+    printf add > "$uevent"
+done 2> /dev/null

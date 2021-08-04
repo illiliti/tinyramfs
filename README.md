@@ -40,7 +40,7 @@ Dependencies
 * `busybox loadkmap`
   - Optional. Required for keymap support
 * `kmod` OR `busybox modutils` with [patch](https://gist.github.com/illiliti/ef9ee781b5c6bf36d9493d99b4a1ffb6) (already included in KISS Linux)
-  - Not required for monolithic kernel
+  - Optional. Required if kernel compiled with loadable external modules
 
 Installation
 ------------

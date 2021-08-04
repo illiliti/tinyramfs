@@ -16,9 +16,10 @@ create_symlink()
 }
 
 exec > /dev/null 2>&1
+dev_name=${DEVPATH##*/}
 
 [ "$MODALIAS" ] && modprobe "$MODALIAS"
-[ "$SUBSYSTEM" = block ] && [ -b "/dev/${dev_name=${DEVPATH##*/}}" ] || exit 1
+[ "$SUBSYSTEM" = block ] && [ -b "/dev/${dev_name}" ] || exit 1
 
 read -r dm_name < "/sys/block/${dev_name}/dm/name" && {
     mkdir -p /dev/mapper

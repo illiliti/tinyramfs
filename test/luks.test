@@ -10,8 +10,6 @@ cleanup()
     rm -rf "$tmpdir"
 }
 
-command -v cryptsetup > /dev/null || exit 222
-
 set -ef
 trap cleanup EXIT INT
 

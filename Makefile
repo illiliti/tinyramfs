@@ -18,4 +18,6 @@ uninstall:
 	rm -rf ${DESTDIR}${LIBDIR}/tinyramfs
 
 check:
-	(cd test && ./check.sh)
+	(cd test && ${MAKE})
+
+.PHONY: install uninstall check

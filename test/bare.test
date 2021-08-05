@@ -5,13 +5,14 @@
 cleanup()
 {
     umount "${tmpdir}/root" || :
-    qemu-nbd -d /dev/nbd0 || :
+    qemu-nbd -d "$nbd" || :
     rm -rf "$tmpdir"
 }
 
 set -ef
 trap cleanup EXIT INT
 
+nbd=${NBD:-/dev/nbd1}
 devmgr=${DEVMGR:-proc}
 arch=${ARCH:-$(uname -m)}
 kernel=${KERNEL:-$(uname -r)}
@@ -25,7 +26,7 @@ image="${tmpdir}/root.qcow2"
 initrd="${tmpdir}/initramfs-$(uname -r)"
 
 qemu-img create -f qcow2 "$image" 1G
-qemu-nbd -c /dev/nbd0 "$image"
+qemu-nbd -c "$nbd" "$image"
 
 # o: Create MBR table.
 # n: Add new partition to table.
@@ -34,7 +35,7 @@ qemu-nbd -c /dev/nbd0 "$image"
 # newline: Use default value for first sector.
 # newline: Use default value for last sector.
 # w: Write changes and re-read partition table.
-fdisk /dev/nbd0 << EOF
+fdisk "$nbd" << EOF
 o
 n
 p
@@ -51,8 +52,8 @@ EOF
 
 mkdir -p "$root"
 
-mkfs.ext4 -L root /dev/nbd0p1
-mount /dev/nbd0p1 "$root"
+mkfs.ext4 -L root "${nbd}p1"
+mount "${nbd}p1" "$root"
 
 (
     tmpdir=$root; cd "$tmpdir"
@@ -78,7 +79,7 @@ EOF
 )
 
 umount "$root"
-qemu-nbd -d /dev/nbd0
+qemu-nbd -d "$nbd"
 
 (cd .. && ./tinyramfs -lk "$kernel" -c "$config" "$initrd")
 
@@ -101,11 +102,11 @@ fi
 
 "qemu-system-${arch}" "$@"
 
-qemu-nbd -c /dev/nbd0 "$image"
+qemu-nbd -c "$nbd" "$image"
 
 # Re-read partition table.
-fdisk /dev/nbd0 << EOF
+fdisk "$nbd" << EOF
 w
 EOF
 
-[ "$(e2label /dev/nbd0p1)" = success ]
+[ "$(e2label "${nbd}p1")" = success ]

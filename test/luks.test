@@ -6,7 +6,7 @@ cleanup()
 {
     umount "${tmpdir}/root" || :
     cryptsetup close "$name" || :
-    qemu-nbd -d /dev/nbd0 || :
+    qemu-nbd -d "$nbd" || :
     rm -rf "$tmpdir"
 }
 
@@ -15,6 +15,7 @@ command -v cryptsetup > /dev/null || exit 222
 set -ef
 trap cleanup EXIT INT
 
+nbd=${NBD:-/dev/nbd2}
 devmgr=${DEVMGR:-proc}
 arch=${ARCH:-$(uname -m)}
 kernel=${KERNEL:-$(uname -r)}
@@ -29,7 +30,7 @@ image="${tmpdir}/root.qcow2"
 initrd="${tmpdir}/initramfs-$(uname -r)"
 
 qemu-img create -f qcow2 "$image" 1G
-qemu-nbd -c /dev/nbd0 "$image"
+qemu-nbd -c "$nbd" "$image"
 
 # o: Create MBR table.
 # n: Add new partition to table.
@@ -38,7 +39,7 @@ qemu-nbd -c /dev/nbd0 "$image"
 # newline: Use default value for first sector.
 # newline: Use default value for last sector.
 # w: Write changes and re-read partition table.
-fdisk /dev/nbd0 << EOF
+fdisk "$nbd" << EOF
 o
 n
 p
@@ -50,13 +51,13 @@ EOF
 
 dd bs=512 count=1 if=/dev/urandom of="${tmpdir}/key"
 
-cryptsetup -qd "${tmpdir}/key" --pbkdf=pbkdf2 luksFormat /dev/nbd0p1
-cryptsetup  -d "${tmpdir}/key" open /dev/nbd0p1 "$name"
+cryptsetup -qd "${tmpdir}/key" --pbkdf=pbkdf2 luksFormat "${nbd}p1"
+cryptsetup  -d "${tmpdir}/key" open "${nbd}p1" "$name"
 
 cat > "$config" << EOF
 hooks=$devmgr,luks
 root=LABEL=root
-luks_root=UUID=$(cryptsetup luksUUID /dev/nbd0p1)
+luks_root=UUID=$(cryptsetup luksUUID "${nbd}p1")
 luks_key=${tmpdir}/key
 EOF
 
@@ -90,7 +91,7 @@ EOF
 
 umount "$root"
 cryptsetup close "$name"
-qemu-nbd -d /dev/nbd0
+qemu-nbd -d "$nbd"
 
 (cd .. && ./tinyramfs -lk "$kernel" -c "$config" "$initrd")
 
@@ -113,13 +114,13 @@ fi
 
 "qemu-system-${arch}" "$@"
 
-qemu-nbd -c /dev/nbd0 "$image"
+qemu-nbd -c "$nbd" "$image"
 
 # Re-read partition table.
-fdisk /dev/nbd0 << EOF
+fdisk "$nbd" << EOF
 w
 EOF
 
-cryptsetup -d "${tmpdir}/key" open /dev/nbd0p1 "$name"
+cryptsetup -d "${tmpdir}/key" open "${nbd}p1" "$name"
 
 [ "$(e2label "/dev/mapper/${name}")" = success ]

@@ -4,9 +4,14 @@
 # https://shellcheck.net/wiki/SC2154
 # shellcheck disable=2154
 
-for _bin in /lib/systemd/systemd-udevd udevadm; do
-    copy_exec "$_bin"
-done
+copy_exec udevadm
+
+# FIXME
+if [ -h /lib/systemd/systemd-udevd ]; then
+    ln -s udevadm "${tmpdir}/bin/systemd-udevd"
+else
+    copy_exec /lib/systemd/systemd-udevd
+fi
 
 mkdir -p "${tmpdir}/lib/udev/rules.d"
 cat > "${tmpdir}/lib/udev/rules.d/device.rules" << EOF

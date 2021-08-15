@@ -104,6 +104,7 @@ qemu-nbd -d "$nbd"
 (cd .. && ./tinyramfs -lk "$kernel" -c "$config" "$initrd")
 
 set -- \
+    -m 1G \
     -no-reboot \
     -initrd "$initrd" \
     -kernel "$vmlinuz" \

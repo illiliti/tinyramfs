@@ -28,7 +28,7 @@ init_base()
 
     # https://shellcheck.net/wiki/SC2015
     # shellcheck disable=2015
-    [ "$debug" ] && set -x || trap 'rm -rf $tmpdir' EXIT INT
+    [ "$debug" ] && set -x || trap 'rm -rf "$tmpdir"' EXIT INT
 
     (
         cd "$tmpdir"
@@ -47,7 +47,7 @@ init_base()
         ln -s ../run/lock var/lock
         ln -s bin     usr/sbin
 
-        ln -s lib/tinyramfs/init.sh   init
+        ln -s lib/tinyramfs/init.sh init
         ln -s ../lib/tinyramfs/helper.sh bin/helper
     )
 

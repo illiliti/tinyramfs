@@ -38,6 +38,8 @@ init_base()
             dev sys tmp run var proc root \
             usr/lib usr/bin mnt/root etc/tinyramfs
 
+        ln -s lib usr/lib64
+        ln -s usr/lib lib64
         ln -s usr/lib lib
         ln -s usr/bin bin
         ln -s usr/bin sbin

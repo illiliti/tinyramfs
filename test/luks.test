@@ -73,6 +73,8 @@ mount "/dev/mapper/${name}" "$root"
         dev sys tmp run proc \
         root usr/lib usr/bin
 
+    ln -s lib usr/lib64
+    ln -s usr/lib lib64
     ln -s usr/lib lib
     ln -s usr/bin bin
     ln -s usr/bin sbin

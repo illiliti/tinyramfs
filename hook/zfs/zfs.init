@@ -10,7 +10,7 @@ resolve_device "$zfs_root"
 zpool import -Nd "$device" "${root%%/*}"
 
 if [ "$zfs_key" ]; then
-    zfs load-key -L "file://${zfs_key}" "$root"
+    zfs load-key -L prompt -a < "$zfs_key"
 elif [ "$(zfs get -Ho value encryption "$root")" != off ]; then
-    zfs load-key -L prompt "$root"
+    zfs load-key -L prompt -a
 fi

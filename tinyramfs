@@ -127,7 +127,7 @@ copy_modules()
             find \
                 fs lib arch crypto drivers/md drivers/ata drivers/scsi \
                 drivers/block drivers/virtio drivers/usb/host \
-                drivers/usb/storage -type f 2> /dev/null |
+                drivers/usb/storage drivers/input/keyboard -type f 2> /dev/null |
 
             while read -r _mod; do
                 copy_file "$_mod" "/lib/modules/${kernel}/kernel/${_mod}" 0644

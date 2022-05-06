@@ -1,4 +1,4 @@
-.Dd $Mdocdate: May 6 2020 $
+.Dd $Mdocdate: May 6 2022 $
 .Dt TINYRAMFS 8
 .Os
 .Sh NAME
@@ -19,11 +19,11 @@ utility generates an initramfs image for loading kernel modules, unlocking encry
 The options are as follows:
 .Bl -tag -width Ds
 .It Fl c Ar file
-Use the specified
+Use
 .Ar file
-instead of the default configuration file.
+instead of the default configuration.
 .It Fl d
-Enable debug mode, print every command to standard output.
+Enable debug mode. Prints every command to standard error.
 .It Fl f
 Overwrite the
 .Ar output
@@ -31,7 +31,7 @@ file if it already exists.
 .It Fl h
 Show a summary of the options accepted by
 .Nm .
-.It Fl k
+.It Fl k Ar kern
 Set the kernel version to
 .Ar kern .
 This is for
@@ -39,16 +39,19 @@ This is for
 to know which kernel modules to copy to the initramfs.
 .It Fl l
 Use helper scripts in $PWD/lib, instead of in /lib/tinyramfs.
-.It Fl m
+.It Fl m Ar path
 Manually set the
 .Ar path
 to kernel modules.
 .Sh FILES
-.Bl -tag -width /etc/tinyramfs/config -compact
-.It Pa /etc/man.conf
+.Bl -tag -width /etc/tinyramfs/hook.d/ -compact
+.It Pa /lib/tinyramfs/config
 default
 .Nm
 configuration file
+.It Pa /lib/tinyramfs/hook.d/
+.Nm
+hooks
 .Sh EXIT STATUS
 .Ex -std
 .Sh SEE ALSO

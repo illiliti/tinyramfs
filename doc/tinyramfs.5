@@ -7,27 +7,27 @@
 .Sh DESCRIPTION
 A
 .Nm
-configuration file is written in POSIX sh, as it will be sourced by the
+configuration file is written in POSIX sh and is sourced by the
 .Nm
-script. Configuration is done via variable assignment (eg: variable=value). Special characters must be quoted or escaped as is standard in POSIX shell. The
-.Nm
-utility will use /etc/tinyramfs/config as its configuration file by default.
+script. Configuration is done via variable assignment (eg. variable=value). Special characters must be quoted or escaped as is standard in POSIX shell. The default configuration file is in /etc/tinyramfs/config.
 .Pp
-Some options are only relevant when the relevant hook has been selected. Those options have been divided into subsections.
+Some options only apply to specific hooks, so they've been categorized accordingly.
 .Pp
 .Sh OPTIONS
 .Bl -tag -width Ds
+.It root
+The device on which the root filesystem resides.
 .It hooks 
 A comma separated list of hooks to include when creating the initramfs. A list of valid hooks can be found in /lib/tinyramfs/hook.d.
 .It monolith
-Takes a value of 1 or 0. Determines wheter or not to include kernel modules in the initramfs.
+Takes a value of 1 or 0. Determins wheter or not to include kernel modules in the initramfs.
 .It compress
 The compression utility to use when creating the initramfs.
 Common values are: gzip, xz, zstd, lz4, cat (uncompressed).
 .Pp
 Note: Initramfs compression support has to be enabled in the kernel configuration via the CONFIG_RD_<COMP_ALGO> options.
 .It tmpdir
-The temporary directory to use when creating the initramfs.
+Temporary directory to use when creating the initramfs.
 .It hostonly
 A value of 1 or 0. Determines whether or not the initramfs created should only copy modules required for your specific system.
 .It root_type
@@ -46,7 +46,7 @@ Warning: This option may have a negative security impact. For more info read
 .It luks_header
 Path to your LUKS header.
 .It luks_root
-The partition on which your LUKS root volume is located.
+The device on which your LUKS volume is located.
 .It luks_name
 The name to map your LUKS device to.
 .It luks_key
@@ -58,23 +58,26 @@ Path to your LVM configuration file.
 .It lvm_discard
 Allow the use of discard (TRIM) requests for the device.
 .It lvm_group
-The name of the volume group where the root filesystem resides.
+The name of your volume group.
 .It lvm_name
-The name of the logical volume on which the root filesystem resides.
+The name of your logical volume.
 .It lvm_tag
-The tag name of your logical volume.
+The tag of your logical volume.
 .Ss ZFS
 .Bl -tag -width Ds
 .It zfs_key
 Path to your ZFS keyfile.
 .It zfs_root
-The partition on which your ZFS root volume is located.
+The device on which your ZFS volume is located.
 .Sh FILES
-.Bl -tag -width /etc/tinyramfs/config -compact
-.It Pa /etc/tinyramfs/config
+.Bl -tag -width /etc/tinyramfs/hook.d/ -compact
+.It Pa /lib/tinyramfs/config
 default
 .Nm
 configuration file
+.It Pa /lib/tinyramfs/hook.d/
+.Nm
+hooks
 .Sh SEE ALSO
 .Xr tinyramfs 8
 .Sh AUTHORS

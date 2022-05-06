@@ -1,0 +1,57 @@
+.Dd $Mdocdate: May 6 2020 $
+.Dt TINYRAMFS 8
+.Os
+.Sh NAME
+.Nm tinyramfs
+.Nd create an initramfs
+.Sh SYNOPSIS
+.Nm tinyramfs
+.Op Fl dfhl
+.Op Fl c Ar file
+.Op Fl k Ar kern
+.Op Fl m Ar path
+.Ar output
+.Sh DESCRIPTION
+The
+.Nm
+utility generates an initramfs image for loading kernel modules, unlocking encrypted drives, mounting the root filesystem, etc.
+.Pp
+The options are as follows:
+.Bl -tag -width Ds
+.It Fl c Ar file
+Use the specified
+.Ar file
+instead of the default configuration file.
+.It Fl d
+Enable debug mode, print every command to standard output.
+.It Fl f
+Overwrite the
+.Ar output
+file if it already exists.
+.It Fl h
+Show a summary of the options accepted by
+.Nm .
+.It Fl k
+Set the kernel version to
+.Ar kern .
+This is for
+.Nm
+to know which kernel modules to copy to the initramfs.
+.It Fl l
+Use helper scripts in $PWD/lib, instead of in /lib/tinyramfs.
+.It Fl m
+Manually set the
+.Ar path
+to kernel modules.
+.Sh FILES
+.Bl -tag -width /etc/tinyramfs/config -compact
+.It Pa /etc/man.conf
+default
+.Nm
+configuration file
+.Sh EXIT STATUS
+.Ex -std
+.Sh SEE ALSO
+.Xr tinyramfs 5
+.Sh AUTHORS
+.An illiliti Lk https://github.com/illiliti

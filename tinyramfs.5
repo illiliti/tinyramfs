@@ -1,0 +1,81 @@
+.Dd $Mdocdate: May 6 2022 $
+.Dt TINYRAMFS 5
+.Os
+.Sh NAME
+.Nm tinyramfs
+.Nd configuration file
+.Sh DESCRIPTION
+A
+.Nm
+configuration file is written in POSIX sh, as it will be sourced by the
+.Nm
+script. Configuration is done via variable assignment (eg: variable=value). Special characters must be quoted or escaped as is standard in POSIX shell. The
+.Nm
+utility will use /etc/tinyramfs/config as its configuration file by default.
+.Pp
+Some options are only relevant when the relevant hook has been selected. Those options have been divided into subsections.
+.Pp
+.Sh OPTIONS
+.Bl -tag -width Ds
+.It hooks 
+A comma separated list of hooks to include when creating the initramfs. A list of valid hooks can be found in /lib/tinyramfs/hook.d.
+.It monolith
+Takes a value of 1 or 0. Determines wheter or not to include kernel modules in the initramfs.
+.It compress
+The compression utility to use when creating the initramfs.
+Common values are: gzip, xz, zstd, lz4, cat (uncompressed).
+.Pp
+Note: Initramfs compression support has to be enabled in the kernel configuration via the CONFIG_RD_<COMP_ALGO> options.
+.It tmpdir
+The temporary directory to use when creating the initramfs.
+.It hostonly
+A value of 1 or 0. Determines whether or not the initramfs created should only copy modules required for your specific system.
+.It root_type
+The type of root filesystem you're using (eg. ext4).
+.Ss KEYMAP
+.Bl -tag -width Ds
+.It keymap_path
+Path to your keymap.
+.Ss LUKS
+.Bl -tag -width Ds
+.It luks_discard
+Allow the use of discard (TRIM) requests for the device.
+.Pp
+Warning: This option may have a negative security impact. For more info read
+.Xr cryptsetup 8 .
+.It luks_header
+Path to your LUKS header.
+.It luks_root
+The partition on which your LUKS root volume is located.
+.It luks_name
+The name to map your LUKS device to.
+.It luks_key
+Path to your LUKS keyfile.
+.Ss LVM
+.Bl -tag -width Ds
+.It lvm_config
+Path to your LVM configuration file.
+.It lvm_discard
+Allow the use of discard (TRIM) requests for the device.
+.It lvm_group
+The name of the volume group where the root filesystem resides.
+.It lvm_name
+The name of the logical volume on which the root filesystem resides.
+.It lvm_tag
+The tag name of your logical volume.
+.Ss ZFS
+.Bl -tag -width Ds
+.It zfs_key
+Path to your ZFS keyfile.
+.It zfs_root
+The partition on which your ZFS root volume is located.
+.Sh FILES
+.Bl -tag -width /etc/tinyramfs/config -compact
+.It Pa /etc/tinyramfs/config
+default
+.Nm
+configuration file
+.Sh SEE ALSO
+.Xr tinyramfs 8
+.Sh AUTHORS
+.An illiliti Lk https://github.com/illiliti

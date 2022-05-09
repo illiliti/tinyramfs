@@ -3,7 +3,7 @@ tinyramfs(5) "tinyramfs" "2022-05-09"
 tinyramfs - configuration file
 
 # DESCRIPTION
-A tinyramfs configuration file is written in POSIX sh. Configuration is done via variable asignment (eg. option=value). Special characters and whitespace must be quoted or escaped, more info: *sh(1)*. By default tinyramfs looks to /etc/tinyramfs/config for a configuration file.
+A tinyramfs configuration file is written in POSIX sh. Configuration is done via variable asignment (eg. *option=value*). Special characters and whitespace must be quoted or escaped, more info: *sh*(1). By default tinyramfs looks to /etc/tinyramfs/config for a configuration file.
 
 # OPTIONS
 Option marked with *(bool)* can hold a value of true or false. False if the variable is unset or empty, true otherwise.
@@ -76,12 +76,11 @@ zfs_root
 	The device your ZFS volume is located on.
 
 # FILES
-/lib/tinyramfs/hook.d/
-	tinyramfs hooks
+/lib/tinyramfs/hook.d/  tinyramfs hooks
 
 # SEE ALSO
-tinyramfs(8)
+*tinyramfs*(8)
 
 # AUTHORS
-tinyramfs by illiliti _https://github.com/illiliti_ ++
-man page by fluorescent_haze _https://github.com/fluorescent-haze_
+tinyramfs by illiliti *https://github.com/illiliti* ++
+man page by fluorescent_haze *https://github.com/fluorescent-haze*

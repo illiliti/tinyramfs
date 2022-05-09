@@ -10,7 +10,7 @@
 tinyramfs - configuration file
 .P
 .SH DESCRIPTION
-A tinyramfs configuration file is written in POSIX sh.\& Configuration is done via variable asignment (eg.\& option=value).\& Special characters and whitespace must be quoted or escaped, more info: \fBsh(1)\fR.\& By default tinyramfs looks to /etc/tinyramfs/config for a configuration file.\&
+A tinyramfs configuration file is written in POSIX sh.\& Configuration is done via variable asignment (eg.\& \fBoption=value\fR).\& Special characters and whitespace must be quoted or escaped, more info: \fBsh\fR(1).\& By default tinyramfs looks to /etc/tinyramfs/config for a configuration file.\&
 .P
 .SH OPTIONS
 Option marked with \fB(bool)\fR can hold a value of true or false.\& False if the variable is unset or empty, true otherwise.\&
@@ -121,15 +121,12 @@ The device your ZFS volume is located on.\&
 .P
 .RE
 .SH FILES
-/lib/tinyramfs/hook.\&d/
-.RS 4
-tinyramfs hooks
+/lib/tinyramfs/hook.\&d/  tinyramfs hooks
 .P
-.RE
 .SH SEE ALSO
-tinyramfs(8)
+\fBtinyramfs\fR(8)
 .P
 .SH AUTHORS
-tinyramfs by illiliti \fIhttps://github.\&com/illiliti\fR 
+tinyramfs by illiliti \fBhttps://github.\&com/illiliti\fR 
 .br
-man page by fluorescent_haze \fIhttps://github.\&com/fluorescent-haze\fR
+man page by fluorescent_haze \fBhttps://github.\&com/fluorescent-haze\fR

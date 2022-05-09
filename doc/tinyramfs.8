@@ -14,7 +14,8 @@
 \fBtinyramfs\fR [\fB-dfhl\fR] [\fB-c\fR file] [\fB-k\fR kern] [\fB-m\fR path] <output>
 .P
 .SH DESCRIPTION
-The tinyramfs utility generates an initramfs image for loading kernel modules, unlocking encrypted drives, mounting needed filesystems, etc.\&
+The tinyramfs utility generates an initramfs image for loading kernel modules, 
+unlocking encrypted drives, mounting needed filesystems, etc.\&
 .P
 .SH OPTIONS
 \fB-c\fR <file>
@@ -24,9 +25,13 @@ Use <file> as configuration, instead of /etc/tinyramfs/config.\&
 .RE
 \fB-d\fR
 .RS 4
-Enable debug mode; print every command tinyramfs executes to standard error.\&
-.P
+Enable debug mode; print every command tinyramfs executes to standard 
 .RE
+<<<<<<< HEAD
+=======
+error.\&
+.P
+>>>>>>> 3967410 (doc/*: minor formating changes to man pages)
 \fB-f\fR
 .RS 4
 Overwrite the output file if it already exists.\&
@@ -39,7 +44,8 @@ Show a summary of options accepted by tinyramfs.\&
 .RE
 \fB-k\fR <kern>
 .RS 4
-Set the kernel version to <kern>.\& This way tinyramfs knows which kernel modules to use.\&
+Set the kernel version to <kern>.\& This way tinyramfs knows which kernel 
+modules to use.\&
 .P
 .RE
 \fB-l\fR

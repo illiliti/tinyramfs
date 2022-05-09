@@ -10,14 +10,24 @@
 tinyramfs - configuration file
 .P
 .SH DESCRIPTION
+<<<<<<< HEAD
 A tinyramfs configuration file is written in POSIX sh.\& Configuration is done via variable asignment (eg.\& \fBoption=value\fR).\& Special characters and whitespace must be quoted or escaped, more info: \fBsh\fR(1).\& By default tinyramfs looks to /etc/tinyramfs/config for a configuration file.\&
+=======
+A tinyramfs configuration file is written in POSIX sh.\& Configuration is done 
+via variable asignment (eg.\& \fBoption=value\fR).\& Special characters and whitespace 
+must be quoted or escaped, more info: \fBsh\fR(1).\& By default tinyramfs looks to 
+\fB/etc/tinyramfs/config\fR for a configuration file.\&
+>>>>>>> 3967410 (doc/*: minor formating changes to man pages)
 .P
 .SH OPTIONS
-Option marked with \fB(bool)\fR can hold a value of true or false.\& False if the variable is unset or empty, true otherwise.\&
+Option marked with \fB(bool)\fR can hold a value of true or false.\& False if the 
+variable is unset or empty, true otherwise.\&
 .P
 Some options only apply to certain hooks and have been categorized accordingly.\&
 .P
-Options which expect a device as a value can also refer to the device via UUID, LABEL, and PARTUUID (eg.\& LABEL=<label>).\& This requires a blkid utility which supports that identifier.\&
+Options which expect a device as a value can also refer to the device via 
+\fBUUID\fR, \fBLABEL\fR, and \fBPARTUUID\fR (eg.\& LABEL=<label>).\& This requires a blkid 
+utility which supports that identifier.\&
 .P
 root
 .RS 4
@@ -26,19 +36,23 @@ The device your root filesystem is located on.\&
 .RE
 hooks
 .RS 4
-A comma separated list of hooks to include in the initramfs.\& Hooks can be found in /lib/tinyramfs/hook.\&d/.\&
+A comma separated list of hooks to include in the initramfs.\& Hooks can 
+be found in /lib/tinyramfs/hook.\&d/.\&
 .P
 .RE
 monolith
 .RS 4
-(bool) Instructs tinyramfs whether or not to include kernel modules in the initramfs.\&
+(bool) Instructs tinyramfs whether or not to include kernel modules in 
+the initramfs.\&
 .P
 .RE
 compress
 .RS 4
-The utility to use for compressing the initramfs.\& The option accepts arbitrary commands (eg.\& '\&gzip -9'\&).\& Use '\&cat'\& for an uncompressed initramfs.\&
-.P
+The utility to use for compressing the initramfs.\& The option accepts 
+arbitrary commands (eg.\& '\&gzip -9'\&).\& Use '\&cat'\& for an uncompressed 
 .RE
+initramfs.\&
+.P
 hostonly
 .RS 4
 (bool) Whether or not to only copy modules specific to your system.\&
@@ -60,7 +74,8 @@ luks_discard
 .RS 4
 Allow the use of discard (TRIM) requests for your luks device.\&
 .P
-Warning: This option may have a negative security impact.\& For more info read cryptsetup(8).\&
+Warning: This option may have a negative security impact.\& For more info 
+read \fBcryptsetup\fR(8).\&
 .P
 .RE
 luks_header

@@ -3,26 +3,40 @@ tinyramfs(5) "tinyramfs" "2022-05-09"
 tinyramfs - configuration file
 
 # DESCRIPTION
+<<<<<<< HEAD
 A tinyramfs configuration file is written in POSIX sh. Configuration is done via variable asignment (eg. *option=value*). Special characters and whitespace must be quoted or escaped, more info: *sh*(1). By default tinyramfs looks to /etc/tinyramfs/config for a configuration file.
+=======
+A tinyramfs configuration file is written in POSIX sh. Configuration is done 
+via variable asignment (eg. *option=value*). Special characters and whitespace 
+must be quoted or escaped, more info: *sh*(1). By default tinyramfs looks to 
+*/etc/tinyramfs/config* for a configuration file.
+>>>>>>> 3967410 (doc/*: minor formating changes to man pages)
 
 # OPTIONS
-Option marked with *(bool)* can hold a value of true or false. False if the variable is unset or empty, true otherwise.
+Option marked with *(bool)* can hold a value of true or false. False if the 
+variable is unset or empty, true otherwise.
 
 Some options only apply to certain hooks and have been categorized accordingly.
 
-Options which expect a device as a value can also refer to the device via UUID, LABEL, and PARTUUID (eg. LABEL=<label>). This requires a blkid utility which supports that identifier.
+Options which expect a device as a value can also refer to the device via 
+*UUID*, *LABEL*, and *PARTUUID* (eg. LABEL=<label>). This requires a blkid 
+utility which supports that identifier.
 
 root
 	The device your root filesystem is located on.
 
 hooks
-	A comma separated list of hooks to include in the initramfs. Hooks can be found in /lib/tinyramfs/hook.d/.
+	A comma separated list of hooks to include in the initramfs. Hooks can 
+	be found in /lib/tinyramfs/hook.d/.
 
 monolith
-	(bool) Instructs tinyramfs whether or not to include kernel modules in the initramfs.
+	(bool) Instructs tinyramfs whether or not to include kernel modules in 
+	the initramfs.
 
 compress
-	The utility to use for compressing the initramfs. The option accepts arbitrary commands (eg. 'gzip -9'). Use 'cat' for an uncompressed initramfs.
+	The utility to use for compressing the initramfs. The option accepts 
+	arbitrary commands (eg. 'gzip -9'). Use 'cat' for an uncompressed 
+initramfs.
 
 hostonly
 	(bool) Whether or not to only copy modules specific to your system.
@@ -38,7 +52,8 @@ keymap_path
 luks_discard
 	Allow the use of discard (TRIM) requests for your luks device.
 
-	Warning: This option may have a negative security impact. For more info read cryptsetup(8).
+	Warning: This option may have a negative security impact. For more info 
+	read *cryptsetup*(8).
 
 luks_header
 	Path to your LUKS header.

@@ -27,4 +27,8 @@ uninstall:
 check:
 	(cd test && ${MAKE})
 
-.PHONY: install uninstall check
+doc:
+	scdoc < doc/tinyramfs.5.scd > doc/tinyramfs.5
+	scdoc < doc/tinyramfs.8.scd > doc/tinyramfs.8
+
+.PHONY: install uninstall check doc

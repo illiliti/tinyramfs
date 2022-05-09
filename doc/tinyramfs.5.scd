@@ -3,14 +3,10 @@ tinyramfs(5) "tinyramfs" "2022-05-09"
 tinyramfs - configuration file
 
 # DESCRIPTION
-<<<<<<< HEAD
-A tinyramfs configuration file is written in POSIX sh. Configuration is done via variable asignment (eg. *option=value*). Special characters and whitespace must be quoted or escaped, more info: *sh*(1). By default tinyramfs looks to /etc/tinyramfs/config for a configuration file.
-=======
 A tinyramfs configuration file is written in POSIX sh. Configuration is done 
 via variable asignment (eg. *option=value*). Special characters and whitespace 
 must be quoted or escaped, more info: *sh*(1). By default tinyramfs looks to 
 */etc/tinyramfs/config* for a configuration file.
->>>>>>> 3967410 (doc/*: minor formating changes to man pages)
 
 # OPTIONS
 Option marked with *(bool)* can hold a value of true or false. False if the 
@@ -36,7 +32,7 @@ monolith
 compress
 	The utility to use for compressing the initramfs. The option accepts 
 	arbitrary commands (eg. 'gzip -9'). Use 'cat' for an uncompressed 
-initramfs.
+	initramfs.
 
 hostonly
 	(bool) Whether or not to only copy modules specific to your system.
@@ -52,7 +48,7 @@ keymap_path
 luks_discard
 	Allow the use of discard (TRIM) requests for your luks device.
 
-	Warning: This option may have a negative security impact. For more info 
+	*WARNING*: This option may have a negative security impact. For more info 
 	read *cryptsetup*(8).
 
 luks_header
@@ -91,7 +87,8 @@ zfs_root
 	The device your ZFS volume is located on.
 
 # FILES
-/lib/tinyramfs/hook.d/  tinyramfs hooks
+/lib/tinyramfs/hook.d/
+	tinyramfs hooks
 
 # SEE ALSO
 *tinyramfs*(8)

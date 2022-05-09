@@ -10,14 +10,10 @@
 tinyramfs - configuration file
 .P
 .SH DESCRIPTION
-<<<<<<< HEAD
-A tinyramfs configuration file is written in POSIX sh.\& Configuration is done via variable asignment (eg.\& \fBoption=value\fR).\& Special characters and whitespace must be quoted or escaped, more info: \fBsh\fR(1).\& By default tinyramfs looks to /etc/tinyramfs/config for a configuration file.\&
-=======
 A tinyramfs configuration file is written in POSIX sh.\& Configuration is done 
 via variable asignment (eg.\& \fBoption=value\fR).\& Special characters and whitespace 
 must be quoted or escaped, more info: \fBsh\fR(1).\& By default tinyramfs looks to 
 \fB/etc/tinyramfs/config\fR for a configuration file.\&
->>>>>>> 3967410 (doc/*: minor formating changes to man pages)
 .P
 .SH OPTIONS
 Option marked with \fB(bool)\fR can hold a value of true or false.\& False if the 
@@ -50,9 +46,9 @@ compress
 .RS 4
 The utility to use for compressing the initramfs.\& The option accepts 
 arbitrary commands (eg.\& '\&gzip -9'\&).\& Use '\&cat'\& for an uncompressed 
-.RE
 initramfs.\&
 .P
+.RE
 hostonly
 .RS 4
 (bool) Whether or not to only copy modules specific to your system.\&
@@ -74,7 +70,7 @@ luks_discard
 .RS 4
 Allow the use of discard (TRIM) requests for your luks device.\&
 .P
-Warning: This option may have a negative security impact.\& For more info 
+\fBWARNING\fR: This option may have a negative security impact.\& For more info 
 read \fBcryptsetup\fR(8).\&
 .P
 .RE
@@ -136,8 +132,11 @@ The device your ZFS volume is located on.\&
 .P
 .RE
 .SH FILES
-/lib/tinyramfs/hook.\&d/  tinyramfs hooks
+/lib/tinyramfs/hook.\&d/
+.RS 4
+tinyramfs hooks
 .P
+.RE
 .SH SEE ALSO
 \fBtinyramfs\fR(8)
 .P

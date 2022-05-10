@@ -1,4 +1,5 @@
 tinyramfs(5) "tinyramfs" "2022-05-09"
+
 # NAME
 tinyramfs - configuration file
 
@@ -17,7 +18,8 @@ Some options only apply to certain hooks and have been categorized accordingly.
 Options which expect a device as a value can also refer to the device via 
 *UUID*, *LABEL*, and *PARTUUID* (eg. LABEL=<label>). This requires a blkid 
 utility which supports that identifier.
-
+++
+++
 root
 	The device your root filesystem is located on.
 

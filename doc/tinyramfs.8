@@ -8,63 +8,77 @@
 .TH "tinyramfs" "8" "2022-05-10" "tinyramfs" "2022-05-09"
 .P
 .SH NAME
+.P
 tinyramfs - create an initramfs
 .P
 .SH SYNOPSIS
+.P
 \fBtinyramfs\fR [\fB-dfhl\fR] [\fB-c\fR file] [\fB-k\fR kern] [\fB-m\fR path] <output>
 .P
 .SH DESCRIPTION
-The tinyramfs utility generates an initramfs image for loading kernel modules, 
+.P
+The tinyramfs utility generates an initramfs image for loading kernel modules,
 unlocking encrypted drives, mounting needed filesystems, etc.\&
 .P
 .SH OPTIONS
+.P
 \fB-c\fR <file>
+.P
 .RS 4
 Use <file> as configuration, instead of /etc/tinyramfs/config.\&
 .P
 .RE
 \fB-d\fR
+.P
 .RS 4
-Enable debug mode; print every command tinyramfs executes to standard 
+Enable debug mode; print every command tinyramfs executes to standard
 error.\&
 .P
 .RE
 \fB-f\fR
+.P
 .RS 4
 Overwrite the output file if it already exists.\&
 .P
 .RE
 \fB-h\fR
+.P
 .RS 4
 Show a summary of options accepted by tinyramfs.\&
 .P
 .RE
 \fB-k\fR <kern>
+.P
 .RS 4
-Set the kernel version to <kern>.\& This way tinyramfs knows which kernel 
+Set the kernel version to <kern>.\& This way tinyramfs knows which kernel
 modules to use.\&
 .P
 .RE
 \fB-l\fR
+.P
 .RS 4
 Use helper scripts in $PWD/lib/, instead of /lib/tinyramfs/.\&
 .P
 .RE
 \fB-m\fR <path>
+.P
 .RS 4
 Look for kernel modules in <path>, instead of /lib/modules/.\&
 .P
 .RE
 .SH FILES
+.P
 /lib/tinyramfs/hook.\&d/
 .RS 4
 tinyramfs hooks
 .P
 .RE
 .SH SEE ALSO
+.P
 \fBtinyramfs\fR(8)
 .P
 .SH AUTHORS
-tinyramfs by illiliti \fBhttps://github.\&com/illiliti\fR 
+.P
+tinyramfs by illiliti \fBhttps://github.\&com/illiliti\fR
 .br
 man page by fluorescent_haze \fBhttps://github.\&com/fluorescent-haze\fR

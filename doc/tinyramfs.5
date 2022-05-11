@@ -5,7 +5,7 @@
 .nh
 .ad l
 .\" Begin generated content:
-.TH "tinyramfs" "5" "2022-05-10" "tinyramfs" "2022-05-09"
+.TH "tinyramfs" "5" "2022-05-11" "tinyramfs" "2022-05-09"
 .P
 .SH NAME
 .P
@@ -82,7 +82,7 @@ Path to your keymap.\&
 luks_discard
 .P
 .RS 4
-Allow the use of discard (TRIM) requests for your luks device.\&
+(bool) Allow the use of discard (TRIM) requests for your luks device.\&
 .P
 \fBWARNING\fR: This option may have a negative security impact.\& For more info
 read \fBcryptsetup\fR(8).\&
@@ -123,7 +123,7 @@ Path to your LVM configuration file.\&
 lvm_discard
 .P
 .RS 4
-Allow the use of discard (TRIM) requests for your LVM device.\&
+(bool) Allow the use of discard (TRIM) requests for your LVM device.\&
 .P
 .RE
 lvm_group

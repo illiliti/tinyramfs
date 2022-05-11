@@ -52,7 +52,7 @@ unlocking encrypted drives, mounting needed filesystems, etc.
 
 # SEE ALSO
 
-*tinyramfs*(8)
+*tinyramfs*(5)
 
 # AUTHORS
 

@@ -60,7 +60,7 @@ keymap_path
 
 luks_discard
 
-	Allow the use of discard (TRIM) requests for your luks device.
+	(bool) Allow the use of discard (TRIM) requests for your luks device.
 
 	*WARNING*: This option may have a negative security impact. For more info
 	read *cryptsetup*(8).
@@ -89,7 +89,7 @@ lvm_config
 
 lvm_discard
 
-	Allow the use of discard (TRIM) requests for your LVM device.
+	(bool) Allow the use of discard (TRIM) requests for your LVM device.
 
 lvm_group
 

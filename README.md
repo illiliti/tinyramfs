@@ -1,10 +1,8 @@
-Tinyramfs
-=========
+# Tinyramfs
 
-**Usable and stable. Documentation will be rewritten and (re-)added later.**
+Tiny initramfs written in POSIX shell
 
-Features
---------
+## Features
 
 - No `local`'s, no bashisms, only POSIX shell
 - Portable, not distro specific
@@ -14,8 +12,7 @@ Features
 - LUKS (detached header, key), LVM
 - mdev, mdevd, eudev, systemd-udevd
 
-Dependencies
-------------
+## Dependencies
 
 * POSIX make (build time)
 * POSIX utilities
@@ -42,21 +39,22 @@ Dependencies
 * `kmod` OR `busybox modutils` with [patch](https://gist.github.com/illiliti/ef9ee781b5c6bf36d9493d99b4a1ffb6) (already included in KISS Linux)
   - Optional. Required if kernel compiled with loadable external modules
 
-Installation
-------------
+## Installation
 
 ```sh
 make PREFIX=/usr install
 ```
 
-Thanks
-------
+## Documentation
+
+[here](doc/)
+
+## Thanks
 
 [E5ten](https://github.com/E5ten)  
 [dylanaraps](https://github.com/dylanaraps)
 
-Donate
-------
+## Donate
 
 You can donate if you like this project
 

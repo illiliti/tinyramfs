@@ -143,6 +143,9 @@ copy_modules()
     copy_file "${moddir}/${kernel}/modules.builtin" \
               "/lib/modules/${kernel}/modules.builtin" 0644
 
+    copy_file "${moddir}/${kernel}/modules.builtin.modinfo" \
+              "/lib/modules/${kernel}/modules.builtin.modinfo" 0644
+
     depmod -b "$tmpdir" "$kernel"
 }
 

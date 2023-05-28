@@ -95,7 +95,7 @@ copy_kmod()
 {
     modprobe -S "$kernel" -D "$1" 2> /dev/null |
 
-    while read -r _ _mod || [ "$_mod" ]; do
+    while read -r _ _mod _ || [ "$_mod" ]; do
         case $_mod in /*) copy_file "$_mod" "$_mod" 0644; esac
     done
 }

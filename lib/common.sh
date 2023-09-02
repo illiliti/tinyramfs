@@ -103,7 +103,7 @@ copy_kmod()
 # TODO allow full path to hook
 copy_hook()
 {
-    for _dir in ${local+./hook} /etc/tinyramfs/hook.d /lib/tinyramfs/hook.d; do
+    for _dir in ${local+./hook} /etc/tinyramfs/hook.d @@LIBDIR@@/tinyramfs/hook.d; do
         _hook="${_dir}/${1}/${1}"
         [ -f "$_hook" ] && break
     done
@@ -115,7 +115,7 @@ copy_hook()
 
         print "copying hook: ${1}.${_ext}"
 
-        copy_file "${_hook}.${_ext}" "/lib/tinyramfs/hook.d/${1}/${1}.${_ext}" 0644
+        copy_file "${_hook}.${_ext}" "@@LIBDIR@@/tinyramfs/hook.d/${1}/${1}.${_ext}" 0644
     done
 
     print "evaluating hook: $1"

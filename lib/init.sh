@@ -26,12 +26,12 @@ eval_hooks()
     { IFS=,; set -- $hooks; unset IFS; }
 
     for _hook; do
-        [ -f "/lib/tinyramfs/hook.d/${_hook}/${_hook}.${_type}" ] || continue
+        [ -f "@@LIBDIR@@/tinyramfs/hook.d/${_hook}/${_hook}.${_type}" ] || continue
         [ "$rdbreak" = "$_hook" ] && panic "break before: ${_hook}.${_type}"
 
         # https://shellcheck.net/wiki/SC1090
         # shellcheck disable=1090
-        . "/lib/tinyramfs/hook.d/${_hook}/${_hook}.${_type}"
+        . "@@LIBDIR@@/tinyramfs/hook.d/${_hook}/${_hook}.${_type}"
     done
 }
 
@@ -104,7 +104,7 @@ trap panic EXIT
 
 # https://shellcheck.net/wiki/SC1091
 # shellcheck disable=1091
-. /lib/tinyramfs/common.sh
+. @@LIBDIR@@/tinyramfs/common.sh
 
 # https://shellcheck.net/wiki/SC1091
 # shellcheck disable=1091

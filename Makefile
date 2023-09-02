@@ -17,6 +17,9 @@ install:
 	cp -f doc/tinyramfs.5   ${DESTDIR}${MANDIR}/man5/
 	cp -f doc/tinyramfs.8   ${DESTDIR}${MANDIR}/man8/
 	cp -R hook          ${DESTDIR}${LIBDIR}/tinyramfs/hook.d
+	find ${DESTDIR}${LIBDIR}/tinyramfs/ -name '*.sh' -exec sed -i "s|@@LIBDIR@@|${LIBDIR}|g" {} +
+	sed -i "s|@@LIBDIR@@|${LIBDIR}|g" ${DESTDIR}${BINDIR}/tinyramfs
+
 
 uninstall:
 	rm -f  ${DESTDIR}${BINDIR}/tinyramfs

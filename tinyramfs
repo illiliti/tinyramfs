@@ -47,8 +47,8 @@ init_base()
         ln -s ../run/lock var/lock
         ln -s bin     usr/sbin
 
-        ln -s lib/tinyramfs/init.sh init
-        ln -s ../lib/tinyramfs/helper.sh bin/helper
+        ln -s @@LIBDIR@@/tinyramfs/init.sh init
+        ln -s ..@@LIBDIR@@/tinyramfs/helper.sh bin/helper
     )
 
     for _bin in \
@@ -69,9 +69,9 @@ init_base()
     fi
 
     copy_file "$config" /etc/tinyramfs/config    0644
-    copy_file "$init"   /lib/tinyramfs/init.sh   0755
-    copy_file "$devh"   /lib/tinyramfs/helper.sh 0755
-    copy_file "$shrd"   /lib/tinyramfs/common.sh 0755
+    copy_file "$init"   @@LIBDIR@@/tinyramfs/init.sh   0755
+    copy_file "$devh"   @@LIBDIR@@/tinyramfs/helper.sh 0755
+    copy_file "$shrd"   @@LIBDIR@@/tinyramfs/common.sh 0755
 }
 
 copy_hooks()
@@ -187,9 +187,9 @@ shift "$((OPTIND - 1))"
 
 : "${kernel:=$(uname -r)}"
 : "${moddir:=/lib/modules}"
-: "${init:=/lib/tinyramfs/init.sh}"
-: "${devh:=/lib/tinyramfs/helper.sh}"
-: "${shrd:=/lib/tinyramfs/common.sh}"
+: "${init:=@@LIBDIR@@/tinyramfs/init.sh}"
+: "${devh:=@@LIBDIR@@/tinyramfs/helper.sh}"
+: "${shrd:=@@LIBDIR@@/tinyramfs/common.sh}"
 
 # -e: Exit if command return status greater than 0
 # -f: Disable globbing *?[]

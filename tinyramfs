@@ -47,8 +47,8 @@ init_base()
         ln -s ../run/lock var/lock
         ln -s bin     usr/sbin
 
-        ln -s @@LIBDIR@@/tinyramfs/init.sh init
-        ln -s ..@@LIBDIR@@/tinyramfs/helper.sh bin/helper
+        ln -s /lib/tinyramfs/init.sh init
+        ln -s ../lib/tinyramfs/helper.sh bin/helper
     )
 
     for _bin in \

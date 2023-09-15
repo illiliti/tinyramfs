@@ -1,0 +1,12 @@
+# vim: set ft=sh:
+# shellcheck shell=sh
+#
+# https://shellcheck.net/wiki/SC2154
+# shellcheck disable=2154
+
+resolve_device "$resume"
+
+if [ -n "$device" ]; then
+	printf '%u:%u\n' $(stat -L -c '0x%t 0x%T' "$device") > /sys/power/resume || \
+	panic "failed to resume"
+fi

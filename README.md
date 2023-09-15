@@ -11,6 +11,7 @@ Tiny initramfs written in POSIX shell
 - ZFS + native encryption support
 - LUKS (detached header, key), LVM
 - mdev, mdevd, eudev, systemd-udevd
+- Resume from swap partition
 
 ## Dependencies
 

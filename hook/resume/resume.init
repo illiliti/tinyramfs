@@ -7,6 +7,8 @@
 resolve_device "$resume"
 
 if [ -n "$device" ]; then
-	printf '%u:%u\n' $(stat -L -c '0x%t 0x%T' "$device") > /sys/power/resume || \
+	dev_link=$(readlink "$device")
+
+	cat /sys/class/block/${dev_link##*/}/dev > /sys/power/resume || \
 	panic "failed to resume"
 fi

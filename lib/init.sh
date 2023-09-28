@@ -53,6 +53,7 @@ parse_cmdline()
         rootfstype=*) root_type=${_param#*=} ;;
         rootflags=*)  root_opts=${_param#*=} ;;
         rootdelay=*)  root_wait=${_param#*=} ;;
+        init=*)       init=${_param#*=} ;;
     esac; done
 }
 

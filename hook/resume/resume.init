@@ -9,6 +9,6 @@ resolve_device "$resume"
 if [ -n "$device" ]; then
 	dev_link=$(readlink "$device")
 
-	cat /sys/class/block/${dev_link##*/}/dev > /sys/power/resume || \
+	cat /sys/class/block/"${dev_link##*/}"/dev > /sys/power/resume || \
 	panic "failed to resume"
 fi

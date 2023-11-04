@@ -103,6 +103,12 @@ lvm_tag
 
 	The tag of your LVM logical volume.
 
+## RESUME
+
+resume
+
+	The location of your swap partition.
+
 ## ZFS
 
 zfs_key

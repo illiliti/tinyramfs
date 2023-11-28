@@ -49,7 +49,7 @@ parse_cmdline()
         # Maintain backward compatibility with kernel parameters.
         ro | rw)      rorw=$_param ;;
         rootwait)     root_wait=-1 ;;
-        --)           init_args=${_param##*--}; break ;;
+        --)           init_args=${cmdline##*--}; break ;;
         rootfstype=*) root_type=${_param#*=} ;;
         rootflags=*)  root_opts=${_param#*=} ;;
         rootdelay=*)  root_wait=${_param#*=} ;;

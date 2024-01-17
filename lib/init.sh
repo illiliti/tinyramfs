@@ -11,7 +11,7 @@ init_base()
     mount -t tmpfs    -o nosuid,nodev,mode=0755  run  /run
     mount -t devtmpfs -o nosuid,noexec,mode=0755 dev  /dev
 
-    ln -s /proc/self/fd /dev/fd
+    ln -s /proc/self/fd /dev
     ln -s fd/0          /dev/stdin
     ln -s fd/1          /dev/stdout
     ln -s fd/2          /dev/stderr

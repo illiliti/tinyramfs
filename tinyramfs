@@ -127,6 +127,7 @@ copy_modules()
             find \
                 fs lib arch crypto drivers/md drivers/ata drivers/scsi \
                 drivers/block drivers/virtio drivers/usb/host \
+                drivers/usb/common drivers/usb/core \
                 drivers/usb/storage drivers/input/keyboard -type f 2> /dev/null |
 
             while read -r _mod; do

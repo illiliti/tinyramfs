@@ -160,6 +160,26 @@ create_image()
     (cd "$tmpdir" && find . -not \( -path ./.ignore -prune \) | cpio -oH newc 2> /dev/null) |
         ${compress:-cat} > "$output" ||
         panic 'failed to generate initramfs image'
+}
+
+late_hooks()
+{
+    # https://shellcheck.net/wiki/SC2086
+    # shellcheck disable=2086
+    { IFS=,; set -- $hooks; unset IFS; }
+
+    # https://shellcheck.net/wiki/SC1090
+    # shellcheck disable=1090
+    for _hook; do
+        _name=$_hook
+        
+        for _dir in ${local+./hook} /etc/tinyramfs/hook.d /lib/tinyramfs/hook.d; do
+            _hook="${_dir}/${_name}/${_name}.late"
+            [ -f "$_hook" ] && break
+        done
+
+        [ -f "$_hook" ] && print "evaluating hook: ${_name}.late" && . "$_hook"
+    done
 
     print "done: $output" '+>'
 }
@@ -209,3 +229,4 @@ init_base
 copy_hooks
 copy_modules
 create_image
+late_hooks

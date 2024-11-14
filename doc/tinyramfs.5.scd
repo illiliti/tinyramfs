@@ -119,6 +119,13 @@ zfs_root
 
 	The device your ZFS volume is located on.
 
+## UCODE
+
+ucode_image
+
+	Path to a pre-built microcode image (optional, will be
+	generated if not specified).
+
 # FILES
 
 /lib/tinyramfs/hook.d/

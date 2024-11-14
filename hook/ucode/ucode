@@ -1,0 +1,48 @@
+# vim: set ft=sh:
+# shellcheck shell=sh
+#
+# https://shellcheck.net/wiki/SC2154
+# shellcheck disable=2154
+
+[ -f "$ucode_image" ] && return
+
+family="$(sed -n '/cpu family/ {s/.*: //p;q}' /proc/cpuinfo)"
+fwdir=/lib/firmware
+prefix=kernel/x86/microcode
+
+mkdir -p "${ucodedir:=${tmpdir}/.ignore/ucode}/root/${prefix}"
+
+if [ "$hostonly" ]; then
+    if grep -iq 'vendor_id.*amd' /proc/cpuinfo 2>/dev/null; then
+        if [ "$family" -ge 21 ]; then
+            amd="${fwdir}/amd-ucode/microcode_amd_fam$(printf '%x' "$family")h.bin"
+        else
+            amd="${fwdir}/amd-ucode/microcode_amd.bin"
+        fi
+
+        cp -f "$amd" "${ucodedir}/root/${prefix}/AuthenticAMD.bin"
+    elif grep -iq 'vendor_id.*intel' /proc/cpuinfo 2>/dev/null; then
+        model="$(sed -n '/model[ \t]*:/ {s/.*: //p;q}' /proc/cpuinfo)"
+        stepping="$(sed -n '/stepping/ {s/.*: //p;q}' /proc/cpuinfo)"
+        fw="$(printf '%02x-%02x-%02x' "$family" "$model" "$stepping")"
+
+        cp -f "${fwdir}/intel-ucode/$fw" \
+           "${ucodedir}/root/${prefix}/GenuineIntel.bin"
+    fi
+else
+    set +f # enable globbing temporarily
+
+    [ -d "$fwdir"/amd-ucode ] &&
+        cat "$fwdir"/amd-ucode/microcode_amd*.bin > "${ucodedir}/root/${prefix}/AuthenticAMD.bin"
+
+    [ -d "$fwdir"/intel-ucode ] &&
+        cat "$fwdir"/intel-ucode/* > "${ucodedir}/root/${prefix}/GenuineIntel.bin"
+
+    set -f
+fi
+
+[ -f "${ucodedir}/root/${prefix}/AuthenticAMD.bin" ] ||
+    [ -f "${ucodedir}/root/${prefix}/GenuineIntel.bin" ] &&
+        (cd "$ucodedir"/root && find . | cpio -oH newc 2> /dev/null) > "$ucodedir"/ucode.img
+
+unset family fwdir prefix model stepping amd

@@ -1,0 +1,10 @@
+# vim: set ft=sh:
+# shellcheck shell=sh
+#
+# https://shellcheck.net/wiki/SC2154
+# shellcheck disable=2154
+
+if [ -f "${ucode_image:=${ucodedir:=${tmpdir}/.ignore/ucode}/ucode.img}" ]; then
+    mv "$output" "$ucodedir"/initramfs.img
+    cat "$ucode_image" "$ucodedir"/initramfs.img > "$output"
+fi

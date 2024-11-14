@@ -157,7 +157,8 @@ create_image()
     [ -z "$force" ] && [ -e "$output" ] &&
         panic 'initramfs image already exist'
 
-    (cd "$tmpdir" && find . | cpio -oH newc 2> /dev/null) | ${compress:-cat} > "$output" ||
+    (cd "$tmpdir" && find . -not \( -path ./.ignore -prune \) | cpio -oH newc 2> /dev/null) |
+        ${compress:-cat} > "$output" ||
         panic 'failed to generate initramfs image'
 
     print "done: $output" '+>'

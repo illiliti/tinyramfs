@@ -1,0 +1,47 @@
+# vim: set ft=sh:
+# shellcheck shell=sh
+#
+# https://shellcheck.net/wiki/SC2154
+# shellcheck disable=2154
+
+if [ -d "${ukidir:=${tmpdir}/.ignore/uki}" ]; then
+    mv "$output" "$output".initramfs
+
+    if command -v llvm-objcopy > /dev/null; then
+        llvm-objcopy \
+            --add-section .osrel="/etc/os-release" \
+            --set-section-flags .osrel=data,readonly \
+            --add-section .cmdline="$ukidir"/cmdline \
+            --set-section-flags .cmdline=data,readonly \
+            --add-section .initrd="$output".initramfs \
+            --set-section-flags .initrd=code,readonly \
+            --add-section .linux="$uki_kernel" \
+            --set-section-flags .linux=code,readonly \
+            "$uki_efistub" "$output"
+    elif command -v objcopy > /dev/null; then
+        align=$(objdump -p "$uki_efistub" | awk -Wposix '/^SectionAlignment/ {printf "%d", "0x"$2}' 2> /dev/null)
+        osrel="$(objdump -h "$uki_efistub" | awk -Wposix '/.*\.reloc/ {print sprintf("%d","0x"$3) + sprintf("%d","0x"$4)}' 2> /dev/null)"
+        osrel=$(printf 0x%x $((osrel + align - osrel % align)))
+        cmdline=$((osrel + $(wc -c < /etc/os-release)))
+        cmdline=$(printf 0x%x $((cmdline + align - cmdline % align)))
+        initrd=$((cmdline + $(wc -c < "$ukidir"/cmdline)))
+        initrd=$(printf 0x%x $((initrd + align - initrd % align)))
+        linux=$((initrd + $(wc -c < "$output".initramfs)))
+        linux=$(printf 0x%x $((linux + align - linux % align)))
+
+        objcopy \
+            --add-section .osrel="/etc/os-release" --change-section-vma .osrel="$osrel" \
+            --add-section .cmdline="$ukidir"/cmdline --change-section-vma .cmdline="$cmdline"\
+            --add-section .initrd="$output".initramfs --change-section-vma .initrd="$initrd" \
+            --add-section .linux="$uki_kernel" --change-section-vma .linux="$linux" \
+            "$uki_efistub" "$output"
+
+        unset align osrel cmdline initrd linux
+    fi
+
+    if [ -f "$output" ]; then
+        [ "$uki_only" ] && rm -f "$output".initramfs
+    else
+        mv "$output".initramfs "$output"
+    fi
+fi

@@ -175,6 +175,34 @@ Path to a pre-built microcode image (optional, will be
 generated if not specified).\&
 .PP
 .RE
+.P
+.SS UKI
+.PP
+uki_cmdline
+.PP
+.RS 4
+Kernel command line to include in the image.\&
+.PP
+.RE
+uki_efistub
+.PP
+.RS 4
+Path to an EFI Stub loader.\&
+.PP
+.RE
+uki_kernel
+.PP
+.RS 4
+Path to the kernel.\& $kernel holds the kernel version passed to tinyramfs.\&
+.PP
+.RE
+uki_only
+.PP
+.RS 4
+(bool) Whether or not to remove the initramfs image after
+using it to generate the UKI.\&
+.PP
+.RE
 .SH FILES
 .PP
 /lib/tinyramfs/hook.\&d/

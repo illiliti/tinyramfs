@@ -5,7 +5,7 @@
 .nh
 .ad l
 .\" Begin generated content:
-.TH "tinyramfs" "5" "2024-11-15" "tinyramfs" "2022-05-09"
+.TH "tinyramfs" "5" "2025-07-22" "tinyramfs" "2022-05-09"
 .PP
 .SH NAME
 .PP
@@ -38,8 +38,12 @@ The device your root filesystem is located on.\&
 hooks
 .PP
 .RS 4
-A comma separated list of hooks to include in the initramfs.\& Hooks can
-be found in /lib/tinyramfs/hook.\&d/.\&
+A comma separated list of hooks to include in the
+initramfs.\& Hooks can be found in /lib/tinyramfs/hook.\&d/.\& \fBThe
+order in which hooks appear is significant\fR; a device manager
+hook (e.\&g.\& the '\&eudev'\& hook) should be the first element of
+the list, the '\&ucode'\& hook should be placed before the '\&uki'\&
+hook, if both are used.\&
 .PP
 .RE
 monolith
@@ -175,7 +179,6 @@ Path to a pre-built microcode image (optional, will be
 generated if not specified).\&
 .PP
 .RE
-.P
 .SS UKI
 .PP
 uki_cmdline
@@ -187,7 +190,8 @@ Kernel command line to include in the image.\&
 uki_efistub
 .PP
 .RS 4
-Path to an EFI Stub loader.\&
+Path to an EFI Stub loader.\& Will try to use
+/lib/systemd/boot/efi/linuxx64.\&efi.\&stub if unset.\&
 .PP
 .RE
 uki_kernel

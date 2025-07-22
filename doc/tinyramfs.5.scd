@@ -1,4 +1,4 @@
-tinyramfs(5) "tinyramfs" "2022-05-09"
+tinyramfs(5) "tinyramfs" "2025-07-22"
 
 # NAME
 
@@ -28,8 +28,12 @@ root
 
 hooks
 
-	A comma separated list of hooks to include in the initramfs. Hooks can
-	be found in /lib/tinyramfs/hook.d/.
+	A comma separated list of hooks to include in the
+	initramfs. Hooks can be found in /lib/tinyramfs/hook.d/. *The
+	order in which hooks appear is significant*; a device manager
+	hook (e.g. the 'eudev' hook) should be the first element of
+	the list, the 'ucode' hook should be placed before the 'uki'
+	hook, if both are used.
 
 monolith
 
@@ -134,7 +138,8 @@ uki_cmdline
 
 uki_efistub
 
-	Path to an EFI Stub loader.
+	Path to an EFI Stub loader. Will try to use
+	/lib/systemd/boot/efi/linuxx64.efi.stub if unset.
 
 uki_kernel
 
